@@ -1159,7 +1159,8 @@ function classifyHand(hand, board, bInfo) {
   const hasBDFD = !hasFlush && !hasFlushDraw && board.length <= 3 && hs[0] === hs[1] && fs.filter(s => s === hs[0]).length >= 1;
 
   const allVals = [...new Set([...hr, ...fr])].sort((a,b) => a-b);
-  let hasStraight = false, hasOESD = false, gutshotCount = 0;
+  let hasStraight = false, hasOESD = false;
+  const gutshotOuts = new Set();
   for (let low = 0; low <= 9; low++) {
     const w = [low, low+1, low+2, low+3, low+4];
     const valsInW = allVals.filter(v => w.includes(v));
@@ -1167,17 +1168,17 @@ function classifyHand(hand, board, bInfo) {
     else if (valsInW.length >= 4) {
       const sorted = [...valsInW].sort((a,b) => a-b);
       if (sorted[sorted.length-1] - sorted[0] === sorted.length - 1) hasOESD = true;
-      else gutshotCount++;
+      else gutshotOuts.add(w.find(v => !allVals.includes(v)));
     }
   }
   if (allVals.includes(12)) {
     const lowCards = allVals.filter(v => v <= 3);
     if (lowCards.length >= 4) hasStraight = true;
-    else if (lowCards.length === 3) gutshotCount++;
+    else if (lowCards.length === 3) gutshotOuts.add([12,0,1,2,3].find(v => !allVals.includes(v)));
   }
-  const hasDoubleGutshot = gutshotCount >= 2 && !hasOESD;
+  const hasDoubleGutshot = gutshotOuts.size >= 2 && !hasOESD;
   if (hasDoubleGutshot) hasOESD = true;
-  const hasGutshot = gutshotCount === 1;
+  const hasGutshot = gutshotOuts.size === 1;
 
   let eqb, handType;
   if (hasStraight && hasFlush) { eqb = 'strong'; handType = 'Straight flush'; }
@@ -1326,7 +1327,8 @@ function detectBlockers(hand, board) {
 
   let blocksMissedDraw = false;
   for (const [suit, count] of Object.entries(boardSuitCounts)) {
-    if (count === 2 && hs.some(s => s === suit)) blocksMissedDraw = true;
+    if (count === 2 && hand.some(c => cardSuit(c) === suit && rankVal(c) >= 8))
+      blocksMissedDraw = true;
   }
 
   const blocksValue = blocksNutFlush || blocksStraight;
@@ -1354,7 +1356,7 @@ function computeCbetAnswer(hInfo, bInfo, context) {
     if (eqb === 'strong') return { best: 'check', acceptable: ['check','bet13'], reason: '3BP — check souvent (trap), bet petit OK' };
     if (eqb === 'good') return { best: 'bet13', acceptable: ['bet13','check'], reason: '3BP — bet 1/4 pour value+protection' };
     if (eqb === 'weak') return { best: 'check', acceptable: ['check','bet13'], reason: '3BP — check, pas assez fort pour bet' };
-    return { best: 'check', acceptable: ['check','bet13'], reason: '3BP — check (population sur-cbet le trash en 3BP)' };
+    return { best: 'check', acceptable: ['check','bet13'], reason: '3BP — check le trash (évite de sur-cbet)' };
   }
 
   if (cbetFreq === 'high') {
@@ -1466,6 +1468,7 @@ function computeBarrelAnswer(hInfo, tInfo, line, bInfo, context) {
     return { best:'bet13', acceptable:['bet13','check'], reason:'Delayed ou trap — board statique' };
   }
   if (eqb === 'good') {
+    if (tc==='flush'||tc==='straight') return { best:'check', acceptable:['check','bet13'], reason:'Pot control — turn dangereuse' };
     if (bInfo.dynamic==='dynamic') return { best:'bet23', acceptable:['bet23','bet13'], reason:'Delayed protection — board dynamique' };
     return { best:'bet13', acceptable:['bet13','check'], reason:'Stab petit' };
   }
