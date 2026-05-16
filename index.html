@@ -1,0 +1,2248 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Board Trainer — Phi Atlas GTO</title>
+<style>
+@font-face { font-family: 'Rajdhani'; src: local('Rajdhani'); }
+@font-face { font-family: 'Orbitron'; src: local('Orbitron'); }
+@font-face { font-family: 'Share Tech Mono'; src: local('Share Tech Mono'); }
+
+:root {
+  --bg: #0a0e17;
+  --surface: #111827;
+  --surface2: #1a2235;
+  --border: #2a3a55;
+  --text: #e0e6f0;
+  --dim: #6b7fa3;
+  --accent: #00e5ff;
+  --accent2: #7c4dff;
+  --green: #00e676;
+  --orange: #ffab40;
+  --red: #ff5252;
+  --gold: #ffd740;
+  --card-w: 60px;
+  --card-h: 84px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Rajdhani', sans-serif;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* ═══════════════════════════════════════════
+   LANDING SCREEN
+   ═══════════════════════════════════════════ */
+#landing {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  gap: 32px;
+  padding: 20px;
+}
+.landing-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1.8rem;
+  color: var(--accent);
+  letter-spacing: 4px;
+  text-align: center;
+}
+.landing-sub {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.8rem;
+  color: var(--dim);
+  letter-spacing: 2px;
+  margin-top: -20px;
+}
+.mode-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  width: 100%;
+  max-width: 340px;
+}
+.mode-btn {
+  padding: 18px 12px;
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+}
+.mode-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--surface2); }
+.mode-btn .mode-emoji { font-size: 1.5rem; display: block; margin-bottom: 4px; }
+.mode-btn.full-hand { grid-column: 1 / -1; border-color: var(--accent2); }
+.mode-btn.full-hand:hover { border-color: var(--gold); color: var(--gold); }
+
+.pos-select {
+  display: flex;
+  gap: 12px;
+}
+.pos-btn {
+  padding: 14px 32px;
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.pos-btn:hover { transform: scale(1.05); }
+.pos-btn.ip { border-color: var(--green); color: var(--green); }
+.pos-btn.ip:hover { background: rgba(0,230,118,0.1); }
+.pos-btn.oop { border-color: var(--orange); color: var(--orange); }
+.pos-btn.oop:hover { background: rgba(255,171,64,0.1); }
+.pos-label { font-size: 0.8rem; color: var(--dim); text-align: center; margin-bottom: 4px; }
+
+/* ═══════════════════════════════════════════
+   GAME HEADER
+   ═══════════════════════════════════════════ */
+.header {
+  width: 100%;
+  max-width: 900px;
+  padding: 10px 24px 6px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.header h1 {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1rem;
+  color: var(--accent);
+  letter-spacing: 1px;
+}
+.stats {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.85rem;
+  color: var(--dim);
+  display: flex;
+  gap: 12px;
+}
+.stats span { color: var(--accent); }
+.back-btn {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.7rem;
+  color: var(--dim);
+  cursor: pointer;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 3px 8px;
+  background: none;
+  transition: all 0.2s;
+}
+.back-btn:hover { color: var(--accent); border-color: var(--accent); }
+
+/* ═══════════════════════════════════════════
+   TABS (isolated modes)
+   ═══════════════════════════════════════════ */
+.tabs {
+  display: flex;
+  gap: 4px;
+  width: 100%;
+  max-width: 900px;
+  padding: 0 24px;
+}
+.tab {
+  flex: 1;
+  padding: 8px 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px 8px 0 0;
+  color: var(--dim);
+  text-align: center;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+}
+.tab:hover { color: var(--text); background: var(--surface2); }
+.tab.active {
+  color: var(--accent);
+  background: var(--surface2);
+  border-bottom-color: var(--surface2);
+}
+
+/* ═══════════════════════════════════════════
+   PROGRESS BAR (full hand mode)
+   ═══════════════════════════════════════════ */
+.progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.75rem;
+  letter-spacing: 1px;
+}
+.prog-step {
+  padding: 4px 14px;
+  border-radius: 6px;
+  color: var(--dim);
+  border: 1px solid var(--border);
+  transition: all 0.3s;
+}
+.prog-step.active {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: rgba(0,229,255,0.1);
+}
+.prog-step.done {
+  color: var(--green);
+  border-color: var(--green);
+  background: rgba(0,230,118,0.08);
+}
+.prog-arrow { color: var(--dim); font-size: 0.7rem; }
+
+/* ═══════════════════════════════════════════
+   MAIN AREA
+   ═══════════════════════════════════════════ */
+.main {
+  width: 100%;
+  max-width: 900px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 0 0 12px 12px;
+  padding: 16px 24px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ── Context bar ── */
+.ctx-bar {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+  font-size: 0.82rem;
+  color: var(--dim);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  width: 100%;
+}
+.ctx-label { font-size: 0.65rem; }
+.ctx-value { color: var(--text); font-weight: 700; font-size: 0.95rem; }
+.ctx-value.ip { color: var(--green); }
+.ctx-value.oop { color: var(--orange); }
+.ctx-pot-3bp { color: var(--orange) !important; text-shadow: 0 0 6px rgba(255,171,64,0.4); }
+.ctx-item { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.stack-bar { width: 50px; height: 6px; background: var(--surface); border-radius: 3px; overflow: hidden; }
+.stack-fill { height: 100%; border-radius: 3px; transition: width 0.3s; }
+.stack-fill.deep { background: var(--green); }
+.stack-fill.mid { background: var(--orange); }
+.stack-fill.shallow { background: var(--red); }
+
+.line-badge {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 4px;
+  letter-spacing: 1px;
+}
+.line-badge.xbc { background: rgba(255,171,64,0.15); color: var(--orange); border: 1px solid var(--orange); }
+.line-badge.xx { background: rgba(0,229,255,0.10); color: var(--accent); border: 1px solid var(--accent); }
+.line-badge.xbc_xbc { background: rgba(255,82,82,0.15); border: 1px solid var(--red); color: var(--red); }
+.line-badge.xbc_xx { background: rgba(255,171,64,0.15); border: 1px solid var(--orange); color: var(--orange); }
+.line-badge.xx_xbc { background: rgba(0,230,118,0.15); border: 1px solid var(--green); color: var(--green); }
+.line-badge.xx_xx { background: rgba(107,127,163,0.15); border: 1px solid var(--border); color: var(--dim); }
+
+/* ── Board display ── */
+.board-area { display: flex; align-items: flex-end; gap: 24px; flex-wrap: wrap; justify-content: center; }
+.board-section { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.board-label {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.6rem;
+  color: var(--dim);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+.flop-cards, .street-card { display: flex; gap: 6px; }
+.card-wrapper { display: inline-block; border-radius: 9px; line-height: 0; }
+.card-wrapper svg { display: block; }
+.card-wrapper.hero-card { border: 2px solid var(--accent); box-shadow: 0 0 12px rgba(0,229,255,0.3); }
+.card-wrapper.turn-highlight { border: 2px solid var(--gold); box-shadow: 0 0 12px rgba(255,215,64,0.3); }
+.card-wrapper.river-highlight { border: 2px solid var(--gold); box-shadow: 0 0 14px rgba(255,215,64,0.4); }
+.hero-section { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.hero-cards { display: flex; gap: 6px; }
+
+/* ── Blocker panel ── */
+.blocker-panel {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+  min-height: 22px;
+}
+.blocker-chip {
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 0.7rem;
+  font-family: 'Share Tech Mono', monospace;
+}
+.blocker-chip.value { background: rgba(0,230,118,0.15); color: var(--green); border: 1px solid var(--green); }
+.blocker-chip.bluffs { background: rgba(255,82,82,0.15); color: var(--red); border: 1px solid var(--red); }
+.blocker-chip.none { background: rgba(107,127,163,0.1); color: var(--dim); border: 1px solid var(--border); }
+
+/* ── Tag groups (flop board reading) ── */
+.tag-group { margin-bottom: 6px; }
+.tag-group-label {
+  font-size: 0.68rem;
+  color: var(--dim);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 4px;
+}
+.tags, .tags-wrap { display: flex; flex-wrap: wrap; gap: 5px; }
+
+/* ── Tag rows (turn/river card reading) ── */
+.tag-grid { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 550px; }
+.tag-row { display: flex; gap: 6px; align-items: center; }
+.tag-row-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--dim);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  width: 80px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.tag {
+  padding: 5px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  color: var(--dim);
+  background: var(--surface);
+  user-select: none;
+}
+.tag:hover { border-color: var(--accent); color: var(--text); }
+.tag.selected { border-color: var(--accent); color: var(--accent); background: rgba(0,229,255,0.08); }
+.tag.correct { border-color: var(--green); color: var(--green); background: rgba(0,230,118,0.08); }
+.tag.wrong { border-color: var(--red); color: var(--red); background: rgba(255,82,82,0.08); }
+.tag.missed { border-color: var(--orange); color: var(--orange); background: rgba(255,171,64,0.08); }
+
+/* ── Action buttons ── */
+.actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.action-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 20px;
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  cursor: pointer;
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 700;
+  font-size: 1rem;
+  transition: all 0.15s;
+  min-width: 90px;
+}
+.action-btn:hover { border-color: var(--accent); background: var(--surface2); }
+.action-btn .icon { font-size: 1.5rem; }
+.action-btn.correct { border-color: var(--green); background: rgba(0,230,118,0.10); color: var(--green); }
+.action-btn.wrong { border-color: var(--red); background: rgba(255,82,82,0.08); color: var(--red); }
+.action-btn.best { border-color: var(--green); box-shadow: 0 0 10px rgba(0,230,118,0.3); }
+
+.pot-3bp {
+  border: 2px solid var(--orange) !important;
+  border-radius: 14px;
+  padding: 8px;
+  box-shadow: 0 0 12px rgba(255,171,64,0.15);
+  position: relative;
+}
+.pot-3bp::before {
+  content: '3-BET POT';
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--orange);
+  background: var(--surface2);
+  padding: 0 8px;
+  letter-spacing: 1px;
+}
+
+/* ── Villain bet bar ── */
+.villain-bet-bar {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  font-size: 0.85rem;
+  color: var(--dim);
+  background: rgba(255,82,82,0.06);
+  border: 1px solid rgba(255,82,82,0.2);
+  border-radius: 8px;
+  padding: 6px 14px;
+  margin-bottom: 6px;
+}
+.villain-bet-bar .bet-size { color: var(--red); font-weight: 700; }
+.villain-bet-bar .odds { color: var(--orange); font-weight: 600; }
+
+/* ── Feedback ── */
+.feedback-area { text-align: center; min-height: 50px; }
+.feedback {
+  display: inline-block;
+  padding: 6px 20px;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 1rem;
+}
+.correct-fb { background: rgba(0,230,118,0.12); color: var(--green); }
+.wrong-fb { background: rgba(255,82,82,0.12); color: var(--red); }
+.partial-fb { background: rgba(255,171,64,0.12); color: var(--orange); }
+.detail {
+  font-size: 0.82rem;
+  color: var(--dim);
+  margin-top: 6px;
+  font-style: italic;
+}
+
+#next-btn {
+  display: none;
+  margin-top: 8px;
+  padding: 10px 36px;
+  background: var(--green);
+  color: #000;
+  border: none;
+  border-radius: 8px;
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 700;
+  font-size: 1.1rem;
+  cursor: pointer;
+  letter-spacing: 1px;
+}
+#next-btn.visible { display: inline-block; }
+#next-btn:hover { filter: brightness(1.15); }
+
+.btn-validate {
+  display: block;
+  margin: 12px auto;
+  padding: 10px 28px;
+  background: var(--accent2);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn-validate:hover { filter: brightness(1.15); }
+
+.shortcuts {
+  font-size: 0.7rem;
+  color: var(--dim);
+  margin-top: 4px;
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+.shortcuts kbd {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 1px 5px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.7rem;
+}
+
+/* ── Streak dots ── */
+.streak-bar {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+  margin-top: 6px;
+}
+.streak-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--border);
+}
+.streak-dot.hit { background: var(--green); }
+.streak-dot.miss { background: var(--red); }
+
+/* ── Accuracy panel ── */
+.accuracy-panel {
+  width: 100%;
+  max-width: 550px;
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+}
+.acc-chip {
+  font-size: 0.72rem;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--dim);
+}
+.acc-chip .pct { font-weight: 700; }
+.acc-chip .pct.high { color: var(--green); }
+.acc-chip .pct.mid { color: var(--orange); }
+.acc-chip .pct.low { color: var(--red); }
+
+.hidden { display: none !important; }
+hr.sep { border: none; border-top: 1px solid var(--border); margin: 6px 0; width: 100%; }
+
+@media (max-width: 600px) {
+  .main { padding: 12px 12px 20px; }
+  .ctx-bar { gap: 8px; font-size: 0.75rem; }
+  .action-btn { min-width: 70px; padding: 10px 12px; font-size: 0.9rem; }
+  .tag { padding: 4px 8px; font-size: 0.78rem; }
+  .tag-row-label { width: 60px; font-size: 0.65rem; }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════
+     LANDING SCREEN
+     ═══════════════════════════════════════════ -->
+<div id="landing">
+  <h1 class="landing-title">BOARD TRAINER</h1>
+  <div class="landing-sub">Phi Atlas GTO Coach</div>
+
+  <div class="mode-grid" id="mode-grid">
+    <div class="mode-btn" data-game="flop"><span class="mode-emoji">🃏</span>Flop</div>
+    <div class="mode-btn" data-game="turn"><span class="mode-emoji">🎯</span>Turn</div>
+    <div class="mode-btn" data-game="river"><span class="mode-emoji">🌊</span>River</div>
+    <div class="mode-btn full-hand" data-game="full"><span class="mode-emoji">🔥</span>Full Hand</div>
+  </div>
+
+  <div id="pos-select" class="hidden">
+    <div class="pos-label">Position pour toute la main</div>
+    <div class="pos-select">
+      <button class="pos-btn ip" data-pos="ip">IP</button>
+      <button class="pos-btn oop" data-pos="oop">OOP</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     GAME AREA
+     ═══════════════════════════════════════════ -->
+<div id="game" class="hidden">
+
+  <div class="header">
+    <button class="back-btn" id="back-btn">← Menu</button>
+    <h1 id="game-title">BOARD TRAINER</h1>
+    <div class="stats">
+      Score <span id="score">0</span> &nbsp;
+      Série <span id="streak-count">0</span> &nbsp;
+      Acc <span id="accuracy">—</span>
+    </div>
+  </div>
+
+  <!-- Tabs (isolated modes) -->
+  <div class="tabs" id="tabs-bar">
+    <div class="tab active" data-tab="read" id="tab-read">Reading</div>
+    <div class="tab" data-tab="ip" id="tab-ip">IP Action</div>
+    <div class="tab" data-tab="oop" id="tab-oop">OOP Defense</div>
+  </div>
+
+  <!-- Progress bar (full hand mode) -->
+  <div id="progress-bar" class="hidden progress">
+    <span class="prog-step" data-step="flop" id="prog-flop">FLOP</span>
+    <span class="prog-arrow">→</span>
+    <span class="prog-step" data-step="turn" id="prog-turn">TURN</span>
+    <span class="prog-arrow">→</span>
+    <span class="prog-step" data-step="river" id="prog-river">RIVER</span>
+  </div>
+
+  <div class="main">
+    <!-- Context bar -->
+    <div class="ctx-bar">
+      <div class="ctx-item"><span class="ctx-label">HERO</span><span class="ctx-value" id="ctx-hero-pos">CO</span></div>
+      <div class="ctx-item"><span class="ctx-label">POSITION</span><span class="ctx-value" id="ctx-ip-oop">IP</span></div>
+      <div class="ctx-item"><span class="ctx-label">VILLAIN</span><span class="ctx-value" id="ctx-villain-pos">BB</span></div>
+      <div class="ctx-item">
+        <span class="ctx-label">STACK</span>
+        <span class="ctx-value" id="ctx-stack">25bb</span>
+        <div class="stack-bar"><div class="stack-fill mid" id="ctx-stack-fill"></div></div>
+      </div>
+      <div class="ctx-item"><span class="ctx-label">SPR</span><span class="ctx-value" id="ctx-spr">3.5</span></div>
+      <div class="ctx-item"><span class="ctx-label">POT</span><span class="ctx-value" id="ctx-pot">SRP</span></div>
+      <div class="ctx-item hidden" id="ctx-line-item"><span class="ctx-label">LINE</span><span class="line-badge" id="ctx-line">x/b/c</span></div>
+    </div>
+
+    <!-- Board -->
+    <div class="board-area">
+      <div class="board-section" id="flop-section">
+        <span class="board-label">Flop</span>
+        <div class="flop-cards" id="flop-cards"></div>
+      </div>
+      <div class="board-section hidden" id="turn-section">
+        <span class="board-label">Turn</span>
+        <div class="street-card" id="turn-card"></div>
+      </div>
+      <div class="board-section hidden" id="river-section">
+        <span class="board-label">River</span>
+        <div class="street-card" id="river-card"></div>
+      </div>
+    </div>
+
+    <!-- Hero hand -->
+    <div class="hero-section hidden" id="hero-section">
+      <span class="board-label">Ta main</span>
+      <div class="hero-cards" id="hero-cards"></div>
+    </div>
+
+    <!-- Blocker panel -->
+    <div class="blocker-panel" id="blocker-panel"></div>
+
+    <hr class="sep">
+
+    <!-- ═══ Panel: Flop Board Reading ═══ -->
+    <div id="panel-flop-read" class="panel hidden">
+      <div class="tag-group">
+        <div class="tag-group-label">Structure</div>
+        <div class="tags">
+          <div class="tag" data-cat="structure" data-val="trips">Trips</div>
+          <div class="tag" data-cat="structure" data-val="paired">Paired</div>
+          <div class="tag" data-cat="structure" data-val="unpaired">Unpaired</div>
+        </div>
+      </div>
+      <div class="tag-group">
+        <div class="tag-group-label">Texture</div>
+        <div class="tags">
+          <div class="tag" data-cat="texture" data-val="monotone">Monotone</div>
+          <div class="tag" data-cat="texture" data-val="two-tone">Two-tone</div>
+          <div class="tag" data-cat="texture" data-val="rainbow">Rainbow</div>
+        </div>
+      </div>
+      <div class="tag-group">
+        <div class="tag-group-label">Rang</div>
+        <div class="tags">
+          <div class="tag" data-cat="rank" data-val="A">A high</div>
+          <div class="tag" data-cat="rank" data-val="H">High (K-T)</div>
+          <div class="tag" data-cat="rank" data-val="M">Mid (9-6)</div>
+          <div class="tag" data-cat="rank" data-val="L">Low (5-2)</div>
+        </div>
+      </div>
+      <div class="tag-group">
+        <div class="tag-group-label">Dynamisme</div>
+        <div class="tags">
+          <div class="tag" data-cat="dynamic" data-val="static">Statique</div>
+          <div class="tag" data-cat="dynamic" data-val="dynamic">Dynamique</div>
+        </div>
+      </div>
+      <div class="tag-group">
+        <div class="tag-group-label">Qui domine ?</div>
+        <div class="tags">
+          <div class="tag" data-cat="advantage" data-val="ip">IP domine</div>
+          <div class="tag" data-cat="advantage" data-val="close">≈ Proche</div>
+          <div class="tag" data-cat="advantage" data-val="bb">BB domine</div>
+        </div>
+      </div>
+      <div class="tag-group">
+        <div class="tag-group-label">C-bet freq attendue (IP)</div>
+        <div class="tags">
+          <div class="tag" data-cat="cbetFreq" data-val="high">Haute (80%+)</div>
+          <div class="tag" data-cat="cbetFreq" data-val="mid">Mid (60-80%)</div>
+          <div class="tag" data-cat="cbetFreq" data-val="low">Basse (&lt;60%)</div>
+        </div>
+      </div>
+      <button class="btn-validate" id="btn-validate-board">Valider</button>
+    </div>
+
+    <!-- ═══ Panel: Turn Card Reading ═══ -->
+    <div id="panel-turn-read" class="panel hidden">
+      <div class="tag-grid">
+        <div class="tag-row">
+          <span class="tag-row-label">Catégorie</span>
+          <div class="tags-wrap">
+            <div class="tag" data-cat="ttype" data-val="paired">Paired</div>
+            <div class="tag" data-cat="ttype" data-val="flush">Flush</div>
+            <div class="tag" data-cat="ttype" data-val="straight">Straight</div>
+            <div class="tag" data-cat="ttype" data-val="ace">Ace</div>
+            <div class="tag" data-cat="ttype" data-val="overcard">Overcard</div>
+            <div class="tag" data-cat="ttype" data-val="brick">Brick</div>
+          </div>
+        </div>
+        <div class="tag-row">
+          <span class="tag-row-label">Impact</span>
+          <div class="tags-wrap">
+            <div class="tag" data-cat="timpact" data-val="ip">IP ↑</div>
+            <div class="tag" data-cat="timpact" data-val="oop">OOP ↑</div>
+            <div class="tag" data-cat="timpact" data-val="neutre">Neutre</div>
+          </div>
+        </div>
+      </div>
+      <button class="btn-validate" id="btn-validate-turn">Valider</button>
+    </div>
+
+    <!-- ═══ Panel: River Card Reading ═══ -->
+    <div id="panel-river-read" class="panel hidden">
+      <div class="tag-grid">
+        <div class="tag-row">
+          <span class="tag-row-label">Catégorie</span>
+          <div class="tags-wrap">
+            <div class="tag" data-cat="rtype" data-val="flush">🌊 Flush</div>
+            <div class="tag" data-cat="rtype" data-val="straight">🔗 Straight</div>
+            <div class="tag" data-cat="rtype" data-val="pairing">👯 Pairing</div>
+            <div class="tag" data-cat="rtype" data-val="overcard">👑 Overcard</div>
+            <div class="tag" data-cat="rtype" data-val="brick">🧱 Brick</div>
+          </div>
+        </div>
+        <div class="tag-row">
+          <span class="tag-row-label">Impact</span>
+          <div class="tags-wrap">
+            <div class="tag" data-cat="rimpact" data-val="ip">IP ↑</div>
+            <div class="tag" data-cat="rimpact" data-val="oop">OOP ↑</div>
+            <div class="tag" data-cat="rimpact" data-val="neutre">Neutre</div>
+          </div>
+        </div>
+      </div>
+      <button class="btn-validate" id="btn-validate-river">Valider</button>
+    </div>
+
+    <!-- ═══ Panel: IP Action ═══ -->
+    <div id="panel-ip" class="panel hidden">
+      <div class="actions" id="ip-actions">
+        <div class="action-btn" data-action="check"><span class="icon">👋</span>Check</div>
+        <div class="action-btn" data-action="bet13"><span class="icon">🪙</span>Bet 1/3</div>
+        <div class="action-btn" data-action="bet23"><span class="icon">💰</span>Bet 2/3</div>
+        <div class="action-btn" data-action="allin"><span class="icon">🔥</span>All-in</div>
+      </div>
+    </div>
+
+    <!-- ═══ Panel: OOP Defense ═══ -->
+    <div id="panel-oop" class="panel hidden">
+      <div class="villain-bet-bar hidden" id="villain-bet-bar">
+        Villain bet <span class="bet-size" id="villain-bet-size">2/3 pot</span>
+        &nbsp;·&nbsp; Pot odds <span class="odds" id="pot-odds">29%</span>
+      </div>
+      <div class="actions" id="oop-actions">
+        <div class="action-btn" data-action="fold"><span class="icon">🗑️</span>Fold</div>
+        <div class="action-btn" data-action="call"><span class="icon">📞</span>Call</div>
+        <div class="action-btn" data-action="xr"><span class="icon">⚡</span>X/R</div>
+      </div>
+    </div>
+
+    <!-- Feedback -->
+    <div class="feedback-area">
+      <div id="feedback"></div>
+      <div class="detail" id="detail"></div>
+      <button id="next-btn">SUIVANT →</button>
+      <div class="shortcuts">
+        <span><kbd>Espace</kbd> Suivant</span>
+        <span><kbd>1-6</kbd> Tags/Actions</span>
+      </div>
+    </div>
+
+    <!-- Streak dots -->
+    <div class="streak-bar" id="streak-bar"></div>
+
+    <!-- Accuracy panel -->
+    <div class="accuracy-panel" id="accuracy-panel"></div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  CONSTANTS
+// ═══════════════════════════════════════════════════════════════
+const RANKS = ['2','3','4','5','6','7','8','9','T','J','Q','K','A'];
+const SUITS = ['h','d','c','s'];
+const RANK_VAL = { '2':0,'3':1,'4':2,'5':3,'6':4,'7':5,'8':6,'9':7,'T':8,'J':9,'Q':10,'K':11,'A':12 };
+const SUIT_SYM = { h:'♥', d:'♦', c:'♣', s:'♠' };
+const CARD_COLORS = { h:'#C0392B', d:'#1A6FA8', c:'#1E8449', s:'#1a1a1a' };
+const POSITIONS_IP = ['UTG','CO','BTN'];
+
+// ═══════════════════════════════════════════════════════════════
+//  GAME STATE
+// ═══════════════════════════════════════════════════════════════
+let gameMode = null;       // 'flop'|'turn'|'river'|'full'
+let currentStreet = 'flop';
+let currentTab = 'read';   // 'read'|'ip'|'oop' — isolated modes
+let position = 'ip';       // 'ip'|'oop' — full hand mode
+let fullPhase = 0;         // 0=flop, 1=turn, 2=river — full hand
+
+let deck, flop, turnCard, riverCard, heroHand;
+let boardInfo, turnInfo, riverInfo;
+let flopHandInfo, turnHandInfo, riverHandInfo;
+let handInfo, blockers;
+let ctx = {};
+let answered = false;
+let score = 0, correctQ = 0, totalQ = 0, currentStreak = 0;
+let streakHistory = [];
+let accuracyData = {};
+
+// ═══════════════════════════════════════════════════════════════
+//  CARD UTILITIES
+// ═══════════════════════════════════════════════════════════════
+function newDeck() {
+  const d = [];
+  for (const r of RANKS) for (const s of SUITS) d.push(r+s);
+  return d;
+}
+
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i+1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function cardRank(c) { return c[0]; }
+function cardSuit(c) { return c[1]; }
+function rankVal(c) { return RANK_VAL[cardRank(c)]; }
+
+function cardSvg(code, size='normal') {
+  if (!code || code.length < 2) {
+    const dims = size==='normal'?[60,84]:size==='medium'?[44,62]:[28,39];
+    return `<div style="width:${dims[0]}px;height:${dims[1]}px;background:var(--surface);border-radius:7px"></div>`;
+  }
+  const rank = code[0] === 'T' ? '10' : code[0].toUpperCase();
+  const suit = code[1].toLowerCase();
+  const color = CARD_COLORS[suit] || '#333';
+  const sym = SUIT_SYM[suit] || '?';
+  let w, h, rRank, rSym, rx, rankY, symY;
+  if (size === 'normal') { w=60; h=84; rRank=32; rSym=48; rx=7; rankY=26; symY=76; }
+  else if (size === 'medium') { w=44; h=62; rRank=24; rSym=36; rx=5; rankY=20; symY=58; }
+  else { w=28; h=39; rRank=14; rSym=20; rx=4; rankY=12; symY=36; }
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"
+    style="display:inline-block;vertical-align:middle;overflow:hidden;border-radius:${rx}px"
+    xmlns="http://www.w3.org/2000/svg">
+    <rect width="${w}" height="${h}" rx="${rx}" fill="${color}"/>
+    <text x="${w/2}" y="${rankY}" text-anchor="middle" dominant-baseline="middle"
+      style="font-family:'Exo 2','Rajdhani',sans-serif;font-weight:800;font-size:${rRank}px;fill:white">${rank}</text>
+    <text x="${w/2}" y="${symY}" text-anchor="middle" dominant-baseline="auto"
+      style="font-family:Arial,sans-serif;font-weight:700;font-size:${rSym}px;fill:rgba(255,255,255,0.30)">${sym}</text>
+  </svg>`;
+}
+
+function renderCard(card, container, extraClass='') {
+  const wrapper = document.createElement('div');
+  wrapper.className = `card-wrapper ${extraClass}`;
+  wrapper.innerHTML = cardSvg(card, 'normal');
+  container.appendChild(wrapper);
+  return wrapper;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  BOARD CLASSIFICATION (Acevedo Ch.11 — flop version, most complete)
+// ═══════════════════════════════════════════════════════════════
+function classifyBoard(flopCards) {
+  const ranks = flopCards.map(c => cardRank(c));
+  const suits = flopCards.map(c => cardSuit(c));
+  const vals = flopCards.map(c => rankVal(c)).sort((a,b) => b-a);
+
+  let structure;
+  if (ranks[0] === ranks[1] && ranks[1] === ranks[2]) structure = 'trips';
+  else if (ranks[0] === ranks[1] || ranks[1] === ranks[2] || ranks[0] === ranks[2]) structure = 'paired';
+  else structure = 'unpaired';
+
+  const uniqueSuits = new Set(suits).size;
+  let texture;
+  if (uniqueSuits === 1) texture = 'monotone';
+  else if (uniqueSuits === 2) texture = 'two-tone';
+  else texture = 'rainbow';
+
+  const hi = vals[0];
+  let rank;
+  if (hi === 12) rank = 'A';
+  else if (hi >= 8) rank = 'H';
+  else if (hi >= 4) rank = 'M';
+  else rank = 'L';
+
+  const uniqueVals = [...new Set(vals)].sort((a,b) => a-b);
+  const straights = countStraights(uniqueVals, structure === 'unpaired');
+
+  const hasFlushDraw = texture !== 'rainbow';
+  const connected = (structure === 'unpaired') && (vals[0] - vals[2] <= 4);
+  const hasStraightDraws = straights > 0;
+
+  let dynamic;
+  if (structure === 'trips' || structure === 'paired') {
+    dynamic = hasFlushDraw ? 'dynamic' : 'static';
+  } else if (texture === 'monotone' || (connected && hasStraightDraws) || straights >= 2) {
+    dynamic = 'dynamic';
+  } else if (rank === 'A' && !hasFlushDraw && !hasStraightDraws) {
+    dynamic = 'static';
+  } else if (hasFlushDraw && hasStraightDraws) {
+    dynamic = 'dynamic';
+  } else if (!hasFlushDraw && !hasStraightDraws && !connected) {
+    dynamic = 'static';
+  } else {
+    dynamic = (hasFlushDraw || hasStraightDraws) ? 'dynamic' : 'static';
+  }
+
+  let advantage;
+  if (structure === 'trips') advantage = 'ip';
+  else if (rank === 'A' || rank === 'H') {
+    if (straights >= 2 && rank !== 'A') advantage = 'close';
+    else advantage = 'ip';
+  } else if (rank === 'L' && straights >= 1) advantage = 'bb';
+  else if (rank === 'M' && straights >= 2) advantage = 'bb';
+  else if (rank === 'M') advantage = straights >= 1 ? 'close' : 'ip';
+  else advantage = 'close';
+
+  if (structure === 'paired') {
+    const pairRank = ranks.find(r => ranks.filter(x => x === r).length >= 2);
+    const pv = RANK_VAL[pairRank];
+    if (pv <= 5) advantage = advantage === 'ip' ? 'close' : advantage;
+  }
+
+  let cbetFreq;
+  if (structure === 'trips') cbetFreq = 'high';
+  else if (structure === 'paired') cbetFreq = (rank === 'A' || rank === 'H') ? 'high' : 'mid';
+  else {
+    if (rank === 'A') cbetFreq = 'high';
+    else if (rank === 'H') cbetFreq = straights >= 2 ? 'mid' : 'high';
+    else if (rank === 'M') cbetFreq = straights >= 2 ? 'low' : 'mid';
+    else cbetFreq = 'low';
+    if (texture === 'monotone' && cbetFreq === 'mid') cbetFreq = 'high';
+  }
+
+  let cbetSizing;
+  if (structure === 'trips' || structure === 'paired') cbetSizing = 'small';
+  else if (texture === 'monotone') cbetSizing = 'small';
+  else if (advantage === 'ip' && cbetFreq === 'high') cbetSizing = 'big';
+  else if (advantage === 'bb' || advantage === 'close') cbetSizing = straights >= 2 ? 'big' : 'mixed';
+  else cbetSizing = texture === 'rainbow' ? 'big' : 'mixed';
+
+  return { structure, texture, rank, dynamic, advantage, cbetFreq, cbetSizing, straights };
+}
+
+function countStraights(vals, isUnpaired) {
+  if (!isUnpaired || vals.length < 3) return 0;
+  let count = 0;
+  const vs = [...new Set(vals)];
+  const extended = [...vs];
+  if (vs.includes(12)) extended.push(-1);
+  for (let low = -1; low <= 8; low++) {
+    const window = [low, low+1, low+2, low+3, low+4];
+    const boardIn = extended.filter(v => window.includes(v));
+    if (boardIn.length === 3) count++;
+  }
+  return count;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  TURN CARD CLASSIFICATION (Acevedo Ch.13)
+// ═══════════════════════════════════════════════════════════════
+function classifyTurnCard(tc, flopCards) {
+  const tRank = rankVal(tc);
+  const tSuit = cardSuit(tc);
+  const fRanks = flopCards.map(c => rankVal(c));
+  const fSuits = flopCards.map(c => cardSuit(c));
+  const fSorted = [...fRanks].sort((a,b) => b-a);
+  const categories = [];
+
+  if (fRanks.includes(tRank)) categories.push('paired');
+
+  const sameSuitOnFlop = fSuits.filter(s => s === tSuit).length;
+  if (sameSuitOnFlop >= 2) categories.push('flush');
+
+  const allBoardVals = [...new Set([...fRanks, tRank])].sort((a,b) => a-b);
+  let isStraighty = false;
+  for (let low = 0; low <= 9; low++) {
+    const w = [low, low+1, low+2, low+3, low+4];
+    const inW = allBoardVals.filter(v => w.includes(v));
+    if (inW.length >= 3 && w.includes(tRank)) { isStraighty = true; break; }
+  }
+  if (allBoardVals.includes(12)) {
+    const lowCards = allBoardVals.filter(v => v <= 3);
+    if (lowCards.length >= 2 && (tRank <= 3 || tRank === 12)) isStraighty = true;
+  }
+  if (isStraighty && !categories.includes('paired')) categories.push('straight');
+
+  if (tRank === 12) categories.push('ace');
+  else if (tRank > fSorted[0]) categories.push('overcard');
+
+  if (categories.length === 0) categories.push('brick');
+
+  const priority = ['paired','flush','straight','ace','overcard','brick'];
+  const primary = priority.find(p => categories.includes(p));
+
+  let impact;
+  if (primary === 'paired' || primary === 'flush' || primary === 'straight') impact = 'oop';
+  else if (primary === 'ace' || primary === 'overcard') impact = 'ip';
+  else impact = 'neutre';
+
+  return { primary, categories, impact };
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  RIVER CARD CLASSIFICATION (Acevedo Ch.14)
+// ═══════════════════════════════════════════════════════════════
+function classifyRiverCard(rCard, board4) {
+  const rv = rankVal(rCard);
+  const rs = cardSuit(rCard);
+  const bv = board4.map(c => rankVal(c)).sort((a,b) => b-a);
+  const bs = board4.map(c => cardSuit(c));
+  const categories = [];
+
+  const suitCounts = {};
+  for (const s of bs) suitCounts[s] = (suitCounts[s]||0) + 1;
+  const maxSuitBefore = Math.max(...Object.values(suitCounts));
+  const rSuitCount = (suitCounts[rs] || 0) + 1;
+  if (rSuitCount >= 4) categories.push('flush');
+  else if (rSuitCount === 3 && maxSuitBefore < 3) categories.push('flush');
+
+  const board4Vals = [...new Set(bv)];
+  const board5Vals = [...new Set([...bv, rv])];
+  function straightCombos(vals) {
+    const combos = new Set();
+    for (let low = 0; low <= 9; low++) {
+      const w = [low,low+1,low+2,low+3,low+4];
+      const missing = w.filter(v => !vals.includes(v));
+      if (missing.length <= 2) combos.add(missing.sort((a,b)=>a-b).join(','));
+    }
+    const wheel = [12,0,1,2,3];
+    const wm = wheel.filter(v => !vals.includes(v));
+    if (wm.length <= 2) combos.add(wm.sort((a,b)=>a-b).join(','));
+    return combos;
+  }
+  const cBefore = straightCombos(board4Vals);
+  const cAfter = straightCombos(board5Vals);
+  for (const c of cAfter) { if (!cBefore.has(c)) { categories.push('straight'); break; } }
+
+  if (bv.includes(rv)) categories.push('pairing');
+  if (rv > bv[0]) categories.push('overcard');
+  if (categories.length === 0) categories.push('brick');
+
+  const priority = ['flush','straight','pairing','overcard','brick'];
+  const primary = priority.find(p => categories.includes(p));
+
+  let impact;
+  const flopVals = board4.slice(0,3).map(c => rankVal(c));
+  if (primary === 'flush' || primary === 'straight') impact = 'oop';
+  else if (primary === 'pairing') impact = flopVals.includes(rv) ? 'oop' : 'neutre';
+  else impact = 'ip';
+
+  return { primary, categories, impact };
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  HAND CLASSIFICATION — FLOP & TURN (with draws)
+// ═══════════════════════════════════════════════════════════════
+function classifyHand(hand, board, bInfo) {
+  const hr = hand.map(c => rankVal(c)).sort((a,b) => b-a);
+  const hs = hand.map(c => cardSuit(c));
+  const fr = board.map(c => rankVal(c)).sort((a,b) => b-a);
+  const fs = board.map(c => cardSuit(c));
+  const allRanks = [...hr, ...fr];
+
+  const boardRankCounts = {};
+  for (const v of fr) boardRankCounts[v] = (boardRankCounts[v]||0) + 1;
+  const boardPairedRanks = Object.entries(boardRankCounts).filter(([,c]) => c >= 2).map(([k]) => Number(k));
+
+  const pairWithBoard = hr.filter(v => fr.includes(v));
+  const isOverpair = hr[0] === hr[1] && hr[0] > fr[0];
+  const isTopPair = pairWithBoard.includes(fr[0]) && hr[0] !== hr[1];
+  const isMidPair = pairWithBoard.length > 0 && !isTopPair && pairWithBoard.some(v => v !== fr[0] && v !== fr[fr.length-1]);
+  const isBotPair = pairWithBoard.length > 0 && !isTopPair && !isMidPair;
+  const isPocketBelow = hr[0] === hr[1] && hr[0] < fr[fr.length-1];
+  const isPocketBetween = hr[0] === hr[1] && !fr.includes(hr[0]) && hr[0] < fr[0] && hr[0] > fr[fr.length-1];
+  const isSet = hr[0] === hr[1] && fr.includes(hr[0]);
+  const hasTrips = boardPairedRanks.some(r => hr.includes(r)) && hr[0] !== hr[1];
+  const isTwoPair = pairWithBoard.length >= 2 && hr[0] !== hr[1];
+
+  const allRankCounts = {};
+  for (const v of allRanks) allRankCounts[v] = (allRankCounts[v]||0) + 1;
+  const rankCountValues = Object.values(allRankCounts).sort((a,b) => b-a);
+  const hasQuads = rankCountValues[0] >= 4;
+  const hasFullHouse = !hasQuads && rankCountValues[0] >= 3 && rankCountValues.length >= 2 && rankCountValues[1] >= 2;
+
+  const suitCounts = {};
+  for (const s of [...hs, ...fs]) suitCounts[s] = (suitCounts[s]||0) + 1;
+  const maxSuitCount = Math.max(...Object.values(suitCounts));
+  const hasFlush = maxSuitCount >= 5;
+  const hasFlushDraw = !hasFlush && maxSuitCount >= 4;
+  const hasBDFD = !hasFlush && !hasFlushDraw && board.length <= 3 && hs[0] === hs[1] && fs.filter(s => s === hs[0]).length >= 1;
+
+  const allVals = [...new Set([...hr, ...fr])].sort((a,b) => a-b);
+  let hasStraight = false, hasOESD = false, gutshotCount = 0;
+  for (let low = 0; low <= 9; low++) {
+    const w = [low, low+1, low+2, low+3, low+4];
+    const valsInW = allVals.filter(v => w.includes(v));
+    if (valsInW.length >= 5) hasStraight = true;
+    else if (valsInW.length >= 4) {
+      const sorted = [...valsInW].sort((a,b) => a-b);
+      if (sorted[sorted.length-1] - sorted[0] === sorted.length - 1) hasOESD = true;
+      else gutshotCount++;
+    }
+  }
+  if (allVals.includes(12)) {
+    const lowCards = allVals.filter(v => v <= 3);
+    if (lowCards.length >= 4) hasStraight = true;
+    else if (lowCards.length === 3) gutshotCount++;
+  }
+  const hasDoubleGutshot = gutshotCount >= 2 && !hasOESD;
+  if (hasDoubleGutshot) hasOESD = true;
+  const hasGutshot = gutshotCount === 1;
+
+  let eqb, handType;
+  if (hasStraight && hasFlush) { eqb = 'strong'; handType = 'Straight flush'; }
+  else if (hasQuads) { eqb = 'strong'; handType = 'Quads'; }
+  else if (hasFullHouse) { eqb = 'strong'; handType = 'Full house'; }
+  else if (hasFlush) { eqb = 'strong'; handType = 'Flush'; }
+  else if (hasStraight) { eqb = 'strong'; handType = 'Straight'; }
+  else if (isSet) { eqb = 'strong'; handType = 'Set'; }
+  else if (hasTrips) { eqb = 'strong'; handType = 'Trips'; }
+  else if (isTwoPair) { eqb = 'strong'; handType = 'Two pair'; }
+  else if (isOverpair) {
+    if (bInfo && bInfo.dynamic === 'dynamic' && bInfo.straights >= 2)
+      { eqb = 'good'; handType = 'Overpair (wet)'; }
+    else { eqb = 'strong'; handType = 'Overpair'; }
+  }
+  else if (isTopPair) {
+    const kicker = hr.find(v => !fr.includes(v)) || hr[0];
+    if (kicker >= 11) { eqb = 'good'; handType = 'Top pair good kicker'; }
+    else { eqb = 'good'; handType = 'Top pair'; }
+  }
+  else if (isPocketBetween) {
+    if (hr[0] > fr[1]) { eqb = 'good'; handType = 'Pocket pair'; }
+    else { eqb = 'weak'; handType = 'Pocket pair (low)'; }
+  }
+  else if (isMidPair) { eqb = 'weak'; handType = 'Middle pair'; }
+  else if (hasFlushDraw && hasOESD) { eqb = 'good'; handType = 'Combo draw'; }
+  else if (hasFlushDraw) { eqb = 'weak'; handType = 'Flush draw'; }
+  else if (hasOESD) { eqb = 'weak'; handType = hasDoubleGutshot ? 'Double gutshot' : 'OESD'; }
+  else if (isBotPair) { eqb = 'weak'; handType = 'Bottom pair'; }
+  else if (isPocketBelow) { eqb = 'trash'; handType = 'Underpair'; }
+  else if (hr[0] >= 12 && hasGutshot) { eqb = 'weak'; handType = 'A-high + gutshot'; }
+  else if (hr[0] >= 12 && hasBDFD) { eqb = 'weak'; handType = 'A-high + BDFD'; }
+  else if (hr[0] >= 12) { eqb = 'trash'; handType = 'A-high'; }
+  else if (hr[0] >= 11 && hasBDFD) { eqb = 'trash'; handType = 'K-high + BDFD'; }
+  else if (hasGutshot && hasBDFD) { eqb = 'trash'; handType = 'Gutshot + BDFD'; }
+  else if (hasGutshot) { eqb = 'trash'; handType = 'Gutshot'; }
+  else { eqb = 'trash'; handType = 'Air'; }
+
+  return { eqb, handType, hasFlushDraw, hasBDFD, hasOESD, hasGutshot, hasDoubleGutshot,
+           isOverpair, isTopPair, isMidPair, isBotPair, isSet, hasTrips, isTwoPair,
+           hasStraight, hasFlush, hasFullHouse, hasQuads };
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  HAND CLASSIFICATION — RIVER (no draws, different EQB)
+// ═══════════════════════════════════════════════════════════════
+function classifyHandRiver(hand, board) {
+  const hr = hand.map(c => rankVal(c)).sort((a,b) => b-a);
+  const hs = hand.map(c => cardSuit(c));
+  const fr = board.map(c => rankVal(c)).sort((a,b) => b-a);
+  const fs = board.map(c => cardSuit(c));
+  const allRanks = [...hr, ...fr];
+
+  const boardRankCounts = {};
+  for (const v of fr) boardRankCounts[v] = (boardRankCounts[v]||0) + 1;
+  const boardPairedRanks = Object.entries(boardRankCounts).filter(([,c]) => c >= 2).map(([k]) => Number(k));
+
+  const pairWithBoard = hr.filter(v => fr.includes(v));
+  const isOverpair = hr[0] === hr[1] && hr[0] > fr[0];
+  const isTopPair = pairWithBoard.includes(fr[0]) && hr[0] !== hr[1];
+  const isMidPair = pairWithBoard.length > 0 && !isTopPair && pairWithBoard.some(v => v !== fr[0] && v !== fr[fr.length-1]);
+  const isBotPair = pairWithBoard.length > 0 && !isTopPair && !isMidPair;
+  const isPocketBelow = hr[0] === hr[1] && hr[0] < fr[fr.length-1];
+  const isPocketBetween = hr[0] === hr[1] && !fr.includes(hr[0]) && hr[0] < fr[0] && hr[0] > fr[fr.length-1];
+  const isSet = hr[0] === hr[1] && fr.includes(hr[0]);
+  const hasTrips = boardPairedRanks.some(r => hr.includes(r)) && hr[0] !== hr[1];
+  const isTwoPair = pairWithBoard.length >= 2 && hr[0] !== hr[1];
+
+  const allRankCounts = {};
+  for (const v of allRanks) allRankCounts[v] = (allRankCounts[v]||0) + 1;
+  const rankCountValues = Object.values(allRankCounts).sort((a,b) => b-a);
+  const hasQuads = rankCountValues[0] >= 4;
+  const hasFullHouse = !hasQuads && rankCountValues[0] >= 3 && rankCountValues.length >= 2 && rankCountValues[1] >= 2;
+
+  const suitCounts = {};
+  for (const s of [...hs, ...fs]) suitCounts[s] = (suitCounts[s]||0) + 1;
+  const hasFlush = Object.values(suitCounts).some(c => c >= 5);
+
+  const allVals = [...new Set([...hr, ...fr])].sort((a,b) => a-b);
+  let hasStraight = false;
+  for (let low = 0; low <= 9; low++) {
+    const w = [low,low+1,low+2,low+3,low+4];
+    if (allVals.filter(v => w.includes(v)).length >= 5) hasStraight = true;
+  }
+  if (allVals.includes(12) && allVals.filter(v => v <= 3).length >= 4) hasStraight = true;
+
+  let eqb, handType;
+  if (hasStraight && hasFlush) { eqb = 'strong'; handType = 'Straight flush'; }
+  else if (hasQuads) { eqb = 'strong'; handType = 'Quads'; }
+  else if (hasFullHouse) { eqb = 'strong'; handType = 'Full house'; }
+  else if (hasFlush) { eqb = 'strong'; handType = 'Flush'; }
+  else if (hasStraight) { eqb = 'strong'; handType = 'Straight'; }
+  else if (isSet) { eqb = 'strong'; handType = 'Set'; }
+  else if (hasTrips) { eqb = 'strong'; handType = 'Trips'; }
+  else if (isTwoPair) { eqb = 'good'; handType = 'Two pair'; }
+  else if (isOverpair) { eqb = 'good'; handType = 'Overpair'; }
+  else if (isTopPair) {
+    const kicker = hr.find(v => !fr.includes(v)) || hr[0];
+    if (kicker >= 11) { eqb = 'good'; handType = 'Top pair good kicker'; }
+    else { eqb = 'weak'; handType = 'Top pair weak kicker'; }
+  }
+  else if (isPocketBetween) { eqb = 'weak'; handType = 'Pocket pair'; }
+  else if (isMidPair) { eqb = 'weak'; handType = 'Middle pair'; }
+  else if (isBotPair) { eqb = 'weak'; handType = 'Bottom pair'; }
+  else if (isPocketBelow) { eqb = 'trash'; handType = 'Underpair'; }
+  else if (hr[0] >= 12) { eqb = 'trash'; handType = 'A-high'; }
+  else if (hr[0] >= 11) { eqb = 'trash'; handType = 'K-high'; }
+  else { eqb = 'trash'; handType = 'Air'; }
+
+  return { eqb, handType, isOverpair, isTopPair, isMidPair, isBotPair,
+           isSet, hasTrips, isTwoPair, hasStraight, hasFlush, hasFullHouse, hasQuads };
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  BLOCKER DETECTION (Acevedo Ch.14)
+// ═══════════════════════════════════════════════════════════════
+function detectBlockers(hand, board) {
+  const hr = hand.map(c => rankVal(c));
+  const hs = hand.map(c => cardSuit(c));
+  const fr = board.map(c => rankVal(c));
+  const fs = board.map(c => cardSuit(c));
+
+  const boardSuitCounts = {};
+  for (const s of fs) boardSuitCounts[s] = (boardSuitCounts[s]||0) + 1;
+  const flushSuitEntry = Object.entries(boardSuitCounts).find(([,c]) => c >= 3);
+  let blocksFlush = false, blocksNutFlush = false;
+  if (flushSuitEntry) {
+    const fSuit = flushSuitEntry[0];
+    blocksFlush = hs.some(s => s === fSuit);
+    blocksNutFlush = hand.some(c => cardSuit(c) === fSuit && rankVal(c) === 12);
+  }
+
+  const boardVals = [...new Set(fr)].sort((a,b) => a-b);
+  let blocksStraight = false;
+  for (let low = 0; low <= 9; low++) {
+    const w = [low,low+1,low+2,low+3,low+4];
+    const boardInW = boardVals.filter(v => w.includes(v));
+    if (boardInW.length === 4) {
+      const missing = w.find(v => !boardVals.includes(v));
+      if (missing !== undefined && hr.includes(missing)) blocksStraight = true;
+    }
+  }
+
+  const topRank = Math.max(...fr);
+  const blocksTopPair = hr.some(v => v === topRank);
+
+  let blocksMissedDraw = false;
+  for (const [suit, count] of Object.entries(boardSuitCounts)) {
+    if (count === 2 && hs.some(s => s === suit)) blocksMissedDraw = true;
+  }
+
+  const blocksValue = blocksNutFlush || blocksStraight;
+  const blocksBluffs = blocksMissedDraw && !blocksValue;
+
+  let summary, label;
+  if (blocksNutFlush) { summary = 'value'; label = 'Bloque nut flush'; }
+  else if (blocksStraight) { summary = 'value'; label = 'Bloque straight'; }
+  else if (blocksTopPair) { summary = 'value'; label = 'Bloque top pair/set'; }
+  else if (blocksMissedDraw) { summary = 'bluffs'; label = 'Bloque missed draws'; }
+  else { summary = 'none'; label = 'Aucun blocker'; }
+
+  return { blocksFlush, blocksNutFlush, blocksStraight, blocksTopPair,
+           blocksMissedDraw, blocksValue, blocksBluffs, summary, label };
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  FLOP ENGINES (Acevedo Ch.10-12)
+// ═══════════════════════════════════════════════════════════════
+function computeCbetAnswer(hInfo, bInfo, context) {
+  const { eqb, hasBDFD } = hInfo;
+  const { cbetFreq, cbetSizing, dynamic } = bInfo;
+
+  if (context.potType === '3BP') {
+    if (eqb === 'strong') return { best: 'check', acceptable: ['check','bet13'], reason: '3BP — check souvent (trap), bet petit OK' };
+    if (eqb === 'good') return { best: 'bet13', acceptable: ['bet13','check'], reason: '3BP — bet 1/4 pour value+protection' };
+    if (eqb === 'weak') return { best: 'check', acceptable: ['check','bet13'], reason: '3BP — check, pas assez fort pour bet' };
+    return { best: 'check', acceptable: ['check','bet13'], reason: '3BP — check (population sur-cbet le trash en 3BP)' };
+  }
+
+  if (cbetFreq === 'high') {
+    const sizing = cbetSizing === 'small' ? 'bet13' : 'bet23';
+    if (eqb === 'strong') return { best: sizing, acceptable: [sizing, 'check'], reason: 'Haute freq — bet for value (check OK pour trap)' };
+    if (eqb === 'good') return { best: sizing, acceptable: [sizing, 'check'], reason: 'Haute freq — bet for value + protection (check ~24%)' };
+    if (eqb === 'weak') return { best: sizing, acceptable: [sizing, 'check'], reason: 'Haute freq — semi-bluff' };
+    return { best: sizing, acceptable: [sizing, 'check'], reason: 'Haute freq — bluff, BB fold beaucoup (check ~38%)' };
+  }
+
+  if (cbetFreq === 'mid') {
+    const sizing = cbetSizing === 'small' ? 'bet13' : 'bet23';
+    if (eqb === 'strong') {
+      if (dynamic === 'static') return { best: sizing, acceptable: [sizing, 'check'], reason: 'Board statique — bet value (check ~20% trap OK)' };
+      return { best: sizing, acceptable: [sizing, 'check'], reason: 'Bet value + protection sur board dynamique' };
+    }
+    if (eqb === 'good') return { best: 'check', acceptable: ['check', sizing], reason: 'Mid freq — pot control' };
+    if (eqb === 'weak') {
+      if (hInfo.hasFlushDraw || hInfo.hasOESD) return { best: sizing, acceptable: [sizing, 'check'], reason: 'Semi-bluff avec draw' };
+      return { best: 'check', acceptable: ['check'], reason: 'Mid freq — trop faible pour bet' };
+    }
+    if (hasBDFD) return { best: sizing, acceptable: [sizing, 'check'], reason: 'Bluff avec BDFD — fold equity' };
+    return { best: 'check', acceptable: ['check', sizing], reason: 'Trash sans BDFD — check souvent (bet si fold equity)' };
+  }
+
+  if (eqb === 'strong') {
+    if (dynamic === 'static') return { best: 'check', acceptable: ['check','bet23'], reason: 'Low freq statique — trap' };
+    return { best: 'bet23', acceptable: ['bet23','check'], reason: 'Bet gros pour protection' };
+  }
+  if (eqb === 'good') return { best: 'check', acceptable: ['check'], reason: 'Low freq — check pour equity realization' };
+  if (eqb === 'weak') return { best: 'check', acceptable: ['check'], reason: 'Low freq — check, trop risqué' };
+  if (hasBDFD) return { best: 'bet23', acceptable: ['bet23','check'], reason: 'Bluff polarisé' };
+  return { best: 'check', acceptable: ['check','bet23'], reason: 'Air — check souvent' };
+}
+
+function computeFlopDefenseAnswer(hInfo, bInfo, context) {
+  const { eqb, hasBDFD, hasOESD, hasFlushDraw, hasGutshot, isBotPair } = hInfo;
+
+  if (eqb === 'strong') {
+    if (hInfo.isSet || hInfo.isTwoPair) return { best: 'xr', acceptable: ['xr','call'], reason: 'Strong — x/r pour value' };
+    if (hInfo.isOverpair) {
+      if (bInfo.dynamic === 'dynamic') return { best: 'xr', acceptable: ['xr','call'], reason: 'Overpair wet board — x/r protection' };
+      return { best: 'call', acceptable: ['call','xr'], reason: 'Overpair dry — call' };
+    }
+    return { best: 'xr', acceptable: ['xr','call'], reason: 'Strong — x/r value' };
+  }
+  if (eqb === 'good') {
+    if (hasFlushDraw && hasOESD) return { best: 'xr', acceptable: ['xr','call'], reason: 'Combo draw — x/r semi-bluff' };
+    if (bInfo.dynamic === 'dynamic') return { best: 'call', acceptable: ['call','xr'], reason: 'Good dynamic — call (x/r OK)' };
+    return { best: 'call', acceptable: ['call'], reason: 'Good — call, protège ta calling range' };
+  }
+  if (eqb === 'weak') {
+    if (hasFlushDraw || hasOESD) return { best: 'call', acceptable: ['call','xr'], reason: 'Draw — call (x/r parfois)' };
+    if (hasGutshot && hasBDFD) return { best: 'call', acceptable: ['call','xr'], reason: 'Gutshot + BDFD — call (x/r bluff OK)' };
+    if (hInfo.isMidPair) return { best: 'call', acceptable: ['call','fold'], reason: 'Middle pair — call' };
+    if (isBotPair) return { best: 'call', acceptable: ['call','xr','fold'], reason: 'Bottom pair — call ou x/r bluff' };
+    return { best: 'fold', acceptable: ['fold','call'], reason: 'Weak sans draw — fold' };
+  }
+  if (hasBDFD && hasGutshot) return { best: 'call', acceptable: ['call','xr'], reason: 'Gutshot + BDFD — call' };
+  if (hasBDFD && bInfo.advantage !== 'ip') return { best: 'xr', acceptable: ['xr','fold'], reason: 'BDFD — x/r bluff candidate' };
+  return { best: 'fold', acceptable: ['fold'], reason: 'Trash — fold' };
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  TURN ENGINES (Acevedo Ch.13)
+// ═══════════════════════════════════════════════════════════════
+function computeBarrelAnswer(hInfo, tInfo, line, bInfo, context) {
+  const { eqb, hasFlushDraw, hasOESD, hasBDFD, hasGutshot } = hInfo;
+  const tc = tInfo.primary;
+  const hasDraw = hasFlushDraw || hasOESD || hasGutshot || hasBDFD;
+  const is3bp = context.potType === '3BP';
+
+  if (line === 'xbc') {
+    if (is3bp) {
+      if (context.spr < 1) {
+        if (eqb === 'strong') return { best:'overbet', acceptable:['overbet','bet23'], reason:'3BP SPR<1 — shove value' };
+        if (eqb === 'good') return { best:'overbet', acceptable:['overbet','bet23'], reason:'3BP SPR<1 — shove protection' };
+        if (eqb === 'weak' && hasDraw) return { best:'overbet', acceptable:['overbet','bet23'], reason:'3BP SPR<1 — shove semi-bluff' };
+        return { best:'check', acceptable:['check'], reason:'3BP SPR<1 — give up' };
+      }
+      if (eqb === 'strong') return { best:'bet13', acceptable:['bet13','bet23'], reason:'3BP — value' };
+      if (eqb === 'good') return { best:'bet13', acceptable:['bet13','bet23'], reason:'3BP — protection' };
+      if (eqb === 'weak' && hasDraw) return { best:'bet13', acceptable:['bet13','check'], reason:'3BP — semi-bluff' };
+      return { best:'check', acceptable:['check','bet13'], reason:'3BP — give up' };
+    }
+    if (eqb === 'strong') {
+      if (tc==='paired') return { best:'bet13', acceptable:['bet13','bet23'], reason:'Value — board paired, bet petit' };
+      if (tc==='ace'||tc==='overcard') return { best:'bet23', acceptable:['bet23','overbet'], reason:'Value — carte IP' };
+      if (tc==='flush'||tc==='straight') return { best:'bet23', acceptable:['bet13','bet23','check'], reason:'Value — attention equity shift' };
+      return { best:'bet23', acceptable:['bet23','overbet'], reason:'Value — maintenir pression' };
+    }
+    if (eqb === 'good') {
+      if (tc==='flush'||tc==='straight') return { best:'check', acceptable:['check','bet13'], reason:'Pot control — turn dangereuse' };
+      if (tc==='paired') return { best:'bet13', acceptable:['bet13','bet23'], reason:'Protection — board paired' };
+      return { best:'bet23', acceptable:['bet23','bet13'], reason:'Barrel value+protection' };
+    }
+    if (eqb === 'weak') {
+      if (hasDraw) return { best:'bet23', acceptable:['bet23','check'], reason:'Semi-bluff avec draw' };
+      return { best:'check', acceptable:['check'], reason:'Pot control — pas de draw' };
+    }
+    if (tc==='ace'||tc==='overcard') return { best:'bet23', acceptable:['bet23','overbet','check'], reason:'Bluff scare card IP' };
+    if (hasDraw) return { best:'bet23', acceptable:['bet23','check'], reason:'Bluff avec backup' };
+    if (tc==='brick') return { best:'check', acceptable:['check','bet23'], reason:'Give up — brick' };
+    return { best:'check', acceptable:['check','bet23'], reason:'Give up majoritaire' };
+  }
+
+  if (eqb === 'strong') {
+    if (bInfo.dynamic==='dynamic') return { best:'bet23', acceptable:['bet23','overbet'], reason:'Delayed value — board dynamique' };
+    return { best:'bet13', acceptable:['bet13','check'], reason:'Delayed ou trap — board statique' };
+  }
+  if (eqb === 'good') {
+    if (bInfo.dynamic==='dynamic') return { best:'bet23', acceptable:['bet23','bet13'], reason:'Delayed protection — board dynamique' };
+    return { best:'bet13', acceptable:['bet13','check'], reason:'Stab petit' };
+  }
+  if (eqb === 'weak') {
+    if (hasDraw) {
+      if (bInfo.dynamic === 'dynamic') return { best:'bet23', acceptable:['bet23','bet13'], reason:'Semi-bluff draw — board dynamique' };
+      return { best:'bet13', acceptable:['bet13','check'], reason:'Semi-bluff draw — stab petit board statique' };
+    }
+    return { best:'check', acceptable:['check','bet13'], reason:'Pot control' };
+  }
+  if (bInfo.dynamic==='dynamic') return { best:'bet23', acceptable:['bet23','check'], reason:'Stab bluff — OOP range faible' };
+  return { best:'bet13', acceptable:['bet13','check'], reason:'Stab petit' };
+}
+
+function computeTurnDefenseAnswer(hInfo, tInfo, line, bInfo, context) {
+  const { eqb, hasFlushDraw, hasOESD } = hInfo;
+  const hasDraw = hasFlushDraw || hasOESD;
+  const lowSPR = context.spr <= 2;
+
+  if (line === 'xbc') {
+    if (eqb === 'strong') {
+      if (lowSPR) return { best:'xr', acceptable:['xr','call'], reason:'x/r all-in — strong + SPR bas' };
+      return { best:'xr', acceptable:['xr','call'], reason:'x/r value — punir les bluffs' };
+    }
+    if (eqb === 'good') return { best:'call', acceptable:['call'], reason:'Call — showdown value' };
+    if (eqb === 'weak') {
+      if (hasDraw) return { best:'call', acceptable:['call','xr'], reason:'Call avec draw' };
+      return { best:'fold', acceptable:['fold','call'], reason:'Fold — IP range polarisée' };
+    }
+    if (hasDraw) return { best:'call', acceptable:['call','fold'], reason:'Call limite — draw résiduel' };
+    return { best:'fold', acceptable:['fold'], reason:'Fold — trash face au 2nd barrel' };
+  }
+
+  if (eqb === 'strong') return { best:'xr', acceptable:['xr','call'], reason:'x/r — IP capped après check-back' };
+  if (eqb === 'good') return { best:'call', acceptable:['call','xr'], reason:'Call — IP peut avoir slowplay' };
+  if (eqb === 'weak') {
+    if (hasDraw) return { best:'call', acceptable:['call'], reason:'Call draw — implied odds' };
+    return { best:'fold', acceptable:['fold','call'], reason:'Fold — faible face au delayed c-bet' };
+  }
+  return { best:'fold', acceptable:['fold'], reason:'Fold — trash face au delayed c-bet' };
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  RIVER ENGINES (Acevedo Ch.14)
+// ═══════════════════════════════════════════════════════════════
+function computeRiverBetAnswer(hInfo, rInfo, blk, line, bInfo, context) {
+  const { eqb } = hInfo;
+  const is3bp = context.potType === '3BP';
+  const lowSPR = context.spr <= 1.5;
+
+  if (is3bp) {
+    if (lowSPR) {
+      if (eqb === 'strong') return { best:'allin', acceptable:['allin','bet23'], reason:'3BP SPR bas — shove value' };
+      if (eqb === 'good') return { best:'allin', acceptable:['allin','bet23'], reason:'3BP SPR bas — shove thin value' };
+      if (eqb === 'weak') return { best:'check', acceptable:['check'], reason:'3BP SPR bas — showdown' };
+      if (blk.blocksValue) return { best:'allin', acceptable:['allin'], reason:'3BP SPR bas — bluff shove, bloquer value' };
+      return { best:'check', acceptable:['check'], reason:'3BP SPR bas — give up' };
+    }
+    if (eqb === 'strong') return { best:'bet23', acceptable:['bet23','allin'], reason:'3BP — value bet' };
+    if (eqb === 'good') return { best:'bet13', acceptable:['bet13','check'], reason:'3BP — thin value' };
+    if (eqb === 'weak') return { best:'check', acceptable:['check'], reason:'3BP — showdown' };
+    if (blk.blocksValue) return { best:'bet23', acceptable:['bet23','allin'], reason:'3BP — bluff, bloquer value' };
+    return { best:'check', acceptable:['check'], reason:'3BP — give up' };
+  }
+
+  if (line === 'xbc_xbc') {
+    if (eqb === 'strong') return { best:'bet23', acceptable:['bet23','allin'], reason:'3rd barrel value — max value' };
+    if (eqb === 'good') {
+      if (rInfo.primary === 'brick') return { best:'bet13', acceptable:['bet13','check'], reason:'Thin value — river brick' };
+      return { best:'check', acceptable:['check','bet13'], reason:'Check back — river dangereuse' };
+    }
+    if (eqb === 'weak') return { best:'check', acceptable:['check'], reason:'Showdown — bluff-catcher' };
+    if (blk.blocksValue) return { best:'bet23', acceptable:['bet23','allin'], reason:'3rd barrel bluff — bloquer value' };
+    if (rInfo.primary === 'overcard' || rInfo.primary === 'flush') return { best:'bet23', acceptable:['bet23','check'], reason:'Bluff scare card' };
+    return { best:'check', acceptable:['check'], reason:'Give up — pas de blocker' };
+  }
+
+  if (line === 'xbc_xx') {
+    if (eqb === 'strong') return { best:'bet23', acceptable:['bet23','allin'], reason:'Value delayed' };
+    if (eqb === 'good') return { best:'bet13', acceptable:['bet13','bet23'], reason:'Thin value — OOP surpris' };
+    if (eqb === 'weak') return { best:'check', acceptable:['check','bet13'], reason:'Showdown value' };
+    if (blk.blocksValue) return { best:'bet23', acceptable:['bet23','bet13'], reason:'Bluff crédible après check-back turn' };
+    return { best:'check', acceptable:['check'], reason:'Give up' };
+  }
+
+  if (line === 'xx_xbc') {
+    if (eqb === 'strong') return { best:'bet23', acceptable:['bet23','allin'], reason:'Value — continue le delayed' };
+    if (eqb === 'good') return { best:'bet13', acceptable:['bet13','check'], reason:'Thin value — OOP range réduite' };
+    if (eqb === 'weak') return { best:'check', acceptable:['check'], reason:'Pot control — OOP a résisté' };
+    if (blk.blocksValue) return { best:'bet23', acceptable:['bet23','check'], reason:'Bluff — 2nd barrel après delayed' };
+    return { best:'check', acceptable:['check'], reason:'Give up — OOP range forte' };
+  }
+
+  // xx_xx
+  if (eqb === 'strong') return { best:'bet13', acceptable:['bet13','bet23'], reason:'Value — ranges condensées, thin sizing' };
+  if (eqb === 'good') return { best:'bet13', acceptable:['bet13','bet23'], reason:'Thin value — ranges faibles' };
+  if (eqb === 'weak') return { best:'check', acceptable:['check','bet13'], reason:'Showdown' };
+  if (blk.blocksValue) return { best:'bet13', acceptable:['bet13','bet23'], reason:'Stab bluff — bloquer value' };
+  return { best:'check', acceptable:['check','bet13'], reason:'Give up ou stab' };
+}
+
+function computeRiverDefenseAnswer(hInfo, rInfo, blk, line, context) {
+  const { eqb } = hInfo;
+  const lowSPR = context.spr <= 1.5;
+
+  if (eqb === 'strong') {
+    if (lowSPR) return { best:'raise', acceptable:['raise','call'], reason:'x/r value — SPR bas' };
+    if (line === 'xbc_xbc') return { best:'raise', acceptable:['raise','call'], reason:'x/r value — IP polarisé après 3 barrels' };
+    return { best:'call', acceptable:['call','raise'], reason:'Call — IP range modérée' };
+  }
+  if (eqb === 'good') {
+    if (line === 'xbc_xbc') return { best:'call', acceptable:['call'], reason:'Call — protège calling range vs 3rd barrel' };
+    if (line === 'xx_xx') return { best:'call', acceptable:['call','raise'], reason:'Call — IP range faible après x/x x/x' };
+    return { best:'call', acceptable:['call'], reason:'Call — assez fort pour payer' };
+  }
+  if (eqb === 'weak') {
+    if (blk.blocksValue) return { best:'call', acceptable:['call'], reason:'Call — tu bloques sa value' };
+    if (blk.blocksBluffs) return { best:'fold', acceptable:['fold'], reason:'Fold — tu bloques ses bluffs' };
+    if (line === 'xbc_xbc') return { best:'fold', acceptable:['fold','call'], reason:'Fold — 3ème barrel sans blocker' };
+    if (line === 'xx_xx') return { best:'call', acceptable:['call','fold'], reason:'Call — IP range faible après x/x x/x' };
+    return { best:'fold', acceptable:['fold','call'], reason:'Fold — bluff-catcher marginal' };
+  }
+  if (blk.blocksValue && line === 'xbc_xbc') return { best:'raise', acceptable:['raise','fold'], reason:'x/r bluff — bloquer value' };
+  return { best:'fold', acceptable:['fold'], reason:'Fold — air' };
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  CONTEXT GENERATION
+// ═══════════════════════════════════════════════════════════════
+function generateContext() {
+  const is3bp = Math.random() < 0.2;
+  let heroPos, villainPos, isIP;
+
+  if (gameMode === 'full') {
+    isIP = position === 'ip';
+  } else {
+    isIP = currentTab === 'ip' || currentTab === 'read';
+  }
+
+  if (isIP) {
+    heroPos = POSITIONS_IP[Math.floor(Math.random() * POSITIONS_IP.length)];
+    villainPos = 'BB';
+  } else {
+    heroPos = 'BB';
+    villainPos = POSITIONS_IP[Math.floor(Math.random() * POSITIONS_IP.length)];
+  }
+
+  const potType = is3bp ? '3BP' : 'SRP';
+  const stackBB = [15, 20, 25, 30, 40][Math.floor(Math.random() * 5)];
+  const flopPotBB = potType === '3BP' ? (stackBB <= 20 ? 12 : 18) : (stackBB <= 20 ? 5 : 6.5);
+  const flopSPR = Math.round((stackBB - flopPotBB/2) / flopPotBB * 10) / 10;
+
+  // Line
+  let lineFlop, line;
+  if (gameMode === 'flop') {
+    lineFlop = null;
+    line = null;
+  } else if (gameMode === 'turn') {
+    lineFlop = Math.random() < 0.65 ? 'xbc' : 'xx';
+    line = null;
+  } else {
+    lineFlop = Math.random() < 0.65 ? 'xbc' : 'xx';
+    const lineTurn = Math.random() < (lineFlop === 'xbc' ? 0.60 : 0.55) ? 'xbc' : 'xx';
+    line = lineFlop + '_' + lineTurn;
+  }
+
+  // Turn pot
+  let turnPotBB = flopPotBB;
+  if (lineFlop === 'xbc') turnPotBB = Math.round(flopPotBB * 2.3 * 10) / 10;
+  const turnCommitted = lineFlop === 'xbc' ? flopPotBB * 0.65 : 0;
+  const turnSPR = Math.round((stackBB - turnCommitted) / turnPotBB * 10) / 10;
+
+  // River pot
+  let riverPotBB = turnPotBB;
+  if (line && line.endsWith('xbc')) riverPotBB = Math.round(turnPotBB * 2.3 * 10) / 10;
+  let riverCommitted = turnCommitted;
+  if (line && line.endsWith('xbc')) riverCommitted += turnPotBB * 0.65;
+  const riverSPR = Math.round(Math.max(0, stackBB - riverCommitted) / riverPotBB * 10) / 10;
+
+  // Villain bet sizes per street
+  const flopVBS = ['min','13','23'][Math.floor(Math.random() * 3)];
+  const turnVBS = ['13','23'][Math.floor(Math.random() * 2)];
+  const riverVBS = ['13','23'][Math.floor(Math.random() * 2)];
+
+  ctx = {
+    heroPos, villainPos, isIP,
+    stackBB, potType,
+    lineFlop, line,
+    flopSPR: Math.max(0.5, flopSPR), flopPotBB,
+    turnSPR: Math.max(0.5, turnSPR), turnPotBB,
+    riverSPR: Math.max(0.3, riverSPR), riverPotBB,
+    flopVBS, turnVBS, riverVBS,
+    spr: 0, potBB: 0, villainBetSize: '23'
+  };
+
+  setCtxForStreet();
+}
+
+function setCtxForStreet() {
+  if (currentStreet === 'flop') {
+    ctx.spr = ctx.flopSPR;
+    ctx.potBB = ctx.flopPotBB;
+    ctx.villainBetSize = ctx.flopVBS;
+  } else if (currentStreet === 'turn') {
+    ctx.spr = ctx.turnSPR;
+    ctx.potBB = ctx.turnPotBB;
+    ctx.villainBetSize = ctx.turnVBS;
+  } else {
+    ctx.spr = ctx.riverSPR;
+    ctx.potBB = ctx.riverPotBB;
+    ctx.villainBetSize = ctx.riverVBS;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  DEAL
+// ═══════════════════════════════════════════════════════════════
+function deal() {
+  deck = shuffle(newDeck());
+  flop = [deck.pop(), deck.pop(), deck.pop()];
+  turnCard = deck.pop();
+  riverCard = deck.pop();
+  heroHand = [deck.pop(), deck.pop()];
+
+  boardInfo = classifyBoard(flop);
+  turnInfo = classifyTurnCard(turnCard, flop);
+  const board4 = [...flop, turnCard];
+  riverInfo = classifyRiverCard(riverCard, board4);
+  const fullBoard = [...board4, riverCard];
+
+  flopHandInfo = classifyHand(heroHand, flop, boardInfo);
+  turnHandInfo = classifyHand(heroHand, board4, boardInfo);
+  riverHandInfo = classifyHandRiver(heroHand, fullBoard);
+  blockers = detectBlockers(heroHand, fullBoard);
+
+  if (gameMode === 'full') {
+    fullPhase = 0;
+    currentStreet = 'flop';
+  }
+
+  generateContext();
+  answered = false;
+}
+
+function getHandInfo() {
+  if (currentStreet === 'flop') return flopHandInfo;
+  if (currentStreet === 'turn') return turnHandInfo;
+  return riverHandInfo;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  UPDATE ACTION BUTTONS (per street)
+// ═══════════════════════════════════════════════════════════════
+function updateActionButtons() {
+  const ipBtns = document.querySelectorAll('#ip-actions .action-btn');
+  const ip4 = currentStreet === 'turn'
+    ? { action: 'overbet', label: 'Overbet', icon: '🔥' }
+    : { action: 'allin', label: 'All-in', icon: '🔥' };
+  if (ipBtns[3]) {
+    ipBtns[3].dataset.action = ip4.action;
+    ipBtns[3].innerHTML = `<span class="icon">${ip4.icon}</span>${ip4.label}`;
+  }
+
+  const oopBtns = document.querySelectorAll('#oop-actions .action-btn');
+  const oop3 = currentStreet === 'river'
+    ? { action: 'raise', label: 'Raise', icon: '⚡' }
+    : { action: 'xr', label: 'X/R', icon: '⚡' };
+  if (oopBtns[2]) {
+    oopBtns[2].dataset.action = oop3.action;
+    oopBtns[2].innerHTML = `<span class="icon">${oop3.icon}</span>${oop3.label}`;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  RENDER
+// ═══════════════════════════════════════════════════════════════
+function render() {
+  handInfo = getHandInfo();
+  setCtxForStreet();
+  updateActionButtons();
+
+  // Board sections visibility
+  document.getElementById('flop-section').classList.remove('hidden');
+  const showTurn = currentStreet === 'turn' || currentStreet === 'river' || gameMode === 'turn' || gameMode === 'river';
+  const showRiver = currentStreet === 'river' || gameMode === 'river';
+  document.getElementById('turn-section').classList.toggle('hidden', !showTurn);
+  document.getElementById('river-section').classList.toggle('hidden', !showRiver);
+
+  // For full hand, progressive reveal
+  if (gameMode === 'full') {
+    document.getElementById('turn-section').classList.toggle('hidden', fullPhase < 1);
+    document.getElementById('river-section').classList.toggle('hidden', fullPhase < 2);
+  }
+
+  // Render cards
+  const flopEl = document.getElementById('flop-cards');
+  flopEl.innerHTML = '';
+  flop.forEach(c => renderCard(c, flopEl));
+
+  const turnEl = document.getElementById('turn-card');
+  turnEl.innerHTML = '';
+  renderCard(turnCard, turnEl, 'turn-highlight');
+
+  const riverEl = document.getElementById('river-card');
+  riverEl.innerHTML = '';
+  renderCard(riverCard, riverEl, 'river-highlight');
+
+  // Hero hand
+  const heroSec = document.getElementById('hero-section');
+  const heroEl = document.getElementById('hero-cards');
+  heroEl.innerHTML = '';
+  const showHero = (gameMode === 'full') || (currentTab !== 'read');
+  if (showHero) {
+    heroSec.classList.remove('hidden');
+    heroHand.forEach(c => renderCard(c, heroEl, 'hero-card'));
+  } else {
+    heroSec.classList.add('hidden');
+  }
+
+  // Blocker panel
+  const blkPanel = document.getElementById('blocker-panel');
+  blkPanel.innerHTML = '';
+  if (currentStreet === 'river' && showHero) {
+    const chip = document.createElement('div');
+    chip.className = `blocker-chip ${blockers.summary}`;
+    chip.textContent = blockers.label;
+    blkPanel.appendChild(chip);
+  }
+
+  // Context bar
+  document.getElementById('ctx-hero-pos').textContent = ctx.heroPos;
+  document.getElementById('ctx-villain-pos').textContent = ctx.villainPos;
+  const ipOopEl = document.getElementById('ctx-ip-oop');
+  ipOopEl.textContent = ctx.isIP ? 'IP' : 'OOP';
+  ipOopEl.className = `ctx-value ${ctx.isIP ? 'ip' : 'oop'}`;
+  document.getElementById('ctx-stack').textContent = ctx.stackBB + 'bb';
+  document.getElementById('ctx-spr').textContent = ctx.spr;
+  const potEl = document.getElementById('ctx-pot');
+  potEl.textContent = ctx.potType;
+  potEl.classList.toggle('ctx-pot-3bp', ctx.potType === '3BP');
+
+  // Stack fill bar
+  const fill = document.getElementById('ctx-stack-fill');
+  const pct = Math.min(100, ctx.stackBB / 40 * 100);
+  fill.style.width = pct + '%';
+  fill.className = 'stack-fill ' + (ctx.stackBB >= 30 ? 'deep' : ctx.stackBB >= 20 ? 'mid' : 'shallow');
+
+  // Line badge
+  const lineItem = document.getElementById('ctx-line-item');
+  const lineEl = document.getElementById('ctx-line');
+  if (currentStreet === 'flop' && gameMode !== 'full') {
+    lineItem.classList.add('hidden');
+  } else {
+    lineItem.classList.remove('hidden');
+    if (currentStreet === 'turn' || (gameMode === 'full' && fullPhase === 1)) {
+      lineEl.textContent = ctx.lineFlop === 'xbc' ? 'x/b/c' : 'x/x';
+      lineEl.className = `line-badge ${ctx.lineFlop}`;
+    } else if (currentStreet === 'river' || (gameMode === 'full' && fullPhase === 2)) {
+      const lineLabels = { xbc_xbc:'x/b/c · x/b/c', xbc_xx:'x/b/c · x/x', xx_xbc:'x/x · x/b/c', xx_xx:'x/x · x/x' };
+      lineEl.textContent = lineLabels[ctx.line] || '';
+      lineEl.className = `line-badge ${ctx.line}`;
+    }
+  }
+
+  // 3BP visual on action containers
+  const is3bp = ctx.potType === '3BP';
+  document.getElementById('ip-actions').classList.toggle('pot-3bp', is3bp);
+  document.getElementById('oop-actions').classList.toggle('pot-3bp', is3bp);
+
+  // Determine active panel
+  let activePanel = null;
+  if (gameMode === 'full') {
+    activePanel = position === 'ip' ? 'panel-ip' : 'panel-oop';
+  } else {
+    if (currentTab === 'read') {
+      if (currentStreet === 'flop') activePanel = 'panel-flop-read';
+      else if (currentStreet === 'turn') activePanel = 'panel-turn-read';
+      else activePanel = 'panel-river-read';
+    } else if (currentTab === 'ip') {
+      activePanel = 'panel-ip';
+    } else {
+      activePanel = 'panel-oop';
+    }
+  }
+
+  // Hide all panels, show active one
+  document.querySelectorAll('.panel').forEach(p => p.classList.add('hidden'));
+  if (activePanel) document.getElementById(activePanel).classList.remove('hidden');
+
+  // Villain bet bar
+  const vbb = document.getElementById('villain-bet-bar');
+  const showVBB = (gameMode === 'full' && position === 'oop') || (currentTab === 'oop');
+  if (showVBB) {
+    vbb.classList.remove('hidden');
+    const betLabel = ctx.villainBetSize === 'min' ? 'Min-bet' : ctx.villainBetSize === '13' ? '1/3 pot' : '2/3 pot';
+    document.getElementById('villain-bet-size').textContent = betLabel;
+    const odds = ctx.villainBetSize === 'min' ? '17%' : ctx.villainBetSize === '13' ? '20%' : '29%';
+    document.getElementById('pot-odds').textContent = odds;
+  } else {
+    vbb.classList.add('hidden');
+  }
+
+  // Progress bar (full hand)
+  if (gameMode === 'full') {
+    ['flop','turn','river'].forEach((s, i) => {
+      const el = document.getElementById('prog-' + s);
+      el.classList.remove('active','done');
+      if (i === fullPhase) el.classList.add('active');
+      else if (i < fullPhase) el.classList.add('done');
+    });
+  }
+
+  // Reset tags
+  document.querySelectorAll('.tag').forEach(t => t.classList.remove('selected','correct','wrong','missed'));
+  // Reset action buttons
+  document.querySelectorAll('.action-btn').forEach(b => b.classList.remove('correct','wrong','best'));
+
+  // Feedback
+  document.getElementById('feedback').innerHTML = '';
+  document.getElementById('detail').textContent = '';
+  document.getElementById('next-btn').classList.remove('visible');
+
+  updateStats();
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  STATS
+// ═══════════════════════════════════════════════════════════════
+function updateStats() {
+  document.getElementById('score').textContent = score;
+  document.getElementById('streak-count').textContent = currentStreak;
+  document.getElementById('accuracy').textContent = totalQ > 0 ? Math.round(correctQ/totalQ*100) + '%' : '—';
+
+  const bar = document.getElementById('streak-bar');
+  bar.innerHTML = '';
+  streakHistory.slice(-12).forEach(h => {
+    const dot = document.createElement('div');
+    dot.className = `streak-dot ${h ? 'hit' : 'miss'}`;
+    bar.appendChild(dot);
+  });
+
+  updateAccuracyPanel();
+}
+
+function trackAccuracy(key, correct) {
+  if (!accuracyData[key]) accuracyData[key] = { hit: 0, total: 0 };
+  accuracyData[key].total++;
+  if (correct) accuracyData[key].hit++;
+}
+
+function updateAccuracyPanel() {
+  const panel = document.getElementById('accuracy-panel');
+  panel.innerHTML = '';
+  for (const [key, data] of Object.entries(accuracyData)) {
+    const pct = Math.round(data.hit / data.total * 100);
+    const level = pct >= 70 ? 'high' : pct >= 40 ? 'mid' : 'low';
+    const chip = document.createElement('div');
+    chip.className = 'acc-chip';
+    chip.innerHTML = `${key} <span class="pct ${level}">${pct}%</span><span style="color:var(--dim);font-size:0.65rem"> (${data.total})</span>`;
+    panel.appendChild(chip);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  VALIDATION — FLOP BOARD READING
+// ═══════════════════════════════════════════════════════════════
+function validateBoardReading() {
+  if (answered) return;
+  answered = true;
+
+  const cats = ['structure','texture','rank','dynamic','advantage','cbetFreq'];
+  let hits = 0;
+  cats.forEach(cat => {
+    const sel = document.querySelector(`.tag[data-cat="${cat}"].selected`);
+    const correctVal = boardInfo[cat];
+    const correctTag = document.querySelector(`.tag[data-cat="${cat}"][data-val="${correctVal}"]`);
+    if (sel && sel.dataset.val === correctVal) {
+      sel.classList.add('correct');
+      hits++;
+      trackAccuracy(cat + ':' + correctVal, true);
+    } else {
+      if (sel) { sel.classList.add('wrong'); trackAccuracy(cat + ':' + sel.dataset.val, false); }
+      if (correctTag) correctTag.classList.add('missed');
+      trackAccuracy(cat + ':' + correctVal, false);
+    }
+  });
+
+  totalQ++;
+  const pct = hits / cats.length;
+  if (pct >= 0.8) {
+    correctQ++; score += hits; currentStreak++;
+    streakHistory.push(true);
+    showFeedback('correct', `${hits}/${cats.length} correct !`);
+  } else if (pct >= 0.5) {
+    score += hits; currentStreak = 0;
+    streakHistory.push(false);
+    showFeedback('partial', `${hits}/${cats.length} — regarde les corrections`);
+  } else {
+    currentStreak = 0;
+    streakHistory.push(false);
+    showFeedback('wrong', `${hits}/${cats.length} — étudie ce type de board`);
+  }
+
+  const rankLabels = { A:'A-high', H:'High', M:'Mid', L:'Low' };
+  showDetail(`${boardInfo.structure} · ${boardInfo.texture} · ${rankLabels[boardInfo.rank]} · ${boardInfo.dynamic} · ${boardInfo.straights} straight(s)`);
+  document.getElementById('next-btn').classList.add('visible');
+  updateStats();
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  VALIDATION — TURN CARD READING
+// ═══════════════════════════════════════════════════════════════
+function validateTurnReading() {
+  if (answered) return;
+  answered = true;
+
+  const selType = document.querySelector('.tag[data-cat="ttype"].selected');
+  const selImpact = document.querySelector('.tag[data-cat="timpact"].selected');
+  if (!selType || !selImpact) {
+    showFeedback('wrong', '✗ Sélectionne catégorie ET impact');
+    answered = false; return;
+  }
+
+  const typeOk = selType.dataset.val === turnInfo.primary;
+  const impactOk = selImpact.dataset.val === turnInfo.impact;
+
+  if (typeOk) selType.classList.add('correct');
+  else { selType.classList.add('wrong'); document.querySelector(`.tag[data-cat="ttype"][data-val="${turnInfo.primary}"]`).classList.add('missed'); }
+  if (impactOk) selImpact.classList.add('correct');
+  else { selImpact.classList.add('wrong'); document.querySelector(`.tag[data-cat="timpact"][data-val="${turnInfo.impact}"]`).classList.add('missed'); }
+
+  const allCorrect = typeOk && impactOk;
+  totalQ++;
+  if (allCorrect) { correctQ++; score += 1 + Math.floor(currentStreak / 3); currentStreak++; showFeedback('correct', '✓ Correct !'); }
+  else if (typeOk || impactOk) { currentStreak = 0; showFeedback('partial', '~ Partiel'); }
+  else { currentStreak = 0; showFeedback('wrong', '✗ Raté'); }
+  streakHistory.push(allCorrect);
+
+  const catLabels = { paired:'Paired', flush:'Flush', straight:'Straight', ace:'Ace', overcard:'Overcard', brick:'Brick' };
+  const impLabels = { ip:'IP ↑', oop:'OOP ↑', neutre:'Neutre' };
+  const extra = turnInfo.categories.length > 1 ? ` (aussi: ${turnInfo.categories.filter(c=>c!==turnInfo.primary).map(c=>catLabels[c]).join(', ')})` : '';
+  showDetail(`${catLabels[turnInfo.primary]}${extra} · ${impLabels[turnInfo.impact]}`);
+  trackAccuracy(catLabels[turnInfo.primary], allCorrect);
+  document.getElementById('next-btn').classList.add('visible');
+  updateStats();
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  VALIDATION — RIVER CARD READING
+// ═══════════════════════════════════════════════════════════════
+function validateRiverReading() {
+  if (answered) return;
+  answered = true;
+
+  const selType = document.querySelector('.tag[data-cat="rtype"].selected');
+  const selImpact = document.querySelector('.tag[data-cat="rimpact"].selected');
+  if (!selType || !selImpact) {
+    showFeedback('wrong', '✗ Sélectionne catégorie ET impact');
+    answered = false; return;
+  }
+
+  const typeOk = selType.dataset.val === riverInfo.primary;
+  const impactOk = selImpact.dataset.val === riverInfo.impact;
+
+  if (typeOk) selType.classList.add('correct');
+  else { selType.classList.add('wrong'); document.querySelector(`.tag[data-cat="rtype"][data-val="${riverInfo.primary}"]`).classList.add('missed'); }
+  if (impactOk) selImpact.classList.add('correct');
+  else { selImpact.classList.add('wrong'); document.querySelector(`.tag[data-cat="rimpact"][data-val="${riverInfo.impact}"]`).classList.add('missed'); }
+
+  const allCorrect = typeOk && impactOk;
+  totalQ++;
+  if (allCorrect) { correctQ++; score += 1 + Math.floor(currentStreak / 3); currentStreak++; showFeedback('correct', '✓ Correct !'); }
+  else if (typeOk || impactOk) { currentStreak = 0; showFeedback('partial', '~ Partiel'); }
+  else { currentStreak = 0; showFeedback('wrong', '✗ Raté'); }
+  streakHistory.push(allCorrect);
+
+  const catLabels = { flush:'Flush', straight:'Straight', pairing:'Pairing', overcard:'Overcard', brick:'Brick' };
+  const impLabels = { ip:'IP ↑', oop:'OOP ↑', neutre:'Neutre' };
+  const extra = riverInfo.categories.length > 1 ? ` (aussi: ${riverInfo.categories.filter(c=>c!==riverInfo.primary).map(c=>catLabels[c]||c).join(', ')})` : '';
+  showDetail(`${catLabels[riverInfo.primary]}${extra} · ${impLabels[riverInfo.impact]}`);
+  trackAccuracy(catLabels[riverInfo.primary], allCorrect);
+  document.getElementById('next-btn').classList.add('visible');
+  updateStats();
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  VALIDATION — ACTION (unified for IP and OOP, all streets)
+// ═══════════════════════════════════════════════════════════════
+function answerAction(action) {
+  if (answered) return;
+  answered = true;
+
+  const isIP = (gameMode === 'full') ? position === 'ip' : currentTab === 'ip';
+  let answer, actionsId;
+
+  if (isIP) {
+    actionsId = 'ip-actions';
+    if (currentStreet === 'flop') answer = computeCbetAnswer(handInfo, boardInfo, ctx);
+    else if (currentStreet === 'turn') answer = computeBarrelAnswer(handInfo, turnInfo, ctx.lineFlop, boardInfo, ctx);
+    else answer = computeRiverBetAnswer(handInfo, riverInfo, blockers, ctx.line, boardInfo, ctx);
+  } else {
+    actionsId = 'oop-actions';
+    if (currentStreet === 'flop') answer = computeFlopDefenseAnswer(handInfo, boardInfo, ctx);
+    else if (currentStreet === 'turn') answer = computeTurnDefenseAnswer(handInfo, turnInfo, ctx.lineFlop, boardInfo, ctx);
+    else answer = computeRiverDefenseAnswer(handInfo, riverInfo, blockers, ctx.line, ctx);
+  }
+
+  const correct = answer.acceptable.includes(action);
+  const isBest = action === answer.best;
+  totalQ++;
+
+  document.querySelectorAll(`#${actionsId} .action-btn`).forEach(b => {
+    if (b.dataset.action === action) b.classList.add(correct ? 'correct' : 'wrong');
+    if (b.dataset.action === answer.best) b.classList.add('best');
+  });
+
+  if (correct) {
+    correctQ++;
+    score += isBest ? (1 + Math.floor(currentStreak / 3)) : 1;
+    currentStreak = isBest ? currentStreak + 1 : currentStreak;
+    showFeedback('correct', isBest ? '✓ Correct !' : '✓ Acceptable');
+  } else {
+    currentStreak = 0;
+    showFeedback('wrong', '✗ Raté');
+  }
+  streakHistory.push(correct);
+
+  let detail = `${handInfo.handType} (${handInfo.eqb})`;
+  if (currentStreet === 'turn') {
+    const catLabels = { paired:'Paired', flush:'Flush', straight:'Straight', ace:'Ace', overcard:'Overcard', brick:'Brick' };
+    detail += ` · Turn ${catLabels[turnInfo.primary]}`;
+  }
+  if (currentStreet === 'river') detail += ` · ${blockers.label}`;
+  detail += ` · ${answer.reason}`;
+  showDetail(detail);
+
+  const trackKey = isIP
+    ? (currentStreet === 'flop' ? 'cbet' : currentStreet === 'turn' ? (ctx.lineFlop === 'xbc' ? '2nd barrel' : 'delayed') : 'river bet')
+    : (currentStreet === 'flop' ? 'defense' : currentStreet === 'turn' ? 'turn def' : 'river def');
+  trackAccuracy(trackKey + ':' + handInfo.eqb, correct);
+
+  document.getElementById('next-btn').classList.add('visible');
+  updateStats();
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  UI HELPERS
+// ═══════════════════════════════════════════════════════════════
+function showFeedback(type, text) {
+  const fb = document.getElementById('feedback');
+  const cls = type === 'correct' ? 'correct-fb' : type === 'partial' ? 'partial-fb' : 'wrong-fb';
+  fb.innerHTML = `<span class="feedback ${cls}">${text}</span>`;
+}
+
+function showDetail(text) {
+  document.getElementById('detail').textContent = text;
+}
+
+function handleNext() {
+  if (gameMode === 'full') {
+    if (fullPhase < 2) {
+      fullPhase++;
+      currentStreet = ['flop','turn','river'][fullPhase];
+      answered = false;
+      setCtxForStreet();
+      render();
+    } else {
+      deal();
+      render();
+    }
+  } else {
+    deal();
+    render();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  LANDING SCREEN LOGIC
+// ═══════════════════════════════════════════════════════════════
+function startGame(mode, pos) {
+  gameMode = mode;
+  position = pos || 'ip';
+
+  if (mode === 'flop') currentStreet = 'flop';
+  else if (mode === 'turn') currentStreet = 'turn';
+  else if (mode === 'river') currentStreet = 'river';
+  else currentStreet = 'flop';
+
+  currentTab = 'read';
+
+  // Title
+  const titles = { flop:'FLOP TRAINER', turn:'TURN TRAINER', river:'RIVER TRAINER', full:'FULL HAND — ' + (pos === 'ip' ? 'IP' : 'OOP') };
+  document.getElementById('game-title').textContent = titles[mode];
+
+  // Tab labels
+  if (mode !== 'full') {
+    const tabLabels = {
+      flop: { read:'Board Reading', ip:'C-Bet (IP)', oop:'Defense BB' },
+      turn: { read:'Turn Card', ip:'IP Barrel', oop:'OOP Defense' },
+      river: { read:'River Card', ip:'IP Bet', oop:'Defense' }
+    };
+    const labels = tabLabels[mode];
+    document.getElementById('tab-read').textContent = labels.read;
+    document.getElementById('tab-ip').textContent = labels.ip;
+    document.getElementById('tab-oop').textContent = labels.oop;
+  }
+
+  // Show/hide tabs vs progress bar
+  document.getElementById('tabs-bar').classList.toggle('hidden', mode === 'full');
+  document.getElementById('progress-bar').classList.toggle('hidden', mode !== 'full');
+
+  // Show game, hide landing
+  document.getElementById('landing').classList.add('hidden');
+  document.getElementById('game').classList.remove('hidden');
+
+  // Reset stats
+  score = 0; correctQ = 0; totalQ = 0; currentStreak = 0;
+  streakHistory = []; accuracyData = {};
+
+  deal();
+  render();
+}
+
+function backToMenu() {
+  document.getElementById('game').classList.add('hidden');
+  document.getElementById('landing').classList.remove('hidden');
+  document.getElementById('pos-select').classList.add('hidden');
+  gameMode = null;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  EVENT HANDLERS
+// ═══════════════════════════════════════════════════════════════
+
+// Landing: mode buttons
+document.querySelectorAll('.mode-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const mode = btn.dataset.game;
+    if (mode === 'full') {
+      document.getElementById('pos-select').classList.remove('hidden');
+    } else {
+      startGame(mode);
+    }
+  });
+});
+
+// Landing: position buttons
+document.querySelectorAll('.pos-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    startGame('full', btn.dataset.pos);
+  });
+});
+
+// Back button
+document.getElementById('back-btn').addEventListener('click', backToMenu);
+
+// Tabs (isolated modes)
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    if (gameMode === 'full') return;
+    currentTab = tab.dataset.tab;
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    deal();
+    render();
+  });
+});
+
+// Tag clicks
+document.addEventListener('click', (e) => {
+  const tag = e.target.closest('.tag');
+  if (!tag || answered) return;
+  const cat = tag.dataset.cat;
+  document.querySelectorAll(`.tag[data-cat="${cat}"]`).forEach(t => t.classList.remove('selected'));
+  tag.classList.add('selected');
+});
+
+// IP action clicks
+document.querySelectorAll('#ip-actions .action-btn').forEach(btn => {
+  btn.addEventListener('click', () => answerAction(btn.dataset.action));
+});
+
+// OOP action clicks
+document.querySelectorAll('#oop-actions .action-btn').forEach(btn => {
+  btn.addEventListener('click', () => answerAction(btn.dataset.action));
+});
+
+// Validate buttons
+document.getElementById('btn-validate-board').addEventListener('click', validateBoardReading);
+document.getElementById('btn-validate-turn').addEventListener('click', validateTurnReading);
+document.getElementById('btn-validate-river').addEventListener('click', validateRiverReading);
+
+// Next button
+document.getElementById('next-btn').addEventListener('click', handleNext);
+
+// Keyboard shortcuts
+document.addEventListener('keydown', (e) => {
+  if (!gameMode) return;
+
+  if (e.key === ' ' || e.key === 'Enter') {
+    e.preventDefault();
+    if (answered) handleNext();
+    else if (currentTab === 'read' && currentStreet === 'flop') validateBoardReading();
+    else if (currentTab === 'read' && currentStreet === 'turn') validateTurnReading();
+    else if (currentTab === 'read' && currentStreet === 'river') validateRiverReading();
+  }
+
+  if (!answered) {
+    const isIPMode = (gameMode === 'full' && position === 'ip') || currentTab === 'ip';
+    const isOOPMode = (gameMode === 'full' && position === 'oop') || currentTab === 'oop';
+
+    if (isIPMode) {
+      if (e.key === '1') answerAction('check');
+      if (e.key === '2') answerAction('bet13');
+      if (e.key === '3') answerAction('bet23');
+      if (e.key === '4') answerAction(currentStreet === 'turn' ? 'overbet' : 'allin');
+    }
+    if (isOOPMode) {
+      if (e.key === '1') answerAction('fold');
+      if (e.key === '2') answerAction('call');
+      if (e.key === '3') answerAction(currentStreet === 'river' ? 'raise' : 'xr');
+    }
+
+    if (currentTab === 'read' && currentStreet === 'turn') {
+      const typeKeys = { '1':'paired','2':'flush','3':'straight','4':'ace','5':'overcard','6':'brick' };
+      if (typeKeys[e.key]) {
+        document.querySelectorAll('.tag[data-cat="ttype"]').forEach(t => t.classList.remove('selected'));
+        const target = document.querySelector(`.tag[data-cat="ttype"][data-val="${typeKeys[e.key]}"]`);
+        if (target) target.classList.add('selected');
+      }
+    }
+    if (currentTab === 'read' && currentStreet === 'river') {
+      const typeKeys = { '1':'flush','2':'straight','3':'pairing','4':'overcard','5':'brick' };
+      if (typeKeys[e.key]) {
+        document.querySelectorAll('.tag[data-cat="rtype"]').forEach(t => t.classList.remove('selected'));
+        const target = document.querySelector(`.tag[data-cat="rtype"][data-val="${typeKeys[e.key]}"]`);
+        if (target) target.classList.add('selected');
+      }
+    }
+  }
+});
+</script>
+</body>
+</html>
