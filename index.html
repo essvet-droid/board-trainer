@@ -790,6 +790,70 @@ const CARD_COLORS = { h:'#C0392B', d:'#1A6FA8', c:'#1E8449', s:'#1a1a1a' };
 const POSITIONS_IP = ['UTG','CO','BTN'];
 
 // ═══════════════════════════════════════════════════════════════
+//  PPT BLOCKS & HERO RANGES
+// ═══════════════════════════════════════════════════════════════
+const PPT_BLOCKS = [
+  ['AA'],
+  ['KK','QQ'],
+  ['JJ','AKs'],
+  ['TT','AKo'],
+  ['AQs','99','AJs','AQo'],
+  ['88','ATs','KQs'],
+  ['AJo','77','KJs','QJs','KTs'],
+  ['KQo','A9s','ATo','66','A8s'],
+  ['QTs','JTs','KJo','A7s','A5s','K9s','A4s'],
+  ['A6s','55','Q9s','A3s','J9s','KTo','QJo'],
+  ['A9o','T9s','K8s','A2s','K7s','44','A8o'],
+  ['QTo','Q8s','JTo','J8s','K6s','98s','T8s'],
+  ['K5s','A7o','K4s','K9o','A5o','33','K3s'],
+  ['A4o','Q9o','87s','Q7s','T7s','Q6s','K2s','J7s','A6o'],
+  ['97s','Q5s','A3o','J9o','T9o','22','K8o'],
+  ['A2o','Q4s','76s','K7o','86s','96s','J6s','J5s','K6o'],
+  ['Q3s','Q2s','T6s','65s','K5o','75s','Q8o','54s','J8o','J4s']
+];
+
+const HERO_RANGES = {
+  ip_srp:  { from: 0, to: 12 },
+  oop_srp: { from: 5, to: 15 },
+  ip_3bp:  { from: 0, to: 6 },
+  oop_3bp: { from: 3, to: 10 }
+};
+
+function comboCount(type) {
+  if (type.length === 2) return 6;
+  return type[2] === 's' ? 4 : 12;
+}
+
+function pickHandFromRange(rangeKey) {
+  const range = HERO_RANGES[rangeKey];
+  const types = [];
+  for (let i = range.from; i <= range.to; i++) {
+    for (const t of PPT_BLOCKS[i]) types.push(t);
+  }
+  const weights = types.map(t => comboCount(t));
+  const total = weights.reduce((a, b) => a + b, 0);
+  let r = Math.floor(Math.random() * total);
+  let chosen = types[0];
+  for (let i = 0; i < types.length; i++) {
+    r -= weights[i];
+    if (r < 0) { chosen = types[i]; break; }
+  }
+  return handTypeToCards(chosen);
+}
+
+function handTypeToCards(type) {
+  const s = shuffle([...SUITS]);
+  if (type.length === 2) {
+    return [type[0] + s[0], type[0] + s[1]];
+  }
+  const r1 = type[0], r2 = type[1];
+  if (type[2] === 's') {
+    return [r1 + s[0], r2 + s[0]];
+  }
+  return [r1 + s[0], r2 + s[1]];
+}
+
+// ═══════════════════════════════════════════════════════════════
 //  GAME STATE
 // ═══════════════════════════════════════════════════════════════
 let gameMode = null;       // 'flop'|'turn'|'river'|'full'
@@ -1620,11 +1684,19 @@ function setCtxForStreet() {
 //  DEAL
 // ═══════════════════════════════════════════════════════════════
 function deal() {
-  deck = shuffle(newDeck());
+  if (gameMode === 'full') {
+    fullPhase = 0;
+    currentStreet = 'flop';
+  }
+  generateContext();
+
+  const rangeKey = (ctx.isIP ? 'ip' : 'oop') + '_' + (ctx.potType === '3BP' ? '3bp' : 'srp');
+  heroHand = pickHandFromRange(rangeKey);
+
+  deck = shuffle(newDeck().filter(c => !heroHand.includes(c)));
   flop = [deck.pop(), deck.pop(), deck.pop()];
   turnCard = deck.pop();
   riverCard = deck.pop();
-  heroHand = [deck.pop(), deck.pop()];
 
   boardInfo = classifyBoard(flop);
   turnInfo = classifyTurnCard(turnCard, flop);
@@ -1637,12 +1709,6 @@ function deal() {
   riverHandInfo = classifyHandRiver(heroHand, fullBoard);
   blockers = detectBlockers(heroHand, fullBoard);
 
-  if (gameMode === 'full') {
-    fullPhase = 0;
-    currentStreet = 'flop';
-  }
-
-  generateContext();
   answered = false;
 }
 
