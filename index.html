@@ -1623,7 +1623,7 @@ function generateContext() {
 
   // Line
   let lineFlop, line;
-  if (gameMode === 'flop') {
+  if (gameMode === 'flop' || gameMode === 'full') {
     lineFlop = null;
     line = null;
   } else if (gameMode === 'turn') {
@@ -1821,7 +1821,7 @@ function render() {
   // Line badge
   const lineItem = document.getElementById('ctx-line-item');
   const lineEl = document.getElementById('ctx-line');
-  if (currentStreet === 'flop' && gameMode !== 'full') {
+  if (currentStreet === 'flop') {
     lineItem.classList.add('hidden');
   } else {
     lineItem.classList.remove('hidden');
@@ -2062,6 +2062,11 @@ function validateRiverReading() {
 function answerAction(action) {
   if (answered) return;
   answered = true;
+  if (gameMode === 'full') {
+    const isIP = position === 'ip';
+    const isBet = isIP ? action !== 'check' : (action === 'call' || action === 'raise');
+    ctx._lastSegment = isBet ? 'xbc' : 'xx';
+  }
 
   const isIP = (gameMode === 'full') ? position === 'ip' : currentTab === 'ip';
   let answer, actionsId;
@@ -2132,6 +2137,25 @@ function showDetail(text) {
 function handleNext() {
   if (gameMode === 'full') {
     if (fullPhase < 2) {
+      const segment = ctx._lastSegment || 'xx';
+
+      if (fullPhase === 0) {
+        ctx.lineFlop = segment;
+        ctx.turnPotBB = segment === 'xbc'
+          ? Math.round(ctx.flopPotBB * 2.3 * 10) / 10
+          : ctx.flopPotBB;
+        ctx._flopCommitted = segment === 'xbc' ? ctx.flopPotBB * 0.65 : 0;
+        ctx.turnSPR = Math.max(0.5, Math.round((ctx.stackBB - ctx._flopCommitted) / ctx.turnPotBB * 10) / 10);
+      } else {
+        ctx.line = ctx.lineFlop + '_' + segment;
+        const turnCommitted = segment === 'xbc' ? ctx.turnPotBB * 0.65 : 0;
+        const totalCommitted = (ctx._flopCommitted || 0) + turnCommitted;
+        ctx.riverPotBB = segment === 'xbc'
+          ? Math.round(ctx.turnPotBB * 2.3 * 10) / 10
+          : ctx.turnPotBB;
+        ctx.riverSPR = Math.max(0.3, Math.round((ctx.stackBB - totalCommitted) / ctx.riverPotBB * 10) / 10);
+      }
+
       fullPhase++;
       currentStreet = ['flop','turn','river'][fullPhase];
       answered = false;
