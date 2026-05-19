@@ -304,6 +304,25 @@ body {
 .blocker-chip.bluffs { background: rgba(255,82,82,0.15); color: var(--red); border: 1px solid var(--red); }
 .blocker-chip.none { background: rgba(107,127,163,0.1); color: var(--dim); border: 1px solid var(--border); }
 
+/* ── Blocker quiz (river tab) ── */
+.blocker-quiz { display: flex; flex-direction: column; gap: 10px; align-items: center; }
+.blocker-quiz .tag { min-width: 140px; text-align: center; }
+.blocker-tags { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; max-width: 500px; }
+.blocker-impact {
+  margin-top: 8px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  max-width: 500px;
+  text-align: left;
+}
+.blocker-impact.value-block { background: rgba(0,230,118,0.08); border: 1px solid var(--green); color: var(--green); }
+.blocker-impact.bluff-block { background: rgba(255,82,82,0.08); border: 1px solid var(--red); color: var(--red); }
+.blocker-impact.no-block { background: rgba(107,127,163,0.08); border: 1px solid var(--border); color: var(--dim); }
+.blocker-impact .impact-title { font-weight: 700; font-size: 0.88rem; margin-bottom: 4px; }
+.blocker-impact .impact-action { margin-top: 6px; font-weight: 600; color: var(--text); }
+
 /* ── Tag groups (flop board reading) ── */
 .tag-group { margin-bottom: 6px; }
 .tag-group-label {
@@ -578,6 +597,7 @@ hr.sep { border: none; border-top: 1px solid var(--border); margin: 6px 0; width
     <div class="tab active" data-tab="read" id="tab-read">Reading</div>
     <div class="tab" data-tab="ip" id="tab-ip">IP Action</div>
     <div class="tab" data-tab="oop" id="tab-oop">OOP Defense</div>
+    <div class="tab hidden" data-tab="blocker" id="tab-blocker">🛡️ Blockers</div>
   </div>
 
   <!-- Progress bar (full hand mode) -->
@@ -759,6 +779,23 @@ hr.sep { border: none; border-top: 1px solid var(--border); margin: 6px 0; width
       </div>
     </div>
 
+    <!-- ═══ Panel: Blocker Quiz (river only) ═══ -->
+    <div id="panel-blocker" class="panel hidden">
+      <div class="blocker-quiz">
+        <div class="tag-group-label">Quels blockers possèdes-tu ?</div>
+        <div class="blocker-tags" id="blocker-tags">
+          <div class="tag" data-cat="blk" data-val="nutflush">🔒 Nut flush</div>
+          <div class="tag" data-cat="blk" data-val="flush">🌊 Flush</div>
+          <div class="tag" data-cat="blk" data-val="straight">🔗 Straight</div>
+          <div class="tag" data-cat="blk" data-val="toppair">👑 Top pair/set</div>
+          <div class="tag" data-cat="blk" data-val="misseddraw">💨 Missed draws</div>
+          <div class="tag" data-cat="blk" data-val="none">❌ Aucun</div>
+        </div>
+        <button class="btn-validate" id="btn-validate-blockers">Valider</button>
+      </div>
+      <div id="blocker-impact-area"></div>
+    </div>
+
     <!-- Feedback -->
     <div class="feedback-area">
       <div id="feedback"></div>
@@ -858,7 +895,8 @@ function handTypeToCards(type) {
 // ═══════════════════════════════════════════════════════════════
 let gameMode = null;       // 'flop'|'turn'|'river'|'full'
 let currentStreet = 'flop';
-let currentTab = 'read';   // 'read'|'ip'|'oop' — isolated modes
+let currentTab = 'read';   // 'read'|'ip'|'oop'|'blocker' — isolated modes
+let blockerPhase = 0;      // 0=identification, 1=impact shown
 let position = 'ip';       // 'ip'|'oop' — full hand mode
 let fullPhase = 0;         // 0=flop, 1=turn, 2=river — full hand
 
@@ -1790,14 +1828,21 @@ function render() {
     heroSec.classList.add('hidden');
   }
 
-  // Blocker panel
+  // Blocker panel (hide on blocker tab to avoid spoiling)
   const blkPanel = document.getElementById('blocker-panel');
   blkPanel.innerHTML = '';
-  if (currentStreet === 'river' && showHero) {
+  if (currentStreet === 'river' && showHero && currentTab !== 'blocker') {
     const chip = document.createElement('div');
     chip.className = `blocker-chip ${blockers.summary}`;
     chip.textContent = blockers.label;
     blkPanel.appendChild(chip);
+  }
+
+  // Reset blocker quiz on new deal
+  if (currentTab === 'blocker') {
+    blockerPhase = 0;
+    document.querySelectorAll('#blocker-tags .tag').forEach(t => t.classList.remove('selected','correct','wrong','missed'));
+    document.getElementById('blocker-impact-area').innerHTML = '';
   }
 
   // Context bar
@@ -1851,6 +1896,8 @@ function render() {
       else activePanel = 'panel-river-read';
     } else if (currentTab === 'ip') {
       activePanel = 'panel-ip';
+    } else if (currentTab === 'blocker') {
+      activePanel = 'panel-blocker';
     } else {
       activePanel = 'panel-oop';
     }
@@ -2057,6 +2104,91 @@ function validateRiverReading() {
 }
 
 // ═══════════════════════════════════════════════════════════════
+//  VALIDATION — BLOCKER QUIZ (river only)
+// ═══════════════════════════════════════════════════════════════
+function validateBlockers() {
+  if (answered) return;
+
+  const selected = new Set();
+  document.querySelectorAll('#blocker-tags .tag.selected').forEach(t => selected.add(t.dataset.val));
+  if (selected.size === 0) {
+    showFeedback('wrong', '✗ Sélectionne au moins un tag');
+    return;
+  }
+
+  answered = true;
+  blockerPhase = 1;
+
+  const expected = new Set();
+  if (blockers.blocksNutFlush) expected.add('nutflush');
+  else if (blockers.blocksFlush) expected.add('flush');
+  if (blockers.blocksStraight) expected.add('straight');
+  if (blockers.blocksTopPair) expected.add('toppair');
+  if (blockers.blocksMissedDraw) expected.add('misseddraw');
+  if (expected.size === 0) expected.add('none');
+
+  let hits = 0, misses = 0, extras = 0;
+  document.querySelectorAll('#blocker-tags .tag').forEach(t => {
+    const val = t.dataset.val;
+    const isSel = selected.has(val);
+    const isExp = expected.has(val);
+    if (isSel && isExp) { t.classList.add('correct'); hits++; }
+    else if (isSel && !isExp) { t.classList.add('wrong'); extras++; }
+    else if (!isSel && isExp) { t.classList.add('missed'); misses++; }
+  });
+
+  const allCorrect = hits === expected.size && extras === 0;
+  totalQ++;
+  if (allCorrect) { correctQ++; score += 1 + Math.floor(currentStreak / 3); currentStreak++; showFeedback('correct', '✓ Correct !'); }
+  else if (hits > 0 && extras === 0) { currentStreak = 0; showFeedback('partial', '~ Partiel — il manque des blockers'); }
+  else if (hits > 0) { currentStreak = 0; showFeedback('partial', '~ Partiel'); }
+  else { currentStreak = 0; showFeedback('wrong', '✗ Raté'); }
+  streakHistory.push(allCorrect);
+
+  const summaryLabel = blockers.label;
+  trackAccuracy(summaryLabel, allCorrect);
+
+  // Phase 2 — Impact décisionnel
+  const impArea = document.getElementById('blocker-impact-area');
+  const answer = computeRiverDefenseAnswer(handInfo, riverInfo, blockers, ctx.line, ctx);
+
+  let impClass, title, body;
+  if (blockers.blocksNutFlush) {
+    impClass = 'value-block';
+    title = '🛡️ BLOQUE VALUE — Nut flush';
+    body = 'Tu retires les nut flush de la range villain. Ses gros bets sont plus souvent des bluffs.';
+  } else if (blockers.blocksStraight) {
+    impClass = 'value-block';
+    title = '🛡️ BLOQUE VALUE — Straight';
+    body = 'Tu bloques une quinte possible. Villain a moins de combos value dans sa range de bet.';
+  } else if (blockers.blocksTopPair) {
+    impClass = 'value-block';
+    title = '🛡️ BLOQUE VALUE — Top pair/set';
+    body = 'Tu bloques top pair/set de villain. Sa range de bet contient plus de bluffs et draws ratés.';
+  } else if (blockers.blocksMissedDraw) {
+    impClass = 'bluff-block';
+    title = '⚠️ BLOQUE BLUFFS — Missed draws';
+    body = 'Tu bloques les missed flush draws de villain. Sa range de bet est proportionnellement plus value.';
+  } else {
+    impClass = 'no-block';
+    title = '❌ AUCUN BLOCKER';
+    body = 'Tes cartes ne retirent rien de significatif de la range villain. Décision basée sur l\'EQB pur et la line.';
+  }
+
+  const actionText = answer.best === 'call' ? '📞 Call' : answer.best === 'fold' ? '🗑️ Fold' : '⚡ Raise';
+
+  impArea.innerHTML = `<div class="blocker-impact ${impClass}">
+    <div class="impact-title">${title}</div>
+    <div>${body}</div>
+    <div class="impact-action">→ Moteur : ${actionText} — ${answer.reason}</div>
+  </div>`;
+
+  showDetail(`${blockers.label} · EQB: ${handInfo.eqb} · Line: ${ctx.line || 'n/a'}`);
+  document.getElementById('next-btn').classList.add('visible');
+  updateStats();
+}
+
+// ═══════════════════════════════════════════════════════════════
 //  VALIDATION — ACTION (unified for IP and OOP, all streets)
 // ═══════════════════════════════════════════════════════════════
 function answerAction(action) {
@@ -2202,6 +2334,9 @@ function startGame(mode, pos) {
     document.getElementById('tab-oop').textContent = labels.oop;
   }
 
+  // Show/hide blocker tab (river only)
+  document.getElementById('tab-blocker').classList.toggle('hidden', mode !== 'river');
+
   // Show/hide tabs vs progress bar
   document.getElementById('tabs-bar').classList.toggle('hidden', mode === 'full');
   document.getElementById('progress-bar').classList.toggle('hidden', mode !== 'full');
@@ -2282,10 +2417,26 @@ document.querySelectorAll('#oop-actions .action-btn').forEach(btn => {
   btn.addEventListener('click', () => answerAction(btn.dataset.action));
 });
 
+// Blocker tag clicks (multi-select, "none" exclusive)
+document.querySelectorAll('#blocker-tags .tag').forEach(tag => {
+  tag.addEventListener('click', () => {
+    if (answered) return;
+    const val = tag.dataset.val;
+    if (val === 'none') {
+      document.querySelectorAll('#blocker-tags .tag').forEach(t => t.classList.remove('selected'));
+      tag.classList.add('selected');
+    } else {
+      document.querySelector('#blocker-tags .tag[data-val="none"]').classList.remove('selected');
+      tag.classList.toggle('selected');
+    }
+  });
+});
+
 // Validate buttons
 document.getElementById('btn-validate-board').addEventListener('click', validateBoardReading);
 document.getElementById('btn-validate-turn').addEventListener('click', validateTurnReading);
 document.getElementById('btn-validate-river').addEventListener('click', validateRiverReading);
+document.getElementById('btn-validate-blockers').addEventListener('click', validateBlockers);
 
 // Next button
 document.getElementById('next-btn').addEventListener('click', handleNext);
@@ -2300,6 +2451,7 @@ document.addEventListener('keydown', (e) => {
     else if (currentTab === 'read' && currentStreet === 'flop') validateBoardReading();
     else if (currentTab === 'read' && currentStreet === 'turn') validateTurnReading();
     else if (currentTab === 'read' && currentStreet === 'river') validateRiverReading();
+    else if (currentTab === 'blocker') validateBlockers();
   }
 
   if (!answered) {
@@ -2332,6 +2484,22 @@ document.addEventListener('keydown', (e) => {
         document.querySelectorAll('.tag[data-cat="rtype"]').forEach(t => t.classList.remove('selected'));
         const target = document.querySelector(`.tag[data-cat="rtype"][data-val="${typeKeys[e.key]}"]`);
         if (target) target.classList.add('selected');
+      }
+    }
+    if (currentTab === 'blocker') {
+      const blkKeys = { '1':'nutflush','2':'flush','3':'straight','4':'toppair','5':'misseddraw','6':'none' };
+      if (blkKeys[e.key]) {
+        const val = blkKeys[e.key];
+        const tag = document.querySelector(`#blocker-tags .tag[data-val="${val}"]`);
+        if (tag) {
+          if (val === 'none') {
+            document.querySelectorAll('#blocker-tags .tag').forEach(t => t.classList.remove('selected'));
+            tag.classList.add('selected');
+          } else {
+            document.querySelector('#blocker-tags .tag[data-val="none"]').classList.remove('selected');
+            tag.classList.toggle('selected');
+          }
+        }
       }
     }
   }
