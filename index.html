@@ -1637,7 +1637,7 @@ function computeRiverDefenseAnswer(hInfo, rInfo, blk, line, context) {
 //  CONTEXT GENERATION
 // ═══════════════════════════════════════════════════════════════
 function generateContext() {
-  const is3bp = Math.random() < 0.2;
+  const is3bp = Math.random() < computeWeight3BP();
   let heroPos, villainPos, isIP;
 
   if (gameMode === 'full') {
@@ -1665,10 +1665,10 @@ function generateContext() {
     lineFlop = null;
     line = null;
   } else if (gameMode === 'turn') {
-    lineFlop = Math.random() < 0.65 ? 'xbc' : 'xx';
+    lineFlop = Math.random() < computeWeightLine() ? 'xbc' : 'xx';
     line = null;
   } else {
-    lineFlop = Math.random() < 0.65 ? 'xbc' : 'xx';
+    lineFlop = Math.random() < computeWeightLine() ? 'xbc' : 'xx';
     const lineTurn = Math.random() < (lineFlop === 'xbc' ? 0.60 : 0.55) ? 'xbc' : 'xx';
     line = lineFlop + '_' + lineTurn;
   }
@@ -1968,17 +1968,50 @@ function trackAccuracy(key, correct) {
   if (correct) accuracyData[key].hit++;
 }
 
+function computeWeight3BP() {
+  let srp = { hit: 0, total: 0 }, tbp = { hit: 0, total: 0 };
+  for (const [key, d] of Object.entries(accuracyData)) {
+    if (key.includes('SRP')) { srp.hit += d.hit; srp.total += d.total; }
+    else if (key.includes('3BP')) { tbp.hit += d.hit; tbp.total += d.total; }
+  }
+  if (srp.total < 3 || tbp.total < 3) return 0.2;
+  const diff = (srp.hit / srp.total) - (tbp.hit / tbp.total);
+  return Math.max(0.15, Math.min(0.5, 0.2 + diff * 0.5));
+}
+
+function computeWeightLine() {
+  let xx = { hit: 0, total: 0 }, xbc = { hit: 0, total: 0 };
+  for (const [key, d] of Object.entries(accuracyData)) {
+    if (key.includes('x/x') || key.includes('delayed')) { xx.hit += d.hit; xx.total += d.total; }
+    else if (key.includes('x/bc') || key.includes('2nd barrel')) { xbc.hit += d.hit; xbc.total += d.total; }
+  }
+  if (xx.total < 3 || xbc.total < 3) return 0.65;
+  const diff = (xbc.hit / xbc.total) - (xx.hit / xx.total);
+  return Math.max(0.30, Math.min(0.80, 0.65 - diff * 0.5));
+}
+
 function updateAccuracyPanel() {
   const panel = document.getElementById('accuracy-panel');
   panel.innerHTML = '';
-  for (const [key, data] of Object.entries(accuracyData)) {
+  const entries = Object.entries(accuracyData)
+    .filter(([, d]) => d.total >= 3)
+    .sort((a, b) => (a[1].hit / a[1].total) - (b[1].hit / b[1].total));
+  if (entries.length === 0) {
+    panel.innerHTML = '<span style="color:var(--dim);font-size:0.7rem">— zones faibles : joue quelques mains —</span>';
+    return;
+  }
+  const header = document.createElement('div');
+  header.style = 'font-size:0.65rem;color:var(--dim);width:100%;text-align:center;margin-bottom:4px;letter-spacing:1px';
+  header.textContent = '↓ ZONES FAIBLES';
+  panel.appendChild(header);
+  entries.forEach(([key, data]) => {
     const pct = Math.round(data.hit / data.total * 100);
-    const level = pct >= 70 ? 'high' : pct >= 40 ? 'mid' : 'low';
+    const level = pct >= 70 ? 'high' : pct >= 45 ? 'mid' : 'low';
     const chip = document.createElement('div');
     chip.className = 'acc-chip';
-    chip.innerHTML = `${key} <span class="pct ${level}">${pct}%</span><span style="color:var(--dim);font-size:0.65rem"> (${data.total})</span>`;
+    chip.innerHTML = `${key} <span class="pct ${level}">${pct}%</span><span style="color:var(--dim);font-size:0.65rem"> n=${data.total}</span>`;
     panel.appendChild(chip);
-  }
+  });
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -2246,8 +2279,8 @@ function answerAction(action) {
 
   const trackKey = isIP
     ? (currentStreet === 'flop' ? 'cbet' : currentStreet === 'turn' ? (ctx.lineFlop === 'xbc' ? '2nd barrel' : 'delayed') : 'river bet')
-    : (currentStreet === 'flop' ? 'defense' : currentStreet === 'turn' ? 'turn def' : 'river def');
-  trackAccuracy(trackKey + ':' + handInfo.eqb, correct);
+    : (currentStreet === 'flop' ? 'defense' : currentStreet === 'turn' ? `turn def ${ctx.lineFlop === 'xbc' ? 'x/bc' : 'x/x'}` : 'river def');
+  trackAccuracy(trackKey + ' ' + ctx.potType, correct);
 
   document.getElementById('next-btn').classList.add('visible');
   updateStats();
