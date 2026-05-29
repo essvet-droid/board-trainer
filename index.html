@@ -1265,7 +1265,7 @@ function classifyHand(hand, board, bInfo) {
   const maxSuitCount = Math.max(...Object.values(suitCounts));
   const hasFlush = maxSuitCount >= 5;
   const hasFlushDraw = !hasFlush && maxSuitCount >= 4;
-  const hasBDFD = !hasFlush && !hasFlushDraw && board.length <= 3 && hs[0] === hs[1] && fs.filter(s => s === hs[0]).length >= 1;
+  const hasBDFD = !hasFlush && !hasFlushDraw && board.length <= 3 && maxSuitCount >= 3 && Object.entries(suitCounts).some(([s, c]) => c >= 3 && hs.includes(s));
 
   const allVals = [...new Set([...hr, ...fr])].sort((a,b) => a-b);
   let hasStraight = false, hasOESD = false;
@@ -1273,17 +1273,21 @@ function classifyHand(hand, board, bInfo) {
   for (let low = 0; low <= 9; low++) {
     const w = [low, low+1, low+2, low+3, low+4];
     const valsInW = allVals.filter(v => w.includes(v));
-    if (valsInW.length >= 5) hasStraight = true;
-    else if (valsInW.length >= 4) {
+    const heroContributes = w.some(v => hr.includes(v) && !fr.includes(v));
+    if (valsInW.length >= 5 && heroContributes) hasStraight = true;
+    else if (valsInW.length >= 4 && heroContributes) {
       const sorted = [...valsInW].sort((a,b) => a-b);
       if (sorted[sorted.length-1] - sorted[0] === sorted.length - 1) hasOESD = true;
       else gutshotOuts.add(w.find(v => !allVals.includes(v)));
     }
   }
   if (allVals.includes(12)) {
-    const lowCards = allVals.filter(v => v <= 3);
-    if (lowCards.length >= 4) hasStraight = true;
-    else if (lowCards.length === 3) gutshotOuts.add([12,0,1,2,3].find(v => !allVals.includes(v)));
+    const heroContributes = [12,0,1,2,3].some(v => hr.includes(v) && !fr.includes(v));
+    if (heroContributes) {
+      const lowCards = allVals.filter(v => v <= 3);
+      if (lowCards.length >= 4) hasStraight = true;
+      else if (lowCards.length === 3) gutshotOuts.add([12,0,1,2,3].find(v => !allVals.includes(v)));
+    }
   }
   const hasDoubleGutshot = gutshotOuts.size >= 2 && !hasOESD;
   if (hasDoubleGutshot) hasOESD = true;
@@ -1370,9 +1374,12 @@ function classifyHandRiver(hand, board) {
   let hasStraight = false;
   for (let low = 0; low <= 9; low++) {
     const w = [low,low+1,low+2,low+3,low+4];
-    if (allVals.filter(v => w.includes(v)).length >= 5) hasStraight = true;
+    const heroContributes = w.some(v => hr.includes(v) && !fr.includes(v));
+    if (allVals.filter(v => w.includes(v)).length >= 5 && heroContributes) hasStraight = true;
   }
-  if (allVals.includes(12) && allVals.filter(v => v <= 3).length >= 4) hasStraight = true;
+  if (allVals.includes(12) && allVals.filter(v => v <= 3).length >= 4) {
+    if ([12,0,1,2,3].some(v => hr.includes(v) && !fr.includes(v))) hasStraight = true;
+  }
 
   let eqb, handType;
   if (hasStraight && hasFlush) { eqb = 'strong'; handType = 'Straight flush'; }
