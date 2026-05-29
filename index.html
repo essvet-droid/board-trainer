@@ -1635,15 +1635,25 @@ function computeRiverBetAnswer(hInfo, rInfo, blk, line, bInfo, context) {
   const is3bp = context.potType === '3BP';
   const lowSPR = context.spr <= 1.5;
 
+  // Acevedo Ch.14 s2.5 Tipton — draw completed, strong hand vulnerable → thin value
+  const _dc = rInfo.categories || [];
+  const vulnerableStrong = eqb === 'strong' && (
+    (_dc.includes('flush') && !hInfo.hasFlush && !hInfo.hasFullHouse && !hInfo.hasQuads) ||
+    (_dc.includes('straight') && !hInfo.hasStraight && !hInfo.hasFlush && !hInfo.hasFullHouse && !hInfo.hasQuads));
+
   if (is3bp) {
     if (lowSPR) {
-      if (eqb === 'strong') return { best:'allin', acceptable:['allin','bet23'], reason:'3BP SPR bas — shove value' };
+      if (eqb === 'strong') return vulnerableStrong
+        ? { best:'bet13', acceptable:['bet13','check'], reason:'3BP SPR bas — thin value, draw completed' }
+        : { best:'allin', acceptable:['allin','bet23'], reason:'3BP SPR bas — shove value' };
       if (eqb === 'good') return { best:'allin', acceptable:['allin','bet23'], reason:'3BP SPR bas — shove thin value' };
       if (eqb === 'weak') return { best:'check', acceptable:['check'], reason:'3BP SPR bas — showdown' };
       if (blk.blocksValue) return { best:'allin', acceptable:['allin'], reason:'3BP SPR bas — bluff shove, bloquer value' };
       return { best:'check', acceptable:['check'], reason:'3BP SPR bas — give up' };
     }
-    if (eqb === 'strong') return { best:'bet23', acceptable:['bet23','allin'], reason:'3BP — value bet' };
+    if (eqb === 'strong') return vulnerableStrong
+      ? { best:'bet13', acceptable:['bet13','check'], reason:'3BP — thin value, draw completed' }
+      : { best:'bet23', acceptable:['bet23','allin'], reason:'3BP — value bet' };
     if (eqb === 'good') return { best:'bet13', acceptable:['bet13','check'], reason:'3BP — thin value' };
     if (eqb === 'weak') return { best:'check', acceptable:['check'], reason:'3BP — showdown' };
     if (blk.blocksValue) return { best:'bet23', acceptable:['bet23','allin'], reason:'3BP — bluff, bloquer value' };
@@ -1651,7 +1661,9 @@ function computeRiverBetAnswer(hInfo, rInfo, blk, line, bInfo, context) {
   }
 
   if (line === 'xbc_xbc') {
-    if (eqb === 'strong') return { best:'bet23', acceptable:['bet23','allin'], reason:'3rd barrel value — max value' };
+    if (eqb === 'strong') return vulnerableStrong
+      ? { best:'bet13', acceptable:['bet13','check'], reason:'Thin value — draw completed, main vulnérable' }
+      : { best:'bet23', acceptable:['bet23','allin'], reason:'3rd barrel value — max value' };
     if (eqb === 'good') {
       if (rInfo.primary === 'brick') return { best:'bet13', acceptable:['bet13','check'], reason:'Thin value — river brick' };
       return { best:'check', acceptable:['check','bet13'], reason:'Check back — river dangereuse' };
@@ -1663,7 +1675,9 @@ function computeRiverBetAnswer(hInfo, rInfo, blk, line, bInfo, context) {
   }
 
   if (line === 'xbc_xx') {
-    if (eqb === 'strong') return { best:'bet23', acceptable:['bet23','allin'], reason:'Value delayed' };
+    if (eqb === 'strong') return vulnerableStrong
+      ? { best:'bet13', acceptable:['bet13','check'], reason:'Thin value delayed — draw completed' }
+      : { best:'bet23', acceptable:['bet23','allin'], reason:'Value delayed' };
     if (eqb === 'good') return { best:'bet13', acceptable:['bet13','bet23'], reason:'Thin value — OOP surpris' };
     if (eqb === 'weak') return { best:'check', acceptable:['check','bet13'], reason:'Showdown value' };
     if (blk.blocksValue) return { best:'bet23', acceptable:['bet23','bet13'], reason:'Bluff crédible après check-back turn' };
@@ -1671,7 +1685,9 @@ function computeRiverBetAnswer(hInfo, rInfo, blk, line, bInfo, context) {
   }
 
   if (line === 'xx_xbc') {
-    if (eqb === 'strong') return { best:'bet23', acceptable:['bet23','allin'], reason:'Value — continue le delayed' };
+    if (eqb === 'strong') return vulnerableStrong
+      ? { best:'bet13', acceptable:['bet13','check'], reason:'Thin value — draw completed, main vulnérable' }
+      : { best:'bet23', acceptable:['bet23','allin'], reason:'Value — continue le delayed' };
     if (eqb === 'good') return { best:'bet13', acceptable:['bet13','check'], reason:'Thin value — OOP range réduite' };
     if (eqb === 'weak') return { best:'check', acceptable:['check'], reason:'Pot control — OOP a résisté' };
     if (blk.blocksValue) return { best:'bet23', acceptable:['bet23','check'], reason:'Bluff — 2nd barrel après delayed' };
