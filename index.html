@@ -323,6 +323,25 @@ body {
 .blocker-impact .impact-title { font-weight: 700; font-size: 0.88rem; margin-bottom: 4px; }
 .blocker-impact .impact-action { margin-top: 6px; font-weight: 600; color: var(--text); }
 
+/* ── Hand reading reco ── */
+.reading-reco-box {
+  margin-top: 14px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  background: var(--surface2);
+  border-left: 4px solid var(--accent);
+  max-width: 520px;
+  text-align: left;
+}
+.rr-hand { font-size: 1.05rem; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+.rr-eqb { padding: 1px 8px; border-radius: 6px; font-size: 0.82rem; margin-left: 4px; font-weight: 700; }
+.rr-eqb.trash { background: rgba(255,82,82,0.15); color: var(--red); }
+.rr-eqb.weak { background: rgba(255,171,64,0.15); color: var(--orange); }
+.rr-eqb.good { background: rgba(255,215,64,0.15); color: var(--gold); }
+.rr-eqb.strong { background: rgba(0,230,118,0.15); color: var(--green); }
+.rr-action { color: var(--dim); font-size: 0.95rem; line-height: 1.5; }
+.rr-action strong { color: var(--accent); }
+
 /* ── Tag groups (flop board reading) ── */
 .tag-group { margin-bottom: 6px; }
 .tag-group-label {
@@ -566,6 +585,7 @@ hr.sep { border: none; border-top: 1px solid var(--border); margin: 6px 0; width
     <div class="mode-btn" data-game="turn"><span class="mode-emoji">🎯</span>Turn</div>
     <div class="mode-btn" data-game="river"><span class="mode-emoji">🌊</span>River</div>
     <div class="mode-btn full-hand" data-game="full"><span class="mode-emoji">🔥</span>Full Hand</div>
+    <div class="mode-btn full-hand" data-game="reading"><span class="mode-emoji">🧠</span>Hand Reading</div>
   </div>
 
   <div id="pos-select" class="hidden">
@@ -796,6 +816,51 @@ hr.sep { border: none; border-top: 1px solid var(--border); margin: 6px 0; width
       <div id="blocker-impact-area"></div>
     </div>
 
+    <!-- ═══ Panel: Hand Reading (chained flop→turn→river) ═══ -->
+    <div id="panel-reading" class="panel hidden">
+      <div class="tag-group">
+        <div class="tag-group-label">Force de ta main (EQB)</div>
+        <div class="tags">
+          <div class="tag" data-cat="reqb" data-val="trash">🗑️ Trash</div>
+          <div class="tag" data-cat="reqb" data-val="weak">📉 Weak</div>
+          <div class="tag" data-cat="reqb" data-val="good">📈 Good</div>
+          <div class="tag" data-cat="reqb" data-val="strong">💪 Strong</div>
+        </div>
+      </div>
+      <div class="tag-group">
+        <div class="tag-group-label">Combinaison faite</div>
+        <div class="tags">
+          <div class="tag" data-cat="rmade" data-val="nopair">No pair</div>
+          <div class="tag" data-cat="rmade" data-val="botpair">Bottom pair</div>
+          <div class="tag" data-cat="rmade" data-val="midpair">Middle pair</div>
+          <div class="tag" data-cat="rmade" data-val="toppair">Top pair</div>
+          <div class="tag" data-cat="rmade" data-val="pocketpair">Pocket pair</div>
+          <div class="tag" data-cat="rmade" data-val="overpair">Overpair</div>
+          <div class="tag" data-cat="rmade" data-val="twopair">Two pair</div>
+          <div class="tag" data-cat="rmade" data-val="set">Set</div>
+          <div class="tag" data-cat="rmade" data-val="trips">Trips</div>
+          <div class="tag" data-cat="rmade" data-val="straight">Straight</div>
+          <div class="tag" data-cat="rmade" data-val="flush">Flush</div>
+          <div class="tag" data-cat="rmade" data-val="fullhouse">Full house</div>
+          <div class="tag" data-cat="rmade" data-val="quads">Quads</div>
+          <div class="tag" data-cat="rmade" data-val="straightflush">Straight flush</div>
+        </div>
+      </div>
+      <div class="tag-group" id="reading-draws-group">
+        <div class="tag-group-label">Tirages backup (multi-sélection)</div>
+        <div class="tags" id="reading-draws">
+          <div class="tag" data-cat="rdraw" data-val="gutshot">Gutshot</div>
+          <div class="tag" data-cat="rdraw" data-val="doublegutshot">Double gutshot</div>
+          <div class="tag" data-cat="rdraw" data-val="oesd">OESD</div>
+          <div class="tag" data-cat="rdraw" data-val="fd">Flush draw</div>
+          <div class="tag" data-cat="rdraw" data-val="bdfd">BDFD</div>
+          <div class="tag" data-cat="rdraw" data-val="none">❌ Aucun</div>
+        </div>
+      </div>
+      <button class="btn-validate" id="btn-validate-reading">Valider</button>
+      <div id="reading-reco"></div>
+    </div>
+
     <!-- Feedback -->
     <div class="feedback-area">
       <div id="feedback"></div>
@@ -856,6 +921,11 @@ const HERO_RANGES = {
   oop_3bp: { from: 3, to: 10 }
 };
 
+// Labels for the Hand Reading reco box
+const EQB_LABELS = { trash:'Trash', weak:'Weak', good:'Good', strong:'Strong' };
+const DRAW_LABELS = { gutshot:'gutshot', doublegutshot:'double gutshot', oesd:'OESD', fd:'flush draw', bdfd:'BDFD', none:'aucun tirage' };
+const ACTION_LABELS = { check:'Check', bet13:'Bet 1/3', bet23:'Bet 2/3', allin:'All-in', overbet:'Overbet', fold:'Fold', call:'Call', raise:'Raise', xr:'Check-raise' };
+
 function comboCount(type) {
   if (type.length === 2) return 6;
   return type[2] === 's' ? 4 : 12;
@@ -897,8 +967,9 @@ let gameMode = null;       // 'flop'|'turn'|'river'|'full'
 let currentStreet = 'flop';
 let currentTab = 'read';   // 'read'|'ip'|'oop'|'blocker' — isolated modes
 let blockerPhase = 0;      // 0=identification, 1=impact shown
-let position = 'ip';       // 'ip'|'oop' — full hand mode
-let fullPhase = 0;         // 0=flop, 1=turn, 2=river — full hand
+let position = 'ip';       // 'ip'|'oop' — full hand & reading mode
+let fullPhase = 0;         // 0=flop, 1=turn, 2=river — full hand & reading
+let pendingMode = 'full';  // mode awaiting position pick (full|reading)
 
 let deck, flop, turnCard, riverCard, heroHand;
 let boardInfo, turnInfo, riverInfo;
@@ -1640,7 +1711,7 @@ function generateContext() {
   const is3bp = Math.random() < computeWeight3BP();
   let heroPos, villainPos, isIP;
 
-  if (gameMode === 'full') {
+  if (gameMode === 'full' || gameMode === 'reading') {
     isIP = position === 'ip';
   } else {
     isIP = currentTab === 'ip' || currentTab === 'read';
@@ -1725,7 +1796,7 @@ function setCtxForStreet() {
 //  DEAL
 // ═══════════════════════════════════════════════════════════════
 function deal() {
-  if (gameMode === 'full') {
+  if (gameMode === 'full' || gameMode === 'reading') {
     fullPhase = 0;
     currentStreet = 'flop';
   }
@@ -1820,7 +1891,7 @@ function render() {
   const heroSec = document.getElementById('hero-section');
   const heroEl = document.getElementById('hero-cards');
   heroEl.innerHTML = '';
-  const showHero = (gameMode === 'full') || (currentTab !== 'read');
+  const showHero = (gameMode === 'full') || (gameMode === 'reading') || (currentTab !== 'read');
   if (showHero) {
     heroSec.classList.remove('hidden');
     heroHand.forEach(c => renderCard(c, heroEl, 'hero-card'));
@@ -1831,7 +1902,7 @@ function render() {
   // Blocker panel (hide on blocker tab to avoid spoiling)
   const blkPanel = document.getElementById('blocker-panel');
   blkPanel.innerHTML = '';
-  if (currentStreet === 'river' && showHero && currentTab !== 'blocker') {
+  if (currentStreet === 'river' && showHero && currentTab !== 'blocker' && gameMode !== 'reading') {
     const chip = document.createElement('div');
     chip.className = `blocker-chip ${blockers.summary}`;
     chip.textContent = blockers.label;
@@ -1887,7 +1958,9 @@ function render() {
 
   // Determine active panel
   let activePanel = null;
-  if (gameMode === 'full') {
+  if (gameMode === 'reading') {
+    activePanel = 'panel-reading';
+  } else if (gameMode === 'full') {
     activePanel = position === 'ip' ? 'panel-ip' : 'panel-oop';
   } else {
     if (currentTab === 'read') {
@@ -1907,6 +1980,12 @@ function render() {
   document.querySelectorAll('.panel').forEach(p => p.classList.add('hidden'));
   if (activePanel) document.getElementById(activePanel).classList.remove('hidden');
 
+  // Reading mode: no draws at river, clear reco
+  if (gameMode === 'reading') {
+    document.getElementById('reading-draws-group').classList.toggle('hidden', currentStreet === 'river');
+    document.getElementById('reading-reco').innerHTML = '';
+  }
+
   // Villain bet bar
   const vbb = document.getElementById('villain-bet-bar');
   const showVBB = (gameMode === 'full' && position === 'oop') || (currentTab === 'oop');
@@ -1920,8 +1999,8 @@ function render() {
     vbb.classList.add('hidden');
   }
 
-  // Progress bar (full hand)
-  if (gameMode === 'full') {
+  // Progress bar (full hand & reading)
+  if (gameMode === 'full' || gameMode === 'reading') {
     ['flop','turn','river'].forEach((s, i) => {
       const el = document.getElementById('prog-' + s);
       el.classList.remove('active','done');
@@ -2222,6 +2301,128 @@ function validateBlockers() {
 }
 
 // ═══════════════════════════════════════════════════════════════
+//  HAND READING — expected reading from classifier flags
+// ═══════════════════════════════════════════════════════════════
+function buildExpectedReading(hInfo, hand, street) {
+  const isPocket = rankVal(hand[0]) === rankVal(hand[1]);
+  let made;
+  if (hInfo.hasStraight && hInfo.hasFlush) made = 'straightflush';
+  else if (hInfo.hasQuads) made = 'quads';
+  else if (hInfo.hasFullHouse) made = 'fullhouse';
+  else if (hInfo.hasFlush) made = 'flush';
+  else if (hInfo.hasStraight) made = 'straight';
+  else if (hInfo.isSet) made = 'set';
+  else if (hInfo.hasTrips) made = 'trips';
+  else if (hInfo.isTwoPair) made = 'twopair';
+  else if (hInfo.isOverpair) made = 'overpair';
+  else if (hInfo.isTopPair) made = 'toppair';
+  else if (isPocket) made = 'pocketpair';
+  else if (hInfo.isMidPair) made = 'midpair';
+  else if (hInfo.isBotPair) made = 'botpair';
+  else made = 'nopair';
+
+  const draws = new Set();
+  if (street !== 'river') {
+    if (hInfo.hasFlushDraw) draws.add('fd');
+    else if (hInfo.hasBDFD) draws.add('bdfd');
+    if (hInfo.hasDoubleGutshot) draws.add('doublegutshot');
+    else if (hInfo.hasOESD) draws.add('oesd');
+    else if (hInfo.hasGutshot) draws.add('gutshot');
+  }
+  if (draws.size === 0) draws.add('none');
+
+  return { eqb: hInfo.eqb, made, draws };
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  VALIDATION — HAND READING (chained flop→turn→river)
+// ═══════════════════════════════════════════════════════════════
+function validateReading() {
+  if (answered) return;
+
+  const eqbSel = document.querySelector('#panel-reading .tag[data-cat="reqb"].selected');
+  const madeSel = document.querySelector('#panel-reading .tag[data-cat="rmade"].selected');
+  if (!eqbSel || !madeSel) {
+    showFeedback('wrong', '✗ Sélectionne force + combinaison');
+    return;
+  }
+
+  answered = true;
+  const isRiver = currentStreet === 'river';
+  const hInfo = getHandInfo();
+  const exp = buildExpectedReading(hInfo, heroHand, currentStreet);
+
+  // EQB axis (single-select binary)
+  const eqbOK = eqbSel.dataset.val === exp.eqb;
+  document.querySelectorAll('#panel-reading .tag[data-cat="reqb"]').forEach(t => {
+    if (t.dataset.val === exp.eqb) t.classList.add(t.classList.contains('selected') ? 'correct' : 'missed');
+    else if (t.classList.contains('selected')) t.classList.add('wrong');
+  });
+
+  // Made-hand axis (single-select binary)
+  const madeOK = madeSel.dataset.val === exp.made;
+  document.querySelectorAll('#panel-reading .tag[data-cat="rmade"]').forEach(t => {
+    if (t.dataset.val === exp.made) t.classList.add(t.classList.contains('selected') ? 'correct' : 'missed');
+    else if (t.classList.contains('selected')) t.classList.add('wrong');
+  });
+
+  // Draws axis (multi-select, skipped at river)
+  let drawsPerfect = true;
+  if (!isRiver) {
+    const selDraws = new Set();
+    document.querySelectorAll('#reading-draws .tag.selected').forEach(t => selDraws.add(t.dataset.val));
+    let hits = 0, misses = 0, extras = 0;
+    document.querySelectorAll('#reading-draws .tag').forEach(t => {
+      const v = t.dataset.val;
+      const isSel = selDraws.has(v);
+      const isExp = exp.draws.has(v);
+      if (isSel && isExp) { t.classList.add('correct'); hits++; }
+      else if (isSel && !isExp) { t.classList.add('wrong'); extras++; }
+      else if (!isSel && isExp) { t.classList.add('missed'); misses++; }
+    });
+    drawsPerfect = (hits === exp.draws.size && extras === 0 && misses === 0);
+  }
+
+  const allCorrect = eqbOK && madeOK && drawsPerfect;
+  totalQ++;
+  if (allCorrect) {
+    correctQ++; score += 1 + Math.floor(currentStreak / 3); currentStreak++;
+    showFeedback('correct', '✓ Lecture correcte !');
+  } else {
+    currentStreak = 0;
+    const axesOK = [eqbOK, madeOK].concat(isRiver ? [] : [drawsPerfect]).filter(Boolean).length;
+    showFeedback(axesOK > 0 ? 'partial' : 'wrong', axesOK > 0 ? '~ Partiel' : '✗ Raté');
+  }
+  streakHistory.push(allCorrect);
+  trackAccuracy('reading ' + currentStreet + ' ' + ctx.potType, allCorrect);
+
+  // Reco — best action that follows (text only, via existing engines)
+  const isIP = position === 'ip';
+  let answer;
+  if (isIP) {
+    if (currentStreet === 'flop') answer = computeCbetAnswer(hInfo, boardInfo, ctx);
+    else if (currentStreet === 'turn') answer = computeBarrelAnswer(hInfo, turnInfo, ctx.lineFlop, boardInfo, ctx);
+    else answer = computeRiverBetAnswer(hInfo, riverInfo, blockers, ctx.line, boardInfo, ctx);
+  } else {
+    if (currentStreet === 'flop') answer = computeFlopDefenseAnswer(hInfo, boardInfo, ctx);
+    else if (currentStreet === 'turn') answer = computeTurnDefenseAnswer(hInfo, turnInfo, ctx.lineFlop, boardInfo, ctx);
+    else answer = computeRiverDefenseAnswer(hInfo, riverInfo, blockers, ctx.line, ctx);
+  }
+
+  const trueDraws = [...exp.draws].filter(d => d !== 'none').map(d => DRAW_LABELS[d]);
+  const drawStr = trueDraws.length ? ' + ' + trueDraws.join(' + ') : '';
+  const actionStr = ACTION_LABELS[answer.best] || answer.best;
+  document.getElementById('reading-reco').innerHTML = `<div class="reading-reco-box">
+    <div class="rr-hand">${hInfo.handType}<span class="rr-eqb ${exp.eqb}">${EQB_LABELS[exp.eqb]}</span>${drawStr}</div>
+    <div class="rr-action">→ Action ${isIP ? 'IP' : 'OOP'} : <strong>${actionStr}</strong> — ${answer.reason}</div>
+  </div>`;
+
+  showDetail(`${hInfo.handType} · ${exp.eqb}${drawStr} · ${currentStreet} ${ctx.potType}`);
+  document.getElementById('next-btn').classList.add('visible');
+  updateStats();
+}
+
+// ═══════════════════════════════════════════════════════════════
 //  VALIDATION — ACTION (unified for IP and OOP, all streets)
 // ═══════════════════════════════════════════════════════════════
 function answerAction(action) {
@@ -2300,6 +2501,19 @@ function showDetail(text) {
 }
 
 function handleNext() {
+  if (gameMode === 'reading') {
+    if (fullPhase < 2) {
+      fullPhase++;
+      currentStreet = ['flop','turn','river'][fullPhase];
+      answered = false;
+      setCtxForStreet();
+      render();
+    } else {
+      deal();
+      render();
+    }
+    return;
+  }
   if (gameMode === 'full') {
     if (fullPhase < 2) {
       const segment = ctx._lastSegment || 'xx';
@@ -2351,11 +2565,11 @@ function startGame(mode, pos) {
   currentTab = 'read';
 
   // Title
-  const titles = { flop:'FLOP TRAINER', turn:'TURN TRAINER', river:'RIVER TRAINER', full:'FULL HAND — ' + (pos === 'ip' ? 'IP' : 'OOP') };
+  const titles = { flop:'FLOP TRAINER', turn:'TURN TRAINER', river:'RIVER TRAINER', full:'FULL HAND — ' + (pos === 'ip' ? 'IP' : 'OOP'), reading:'HAND READING — ' + (pos === 'ip' ? 'IP' : 'OOP') };
   document.getElementById('game-title').textContent = titles[mode];
 
   // Tab labels
-  if (mode !== 'full') {
+  if (mode !== 'full' && mode !== 'reading') {
     const tabLabels = {
       flop: { read:'Board Reading', ip:'C-Bet (IP)', oop:'Defense BB' },
       turn: { read:'Turn Card', ip:'IP Barrel', oop:'OOP Defense' },
@@ -2371,8 +2585,8 @@ function startGame(mode, pos) {
   document.getElementById('tab-blocker').classList.toggle('hidden', mode !== 'river');
 
   // Show/hide tabs vs progress bar
-  document.getElementById('tabs-bar').classList.toggle('hidden', mode === 'full');
-  document.getElementById('progress-bar').classList.toggle('hidden', mode !== 'full');
+  document.getElementById('tabs-bar').classList.toggle('hidden', mode === 'full' || mode === 'reading');
+  document.getElementById('progress-bar').classList.toggle('hidden', mode !== 'full' && mode !== 'reading');
 
   // Show game, hide landing
   document.getElementById('landing').classList.add('hidden');
@@ -2401,7 +2615,8 @@ function backToMenu() {
 document.querySelectorAll('.mode-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     const mode = btn.dataset.game;
-    if (mode === 'full') {
+    if (mode === 'full' || mode === 'reading') {
+      pendingMode = mode;
       document.getElementById('pos-select').classList.remove('hidden');
     } else {
       startGame(mode);
@@ -2412,7 +2627,7 @@ document.querySelectorAll('.mode-btn').forEach(btn => {
 // Landing: position buttons
 document.querySelectorAll('.pos-btn').forEach(btn => {
   btn.addEventListener('click', () => {
-    startGame('full', btn.dataset.pos);
+    startGame(pendingMode, btn.dataset.pos);
   });
 });
 
@@ -2436,6 +2651,7 @@ document.addEventListener('click', (e) => {
   const tag = e.target.closest('.tag');
   if (!tag || answered) return;
   const cat = tag.dataset.cat;
+  if (cat === 'rdraw' || cat === 'blk') return;   // multi-select cats have dedicated handlers
   document.querySelectorAll(`.tag[data-cat="${cat}"]`).forEach(t => t.classList.remove('selected'));
   tag.classList.add('selected');
 });
@@ -2465,7 +2681,23 @@ document.querySelectorAll('#blocker-tags .tag').forEach(tag => {
   });
 });
 
+// Reading draw tag clicks (multi-select, "none" exclusive)
+document.querySelectorAll('#reading-draws .tag').forEach(tag => {
+  tag.addEventListener('click', () => {
+    if (answered) return;
+    const val = tag.dataset.val;
+    if (val === 'none') {
+      document.querySelectorAll('#reading-draws .tag').forEach(t => t.classList.remove('selected'));
+      tag.classList.add('selected');
+    } else {
+      document.querySelector('#reading-draws .tag[data-val="none"]').classList.remove('selected');
+      tag.classList.toggle('selected');
+    }
+  });
+});
+
 // Validate buttons
+document.getElementById('btn-validate-reading').addEventListener('click', validateReading);
 document.getElementById('btn-validate-board').addEventListener('click', validateBoardReading);
 document.getElementById('btn-validate-turn').addEventListener('click', validateTurnReading);
 document.getElementById('btn-validate-river').addEventListener('click', validateRiverReading);
@@ -2481,6 +2713,7 @@ document.addEventListener('keydown', (e) => {
   if (e.key === ' ' || e.key === 'Enter') {
     e.preventDefault();
     if (answered) handleNext();
+    else if (gameMode === 'reading') validateReading();
     else if (currentTab === 'read' && currentStreet === 'flop') validateBoardReading();
     else if (currentTab === 'read' && currentStreet === 'turn') validateTurnReading();
     else if (currentTab === 'read' && currentStreet === 'river') validateRiverReading();
