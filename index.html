@@ -786,13 +786,19 @@ hr.sep { border: none; border-top: 1px solid var(--border); margin: 6px 0; width
       </div>
     </div>
 
-    <!-- ═══ Panel: OOP Defense ═══ -->
+    <!-- ═══ Panel: OOP Action ═══ -->
     <div id="panel-oop" class="panel hidden">
+      <!-- Donk phase: Hero first-action -->
+      <div class="actions" id="donk-actions">
+        <div class="action-btn" data-action="check"><span class="icon">✋</span>Check</div>
+        <div class="action-btn" data-action="donk"><span class="icon">💰</span>Bet ⅓</div>
+      </div>
+      <!-- Defense phase: after Hero check, villain bets -->
       <div class="villain-bet-bar hidden" id="villain-bet-bar">
         Villain bet <span class="bet-size" id="villain-bet-size">2/3 pot</span>
         &nbsp;·&nbsp; Pot odds <span class="odds" id="pot-odds">29%</span>
       </div>
-      <div class="actions" id="oop-actions">
+      <div class="actions hidden" id="oop-actions">
         <div class="action-btn" data-action="fold"><span class="icon">🗑️</span>Fold</div>
         <div class="action-btn" data-action="call"><span class="icon">📞</span>Call</div>
         <div class="action-btn" data-action="xr"><span class="icon">⚡</span>X/R</div>
@@ -924,7 +930,7 @@ const HERO_RANGES = {
 // Labels for the Hand Reading reco box
 const EQB_LABELS = { trash:'Trash', weak:'Weak', good:'Good', strong:'Strong' };
 const DRAW_LABELS = { gutshot:'gutshot', doublegutshot:'double gutshot', oesd:'OESD', fd:'flush draw', bdfd:'BDFD', none:'aucun tirage' };
-const ACTION_LABELS = { check:'Check', bet13:'Bet 1/3', bet23:'Bet 2/3', allin:'All-in', overbet:'Overbet', fold:'Fold', call:'Call', raise:'Raise', xr:'Check-raise' };
+const ACTION_LABELS = { check:'Check', bet13:'Bet 1/3', bet23:'Bet 2/3', allin:'All-in', overbet:'Overbet', fold:'Fold', call:'Call', raise:'Raise', xr:'Check-raise', donk:'Donk bet ⅓' };
 
 function comboCount(type) {
   if (type.length === 2) return 6;
@@ -969,6 +975,7 @@ let currentTab = 'read';   // 'read'|'ip'|'oop'|'blocker' — isolated modes
 let blockerPhase = 0;      // 0=identification, 1=impact shown
 let position = 'ip';       // 'ip'|'oop' — full hand & reading mode
 let fullPhase = 0;         // 0=flop, 1=turn, 2=river — full hand & reading
+let donkPhase = false;     // true = OOP first-action (bet/check), false = defense
 let pendingMode = 'full';  // mode awaiting position pick (full|reading)
 
 let deck, flop, turnCard, riverCard, heroHand;
@@ -1728,6 +1735,93 @@ function computeRiverDefenseAnswer(hInfo, rInfo, blk, line, context) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+//  DONK ENGINES — OOP first-action (Acevedo Ch.11/13/14)
+// ═══════════════════════════════════════════════════════════════
+function computeFlopDonkAnswer(hInfo, bInfo, ctx) {
+  const { eqb } = hInfo;
+  const { advantage, rank, cbetFreq, structure, texture, straights } = bInfo;
+
+  if (eqb === 'trash') return { best:'check', acceptable:['check'], reason:'Trash — check, pas de donk' };
+
+  if (advantage === 'bb') {
+    if (eqb === 'strong') return { best:'donk', acceptable:['donk','check'], reason:'Board BB — donk value', sizing:'13' };
+    if (eqb === 'good') return { best:'donk', acceptable:['donk','check'], reason:'Board BB — donk merged', sizing:'13' };
+    if (eqb === 'weak' && (hInfo.hasFlushDraw || hInfo.hasOESD)) return { best:'donk', acceptable:['donk','check'], reason:'Board BB + draw — donk semi-bluff', sizing:'13' };
+    return { best:'check', acceptable:['check','donk'], reason:'Board BB mais main faible — check' };
+  }
+  if (advantage === 'close') {
+    if (eqb === 'strong') return { best:'donk', acceptable:['donk','check'], reason:'Board neutre — donk value', sizing:'13' };
+    if (eqb === 'good' && rank === 'M') return { best:'check', acceptable:['check','donk'], reason:'Board mid — check preferred' };
+    if (eqb === 'good') return { best:'check', acceptable:['check','donk'], reason:'Equities proches — check' };
+    return { best:'check', acceptable:['check'], reason:'Board neutre + weak — check' };
+  }
+  if (eqb === 'strong' && structure === 'paired' && rank !== 'A' && rank !== 'H') {
+    return { best:'donk', acceptable:['donk','check'], reason:'Paired low + strong — donk value', sizing:'13' };
+  }
+  return { best:'check', acceptable:['check'], reason:'Board IP — check' };
+}
+
+function computeTurnDonkAnswer(hInfo, tInfo, lineFlop, bInfo, ctx) {
+  const { eqb } = hInfo;
+  const tc = tInfo.primary;
+  const tImpact = tInfo.impact;
+
+  if (eqb === 'trash') return { best:'check', acceptable:['check'], reason:'Trash — check' };
+
+  if (lineFlop === 'xx') {
+    if (eqb === 'strong') return { best:'donk', acceptable:['donk','check'], reason:'Delayed lead — value après x/x', sizing:'13' };
+    if (eqb === 'good') {
+      if (bInfo.dynamic === 'dynamic') return { best:'donk', acceptable:['donk','check'], reason:'Delayed lead — protection board dynamique', sizing:'13' };
+      return { best:'donk', acceptable:['donk','check'], reason:'Delayed lead — stab après x/x', sizing:'13' };
+    }
+    if (eqb === 'weak' && (hInfo.hasFlushDraw || hInfo.hasOESD)) return { best:'donk', acceptable:['donk','check'], reason:'Delayed semi-bluff après x/x', sizing:'13' };
+    return { best:'check', acceptable:['check','donk'], reason:'Weak après x/x — check' };
+  }
+
+  if (tImpact === 'oop') {
+    if (eqb === 'strong') return { best:'donk', acceptable:['donk','check'], reason:'Turn OOP↑ — donk value', sizing:'13' };
+    if (eqb === 'good') return { best:'donk', acceptable:['donk','check'], reason:'Turn OOP↑ — donk merged', sizing:'13' };
+    return { best:'check', acceptable:['check','donk'], reason:'Turn OOP↑ mais weak — check' };
+  }
+  if (tc === 'paired' || tc === 'brick') {
+    if (eqb === 'strong') return { best:'donk', acceptable:['donk','check'], reason:'Turn neutre — donk value possible', sizing:'13' };
+    return { best:'check', acceptable:['check'], reason:'Check vers IP après x/b/c' };
+  }
+  return { best:'check', acceptable:['check'], reason:'Check vers IP — range condensée' };
+}
+
+function computeRiverDonkAnswer(hInfo, rInfo, blk, line, bInfo, ctx) {
+  const { eqb } = hInfo;
+  const rImpact = rInfo.impact;
+
+  if (eqb === 'trash') {
+    if (blk.blocksValue && line && line.endsWith('xx')) return { best:'donk', acceptable:['donk','check'], reason:'Bluff — blocker value + IP faible', sizing:'23' };
+    return { best:'check', acceptable:['check'], reason:'Trash — check' };
+  }
+
+  if (line === 'xx_xx') {
+    if (eqb === 'strong') return { best:'donk', acceptable:['donk','check'], reason:'Lead river — IP condensé après x/x x/x', sizing:'23' };
+    if (eqb === 'good') return { best:'donk', acceptable:['donk','check'], reason:'Lead river — thin value après x/x x/x', sizing:'13' };
+    return { best:'check', acceptable:['check','donk'], reason:'Check — showdown après x/x x/x' };
+  }
+  if (line && line.endsWith('xx')) {
+    if (eqb === 'strong') return { best:'donk', acceptable:['donk','check'], reason:'Lead — IP check-back = range faible', sizing:'23' };
+    if (eqb === 'good') return { best:'donk', acceptable:['donk','check'], reason:'Thin value — IP condensé', sizing:'13' };
+    return { best:'check', acceptable:['check'], reason:'Check — pas assez fort pour lead' };
+  }
+
+  if (rImpact === 'oop') {
+    if (eqb === 'strong') return { best:'donk', acceptable:['donk','check'], reason:'River OOP↑ — donk value rare mais haute EV', sizing:'23' };
+    if (eqb === 'good') return { best:'donk', acceptable:['donk','check'], reason:'River OOP↑ — donk merged', sizing:'13' };
+    return { best:'check', acceptable:['check'], reason:'River OOP↑ mais weak — check' };
+  }
+
+  if (ctx.spr > 3 && eqb === 'strong') return { best:'donk', acceptable:['donk','check'], reason:'SPR élevé + strong — lead value', sizing:'23' };
+
+  return { best:'check', acceptable:['check'], reason:'Check vers IP — defense standard' };
+}
+
+// ═══════════════════════════════════════════════════════════════
 //  CONTEXT GENERATION
 // ═══════════════════════════════════════════════════════════════
 function generateContext() {
@@ -1845,6 +1939,7 @@ function deal() {
   blockers = detectBlockers(heroHand, fullBoard);
 
   answered = false;
+  donkPhase = !ctx.isIP && gameMode !== 'reading';
 }
 
 function getHandInfo() {
@@ -2009,16 +2104,26 @@ function render() {
     document.getElementById('reading-reco').innerHTML = '';
   }
 
-  // Villain bet bar
+  // OOP phase management: donk buttons vs defense buttons
+  const isOOPPanel = (gameMode === 'full' && position === 'oop') || (currentTab === 'oop');
+  const donkEl = document.getElementById('donk-actions');
+  const oopEl = document.getElementById('oop-actions');
   const vbb = document.getElementById('villain-bet-bar');
-  const showVBB = (gameMode === 'full' && position === 'oop') || (currentTab === 'oop');
-  if (showVBB) {
+  if (isOOPPanel && donkPhase) {
+    donkEl.classList.remove('hidden');
+    oopEl.classList.add('hidden');
+    vbb.classList.add('hidden');
+  } else if (isOOPPanel) {
+    donkEl.classList.add('hidden');
+    oopEl.classList.remove('hidden');
     vbb.classList.remove('hidden');
     const betLabel = ctx.villainBetSize === 'min' ? 'Min-bet' : ctx.villainBetSize === '13' ? '1/3 pot' : '2/3 pot';
     document.getElementById('villain-bet-size').textContent = betLabel;
     const odds = ctx.villainBetSize === 'min' ? '17%' : ctx.villainBetSize === '13' ? '20%' : '29%';
     document.getElementById('pot-odds').textContent = odds;
   } else {
+    donkEl.classList.add('hidden');
+    oopEl.classList.add('hidden');
     vbb.classList.add('hidden');
   }
 
@@ -2432,13 +2537,32 @@ function validateReading() {
     else answer = computeRiverDefenseAnswer(hInfo, riverInfo, blockers, ctx.line, ctx);
   }
 
+  // OOP donk reco (first-action before defense)
+  let donkAnswer = null;
+  if (!isIP) {
+    if (currentStreet === 'flop') donkAnswer = computeFlopDonkAnswer(hInfo, boardInfo, ctx);
+    else if (currentStreet === 'turn') donkAnswer = computeTurnDonkAnswer(hInfo, turnInfo, ctx.lineFlop, boardInfo, ctx);
+    else donkAnswer = computeRiverDonkAnswer(hInfo, riverInfo, blockers, ctx.line, boardInfo, ctx);
+  }
+
   const trueDraws = [...exp.draws].filter(d => d !== 'none').map(d => DRAW_LABELS[d]);
   const drawStr = trueDraws.length ? ' + ' + trueDraws.join(' + ') : '';
   const actionStr = ACTION_LABELS[answer.best] || answer.best;
-  document.getElementById('reading-reco').innerHTML = `<div class="reading-reco-box">
-    <div class="rr-hand">${hInfo.handType}<span class="rr-eqb ${exp.eqb}">${EQB_LABELS[exp.eqb]}</span>${drawStr}</div>
-    <div class="rr-action">→ Action ${isIP ? 'IP' : 'OOP'} : <strong>${actionStr}</strong> — ${answer.reason}</div>
-  </div>`;
+  let recoHtml;
+  if (donkAnswer && donkAnswer.best === 'donk') {
+    recoHtml = `<div class="reading-reco-box">
+      <div class="rr-hand">${hInfo.handType}<span class="rr-eqb ${exp.eqb}">${EQB_LABELS[exp.eqb]}</span>${drawStr}</div>
+      <div class="rr-action">→ 1re action OOP : <strong>Donk bet ⅓</strong> — ${donkAnswer.reason}</div>
+      <div class="rr-action" style="opacity:0.6">→ Si check : ${actionStr} — ${answer.reason}</div>
+    </div>`;
+  } else {
+    const donkNote = donkAnswer ? ` <span style="opacity:0.5">(donk: check)</span>` : '';
+    recoHtml = `<div class="reading-reco-box">
+      <div class="rr-hand">${hInfo.handType}<span class="rr-eqb ${exp.eqb}">${EQB_LABELS[exp.eqb]}</span>${drawStr}</div>
+      <div class="rr-action">→ Action ${isIP ? 'IP' : 'OOP'} : <strong>${actionStr}</strong> — ${answer.reason}${donkNote}</div>
+    </div>`;
+  }
+  document.getElementById('reading-reco').innerHTML = recoHtml;
 
   showDetail(`${hInfo.handType} · ${exp.eqb}${drawStr} · ${currentStreet} ${ctx.potType}`);
   document.getElementById('next-btn').classList.add('visible');
@@ -2511,6 +2635,60 @@ function answerAction(action) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+//  VALIDATION — DONK (OOP first-action: bet or check)
+// ═══════════════════════════════════════════════════════════════
+function answerDonk(action) {
+  if (answered) return;
+
+  if (action === 'check') {
+    donkPhase = false;
+    document.querySelectorAll('#donk-actions .action-btn').forEach(b => b.classList.remove('correct','wrong','best'));
+    render();
+    return;
+  }
+
+  answered = true;
+  donkPhase = false;
+
+  const hInfo = getHandInfo();
+  let answer;
+  if (currentStreet === 'flop') answer = computeFlopDonkAnswer(hInfo, boardInfo, ctx);
+  else if (currentStreet === 'turn') answer = computeTurnDonkAnswer(hInfo, turnInfo, ctx.lineFlop, boardInfo, ctx);
+  else answer = computeRiverDonkAnswer(hInfo, riverInfo, blockers, ctx.line, boardInfo, ctx);
+
+  const correct = answer.acceptable.includes('donk');
+  const isBest = answer.best === 'donk';
+  totalQ++;
+
+  document.querySelectorAll('#donk-actions .action-btn').forEach(b => {
+    if (b.dataset.action === 'donk') b.classList.add(correct ? 'correct' : 'wrong');
+    if (b.dataset.action === answer.best) b.classList.add('best');
+  });
+
+  if (correct) {
+    correctQ++;
+    score += isBest ? (1 + Math.floor(currentStreak / 3)) : 1;
+    currentStreak = isBest ? currentStreak + 1 : currentStreak;
+    showFeedback('correct', isBest ? '✓ Donk correct !' : '✓ Donk acceptable');
+  } else {
+    currentStreak = 0;
+    showFeedback('wrong', '✗ Check était mieux');
+  }
+  streakHistory.push(correct);
+
+  if (gameMode === 'full') {
+    ctx._lastSegment = 'xbc';
+  }
+
+  const detail = `${hInfo.handType} (${hInfo.eqb}) · Donk ${answer.sizing || '⅓'} · ${answer.reason}`;
+  showDetail(detail);
+  trackAccuracy('donk ' + currentStreet + ' ' + ctx.potType, correct);
+
+  document.getElementById('next-btn').classList.add('visible');
+  updateStats();
+}
+
+// ═══════════════════════════════════════════════════════════════
 //  UI HELPERS
 // ═══════════════════════════════════════════════════════════════
 function showFeedback(type, text) {
@@ -2561,6 +2739,7 @@ function handleNext() {
       fullPhase++;
       currentStreet = ['flop','turn','river'][fullPhase];
       answered = false;
+      donkPhase = position === 'oop';
       setCtxForStreet();
       render();
     } else {
@@ -2689,6 +2868,11 @@ document.querySelectorAll('#oop-actions .action-btn').forEach(btn => {
   btn.addEventListener('click', () => answerAction(btn.dataset.action));
 });
 
+// Donk action clicks
+document.querySelectorAll('#donk-actions .action-btn').forEach(btn => {
+  btn.addEventListener('click', () => answerDonk(btn.dataset.action));
+});
+
 // Blocker tag clicks (multi-select, "none" exclusive)
 document.querySelectorAll('#blocker-tags .tag').forEach(tag => {
   tag.addEventListener('click', () => {
@@ -2753,7 +2937,10 @@ document.addEventListener('keydown', (e) => {
       if (e.key === '3') answerAction('bet23');
       if (e.key === '4') answerAction(currentStreet === 'turn' ? 'overbet' : 'allin');
     }
-    if (isOOPMode) {
+    if (isOOPMode && donkPhase) {
+      if (e.key === '1') answerDonk('check');
+      if (e.key === '2') answerDonk('donk');
+    } else if (isOOPMode) {
       if (e.key === '1') answerAction('fold');
       if (e.key === '2') answerAction('call');
       if (e.key === '3') answerAction(currentStreet === 'river' ? 'raise' : 'xr');
