@@ -625,7 +625,7 @@ hr.sep { border: none; border-top: 1px solid var(--border); margin: 6px 0; width
     <details>
       <summary>Notes de version</summary>
       <div class="changelog-entry">
-        <span class="changelog-ver">s42</span> Fix : flush/flush draw fantôme (board flush sans carte Hero) + OESD→gutshot Broadway (J-Q-K-A = 4 outs, pas 8)
+        <span class="changelog-ver">s42</span> Fix : flush/flush draw fantôme (board flush sans carte Hero) + OESD→gutshot Broadway (J-Q-K-A) + downgrade EQB sur board 4-flush sans carte couleur
       </div>
       <div class="changelog-entry">
         <span class="changelog-ver">s40</span> Donk bet OOP v1 — 3 engines Ch.11/13/14, flow 2 phases (Bet ⅓ / Check)
@@ -1317,6 +1317,11 @@ function classifyHand(hand, board, bInfo) {
   const hasFlushDraw = !hasFlush && maxSuitCount >= 4 && Object.entries(suitCounts).some(([s, c]) => c >= 4 && hs.includes(s));
   const hasBDFD = !hasFlush && !hasFlushDraw && board.length <= 3 && maxSuitCount >= 3 && Object.entries(suitCounts).some(([s, c]) => c >= 3 && hs.includes(s));
 
+  // Board flush vulnerability: 4+ board cards same suit, Hero has 0 of that suit
+  const boardSuitCounts = {};
+  for (const s of fs) boardSuitCounts[s] = (boardSuitCounts[s]||0) + 1;
+  const flushVulnerable = Object.entries(boardSuitCounts).some(([s, c]) => c >= 4 && !hs.includes(s));
+
   const allVals = [...new Set([...hr, ...fr])].sort((a,b) => a-b);
   let hasStraight = false, hasOESD = false;
   const gutshotOuts = new Set();
@@ -1382,9 +1387,15 @@ function classifyHand(hand, board, bInfo) {
   else if (hasGutshot) { eqb = 'trash'; handType = 'Gutshot'; }
   else { eqb = 'trash'; handType = 'Air'; }
 
+  // Downgrade EQB on flush-vulnerable boards (4+ board same suit, Hero 0)
+  // Full house+ bat une flush → pas de downgrade
+  if (flushVulnerable && !hasQuads && !hasFullHouse && (eqb === 'strong' || eqb === 'good')) {
+    eqb = 'weak';
+  }
+
   return { eqb, handType, hasFlushDraw, hasBDFD, hasOESD, hasGutshot, hasDoubleGutshot,
            isOverpair, isTopPair, isMidPair, isBotPair, isSet, hasTrips, isTwoPair,
-           hasStraight, hasFlush, hasFullHouse, hasQuads };
+           hasStraight, hasFlush, hasFullHouse, hasQuads, flushVulnerable };
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1422,6 +1433,11 @@ function classifyHandRiver(hand, board) {
   for (const s of [...hs, ...fs]) suitCounts[s] = (suitCounts[s]||0) + 1;
   const hasFlush = Object.entries(suitCounts).some(([s, c]) => c >= 5 && hs.includes(s));
 
+  // Board flush vulnerability: 4+ board cards same suit, Hero has 0 of that suit
+  const boardSuitCounts = {};
+  for (const s of fs) boardSuitCounts[s] = (boardSuitCounts[s]||0) + 1;
+  const flushVulnerable = Object.entries(boardSuitCounts).some(([s, c]) => c >= 4 && !hs.includes(s));
+
   const allVals = [...new Set([...hr, ...fr])].sort((a,b) => a-b);
   let hasStraight = false;
   for (let low = 0; low <= 9; low++) {
@@ -1456,8 +1472,13 @@ function classifyHandRiver(hand, board) {
   else if (hr[0] >= 11) { eqb = 'trash'; handType = 'K-high'; }
   else { eqb = 'trash'; handType = 'Air'; }
 
+  // Downgrade EQB on flush-vulnerable boards (4+ board same suit, Hero 0)
+  if (flushVulnerable && !hasQuads && !hasFullHouse && (eqb === 'strong' || eqb === 'good')) {
+    eqb = 'weak';
+  }
+
   return { eqb, handType, isOverpair, isTopPair, isMidPair, isBotPair,
-           isSet, hasTrips, isTwoPair, hasStraight, hasFlush, hasFullHouse, hasQuads };
+           isSet, hasTrips, isTwoPair, hasStraight, hasFlush, hasFullHouse, hasQuads, flushVulnerable };
 }
 
 // ═══════════════════════════════════════════════════════════════
