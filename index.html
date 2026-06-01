@@ -1204,7 +1204,7 @@ function classifyTurnCard(tc, flopCards) {
   for (let low = 0; low <= 9; low++) {
     const w = [low, low+1, low+2, low+3, low+4];
     const inW = allBoardVals.filter(v => w.includes(v));
-    if (inW.length >= 3 && w.includes(tRank)) { isStraighty = true; break; }
+    if (inW.length >= 4 && w.includes(tRank)) { isStraighty = true; break; }
   }
   if (allBoardVals.includes(12)) {
     const lowCards = allBoardVals.filter(v => v <= 3);
@@ -1325,7 +1325,7 @@ function classifyHand(hand, board, bInfo) {
   const allVals = [...new Set([...hr, ...fr])].sort((a,b) => a-b);
   let hasStraight = false, hasOESD = false;
   const gutshotOuts = new Set();
-  for (let low = 0; low <= 9; low++) {
+  for (let low = 0; low <= 8; low++) {
     const w = [low, low+1, low+2, low+3, low+4];
     const valsInW = allVals.filter(v => w.includes(v));
     const heroContributes = w.some(v => hr.includes(v) && !fr.includes(v));
@@ -1440,7 +1440,7 @@ function classifyHandRiver(hand, board) {
 
   const allVals = [...new Set([...hr, ...fr])].sort((a,b) => a-b);
   let hasStraight = false;
-  for (let low = 0; low <= 9; low++) {
+  for (let low = 0; low <= 8; low++) {
     const w = [low,low+1,low+2,low+3,low+4];
     const heroContributes = w.some(v => hr.includes(v) && !fr.includes(v));
     if (allVals.filter(v => w.includes(v)).length >= 5 && heroContributes) hasStraight = true;
@@ -1515,8 +1515,10 @@ function detectBlockers(hand, board) {
   const blocksTopPair = hr.some(v => v === topRank);
 
   let blocksMissedDraw = false;
-  for (const [suit, count] of Object.entries(boardSuitCounts)) {
-    if (count === 2 && hand.some(c => cardSuit(c) === suit && rankVal(c) >= 8))
+  const flopSuitCounts = {};
+  for (const s of board.slice(0, 3).map(c => cardSuit(c))) flopSuitCounts[s] = (flopSuitCounts[s]||0) + 1;
+  for (const [suit, count] of Object.entries(flopSuitCounts)) {
+    if (count >= 2 && boardSuitCounts[suit] < 5 && hand.some(c => cardSuit(c) === suit && rankVal(c) >= 8))
       blocksMissedDraw = true;
   }
 
