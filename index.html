@@ -496,12 +496,10 @@ body {
   font-style: italic;
 }
 
-#next-btn {
+#next-btn, #skip-btn {
   display: none;
   margin-top: 8px;
   padding: 10px 36px;
-  background: var(--green);
-  color: #000;
   border: none;
   border-radius: 8px;
   font-family: 'Rajdhani', sans-serif;
@@ -510,8 +508,12 @@ body {
   cursor: pointer;
   letter-spacing: 1px;
 }
+#next-btn { background: var(--green); color: #000; }
 #next-btn.visible { display: inline-block; }
 #next-btn:hover { filter: brightness(1.15); }
+#skip-btn { background: transparent; color: var(--text2); border: 1px solid var(--text2); font-size: 0.9rem; padding: 8px 20px; }
+#skip-btn.visible { display: inline-block; }
+#skip-btn:hover { color: var(--text1); border-color: var(--text1); }
 
 .btn-validate {
   display: block;
@@ -624,6 +626,12 @@ hr.sep { border: none; border-top: 1px solid var(--border); margin: 6px 0; width
   <div class="changelog">
     <details>
       <summary>Notes de version</summary>
+      <div class="changelog-entry">
+        <span class="changelog-ver">s44</span> Fix : straight flush faux positif (#47) + SPR bas SRP → all-in + 3BP visuel sur tous les panels
+      </div>
+      <div class="changelog-entry">
+        <span class="changelog-ver">s43</span> Fix : phantom double gutshot + blocksMissedDraw flop-only + classifyTurnCard seuil (#46)
+      </div>
       <div class="changelog-entry">
         <span class="changelog-ver">s42</span> Fix : flush/flush draw fantôme (board flush sans carte Hero) + OESD→gutshot Broadway (J-Q-K-A) + downgrade EQB sur board 4-flush sans carte couleur
       </div>
@@ -914,9 +922,11 @@ hr.sep { border: none; border-top: 1px solid var(--border); margin: 6px 0; width
     <div class="feedback-area">
       <div id="feedback"></div>
       <div class="detail" id="detail"></div>
+      <button id="skip-btn">PASSER ⏭</button>
       <button id="next-btn">SUIVANT →</button>
       <div class="shortcuts">
         <span><kbd>Espace</kbd> Suivant</span>
+        <span><kbd>N</kbd> Passer</span>
         <span><kbd>1-6</kbd> Tags/Actions</span>
       </div>
     </div>
@@ -1350,8 +1360,20 @@ function classifyHand(hand, board, bInfo) {
   if (hasDoubleGutshot) hasOESD = true;
   const hasGutshot = gutshotOuts.size === 1;
 
+  let hasStraightFlush = false;
+  if (hasFlush && hasStraight) {
+    const flushSuit = Object.entries(suitCounts).find(([s, c]) => c >= 5 && hs.includes(s))?.[0];
+    if (flushSuit) {
+      const sfRanks = [...new Set([...hand, ...board].filter(c => cardSuit(c) === flushSuit).map(c => rankVal(c)))].sort((a,b) => a-b);
+      for (let i = 0; i <= sfRanks.length - 5; i++) {
+        if (sfRanks[i+4] - sfRanks[i] === 4) { hasStraightFlush = true; break; }
+      }
+      if (!hasStraightFlush && sfRanks.includes(12) && [0,1,2,3].every(v => sfRanks.includes(v))) hasStraightFlush = true;
+    }
+  }
+
   let eqb, handType;
-  if (hasStraight && hasFlush) { eqb = 'strong'; handType = 'Straight flush'; }
+  if (hasStraightFlush) { eqb = 'strong'; handType = 'Straight flush'; }
   else if (hasQuads) { eqb = 'strong'; handType = 'Quads'; }
   else if (hasFullHouse) { eqb = 'strong'; handType = 'Full house'; }
   else if (hasFlush) { eqb = 'strong'; handType = 'Flush'; }
@@ -1395,7 +1417,7 @@ function classifyHand(hand, board, bInfo) {
 
   return { eqb, handType, hasFlushDraw, hasBDFD, hasOESD, hasGutshot, hasDoubleGutshot,
            isOverpair, isTopPair, isMidPair, isBotPair, isSet, hasTrips, isTwoPair,
-           hasStraight, hasFlush, hasFullHouse, hasQuads, flushVulnerable };
+           hasStraight, hasFlush, hasStraightFlush, hasFullHouse, hasQuads, flushVulnerable };
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1449,8 +1471,20 @@ function classifyHandRiver(hand, board) {
     if ([12,0,1,2,3].some(v => hr.includes(v) && !fr.includes(v))) hasStraight = true;
   }
 
+  let hasStraightFlush = false;
+  if (hasFlush && hasStraight) {
+    const flushSuit = Object.entries(suitCounts).find(([s, c]) => c >= 5 && hs.includes(s))?.[0];
+    if (flushSuit) {
+      const sfRanks = [...new Set([...hand, ...board].filter(c => cardSuit(c) === flushSuit).map(c => rankVal(c)))].sort((a,b) => a-b);
+      for (let i = 0; i <= sfRanks.length - 5; i++) {
+        if (sfRanks[i+4] - sfRanks[i] === 4) { hasStraightFlush = true; break; }
+      }
+      if (!hasStraightFlush && sfRanks.includes(12) && [0,1,2,3].every(v => sfRanks.includes(v))) hasStraightFlush = true;
+    }
+  }
+
   let eqb, handType;
-  if (hasStraight && hasFlush) { eqb = 'strong'; handType = 'Straight flush'; }
+  if (hasStraightFlush) { eqb = 'strong'; handType = 'Straight flush'; }
   else if (hasQuads) { eqb = 'strong'; handType = 'Quads'; }
   else if (hasFullHouse) { eqb = 'strong'; handType = 'Full house'; }
   else if (hasFlush) { eqb = 'strong'; handType = 'Flush'; }
@@ -1478,7 +1512,7 @@ function classifyHandRiver(hand, board) {
   }
 
   return { eqb, handType, isOverpair, isTopPair, isMidPair, isBotPair,
-           isSet, hasTrips, isTwoPair, hasStraight, hasFlush, hasFullHouse, hasQuads, flushVulnerable };
+           isSet, hasTrips, isTwoPair, hasStraight, hasFlush, hasStraightFlush, hasFullHouse, hasQuads, flushVulnerable };
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1633,6 +1667,12 @@ function computeBarrelAnswer(hInfo, tInfo, line, bInfo, context) {
       if (eqb === 'weak' && hasDraw) return { best:'bet13', acceptable:['bet13','check'], reason:'3BP — semi-bluff' };
       return { best:'check', acceptable:['check','bet13'], reason:'3BP — give up' };
     }
+    if (context.spr <= 1) {
+      if (eqb === 'strong') return { best:'overbet', acceptable:['overbet','bet23'], reason:'SPR bas — shove value' };
+      if (eqb === 'good') return { best:'overbet', acceptable:['overbet','bet23'], reason:'SPR bas — shove protection' };
+      if (eqb === 'weak' && hasDraw) return { best:'overbet', acceptable:['overbet','bet23'], reason:'SPR bas — shove semi-bluff' };
+      return { best:'check', acceptable:['check'], reason:'SPR bas — give up' };
+    }
     if (eqb === 'strong') {
       if (tc==='paired') return { best:'bet13', acceptable:['bet13','bet23'], reason:'Value — board paired, bet petit' };
       if (tc==='ace'||tc==='overcard') return { best:'bet23', acceptable:['bet23','overbet'], reason:'Value — carte IP' };
@@ -1733,6 +1773,16 @@ function computeRiverBetAnswer(hInfo, rInfo, blk, line, bInfo, context) {
     if (eqb === 'weak') return { best:'check', acceptable:['check'], reason:'3BP — showdown' };
     if (blk.blocksValue) return { best:'bet23', acceptable:['bet23','allin'], reason:'3BP — bluff, bloquer value' };
     return { best:'check', acceptable:['check'], reason:'3BP — give up' };
+  }
+
+  if (!is3bp && context.spr <= 1) {
+    if (eqb === 'strong') return vulnerableStrong
+      ? { best:'check', acceptable:['check','allin'], reason:'SPR bas — main vulnérable, check ou shove' }
+      : { best:'allin', acceptable:['allin'], reason:'SPR bas — shove value' };
+    if (eqb === 'good') return { best:'allin', acceptable:['allin','check'], reason:'SPR bas — shove thin value' };
+    if (eqb === 'weak') return { best:'check', acceptable:['check'], reason:'SPR bas — showdown' };
+    if (blk.blocksValue) return { best:'allin', acceptable:['allin'], reason:'SPR bas — bluff shove, bloquer value' };
+    return { best:'check', acceptable:['check'], reason:'SPR bas — give up' };
   }
 
   if (line === 'xbc_xbc') {
@@ -2137,10 +2187,16 @@ function render() {
     }
   }
 
-  // 3BP visual on action containers
+  // 3BP visual on all panels
   const is3bp = ctx.potType === '3BP';
   document.getElementById('ip-actions').classList.toggle('pot-3bp', is3bp);
   document.getElementById('oop-actions').classList.toggle('pot-3bp', is3bp);
+  document.getElementById('donk-actions').classList.toggle('pot-3bp', is3bp);
+  document.getElementById('panel-flop-read').classList.toggle('pot-3bp', is3bp);
+  document.getElementById('panel-turn-read').classList.toggle('pot-3bp', is3bp);
+  document.getElementById('panel-river-read').classList.toggle('pot-3bp', is3bp);
+  document.getElementById('panel-reading').classList.toggle('pot-3bp', is3bp);
+  document.getElementById('panel-blocker').classList.toggle('pot-3bp', is3bp);
 
   // Determine active panel
   let activePanel = null;
@@ -2214,6 +2270,7 @@ function render() {
   document.getElementById('feedback').innerHTML = '';
   document.getElementById('detail').textContent = '';
   document.getElementById('next-btn').classList.remove('visible');
+  document.getElementById('skip-btn').classList.add('visible');
 
   updateStats();
 }
@@ -2502,7 +2559,7 @@ function validateBlockers() {
 function buildExpectedReading(hInfo, hand, street) {
   const isPocket = rankVal(hand[0]) === rankVal(hand[1]);
   let made;
-  if (hInfo.hasStraight && hInfo.hasFlush) made = 'straightflush';
+  if (hInfo.hasStraightFlush) made = 'straightflush';
   else if (hInfo.hasQuads) made = 'quads';
   else if (hInfo.hasFullHouse) made = 'fullhouse';
   else if (hInfo.hasFlush) made = 'flush';
@@ -2978,12 +3035,19 @@ document.getElementById('btn-validate-turn').addEventListener('click', validateT
 document.getElementById('btn-validate-river').addEventListener('click', validateRiverReading);
 document.getElementById('btn-validate-blockers').addEventListener('click', validateBlockers);
 
-// Next button
+// Next & Skip buttons
 document.getElementById('next-btn').addEventListener('click', handleNext);
+document.getElementById('skip-btn').addEventListener('click', () => { deal(); render(); });
 
 // Keyboard shortcuts
 document.addEventListener('keydown', (e) => {
   if (!gameMode) return;
+
+  if (e.key === 'n' || e.key === 'N') {
+    e.preventDefault();
+    deal(); render();
+    return;
+  }
 
   if (e.key === ' ' || e.key === 'Enter') {
     e.preventDefault();
