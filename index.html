@@ -1160,13 +1160,16 @@ function classifyBoard(flopCards) {
 
   let cbetFreq;
   if (structure === 'trips') cbetFreq = 'high';
-  else if (structure === 'paired') cbetFreq = (rank === 'A' || rank === 'H') ? 'high' : 'mid';
+  else if (structure === 'paired') cbetFreq = 'high';
   else {
     if (rank === 'A') cbetFreq = 'high';
     else if (rank === 'H') cbetFreq = straights >= 2 ? 'mid' : 'high';
     else if (rank === 'M') cbetFreq = straights >= 2 ? 'low' : 'mid';
     else cbetFreq = 'low';
-    if (texture === 'monotone' && cbetFreq === 'mid') cbetFreq = 'high';
+    if (texture === 'monotone') {
+      if (cbetFreq === 'high') cbetFreq = 'low';
+      else if (cbetFreq === 'mid') cbetFreq = 'low';
+    }
   }
 
   let cbetSizing;
