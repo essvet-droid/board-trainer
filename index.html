@@ -113,6 +113,122 @@ body {
 .mode-btn .mode-emoji { font-size: 1.5rem; display: block; margin-bottom: 4px; }
 .mode-btn.full-hand { grid-column: 1 / -1; border-color: var(--accent2); }
 .mode-btn.full-hand:hover { border-color: var(--gold); color: var(--gold); }
+.mode-btn.atlas-drill { grid-column: 1 / -1; border-color: var(--gold); background: linear-gradient(135deg, var(--surface) 0%, rgba(255,215,64,0.06) 100%); }
+.mode-btn.atlas-drill:hover { border-color: var(--orange); color: var(--orange); }
+
+/* ═══════════════════════════════════════════
+   ATLAS DRILL
+   ═══════════════════════════════════════════ */
+.atlas-step-label {
+  font-size: 0.75rem;
+  color: var(--dim);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+  text-align: center;
+}
+.atlas-btns {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+.atlas-btn {
+  padding: 12px 18px;
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: 90px;
+  text-align: center;
+  line-height: 1.3;
+}
+.atlas-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--surface2); }
+.atlas-btn.selected { border-color: var(--accent); background: rgba(0,229,255,0.1); color: var(--accent); pointer-events: none; }
+.atlas-btn.correct { border-color: var(--green); background: rgba(0,230,118,0.10); color: var(--green); }
+.atlas-btn.wrong { border-color: var(--red); background: rgba(255,82,82,0.08); color: var(--red); }
+.atlas-btn.best { border-color: var(--green); box-shadow: 0 0 10px rgba(0,230,118,0.3); }
+.atlas-btn.locked { opacity: 0.5; pointer-events: none; }
+
+.atlas-correction {
+  margin-top: 12px;
+  padding: 14px 18px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface2);
+  text-align: center;
+}
+.atlas-family-tag {
+  display: inline-block;
+  padding: 3px 12px;
+  border-radius: 6px;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.atlas-family-desc {
+  font-size: 0.8rem;
+  color: var(--dim);
+  margin-top: 4px;
+}
+.atlas-prescription {
+  font-size: 0.85rem;
+  margin-top: 6px;
+  color: var(--text);
+}
+
+.atlas-dashboard {
+  margin-top: 16px;
+  width: 100%;
+}
+.atlas-dash-title {
+  font-size: 0.65rem;
+  color: var(--dim);
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 6px;
+}
+.atlas-dash-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 3px;
+  font-size: 0.7rem;
+}
+.atlas-dash-label {
+  flex: 0 0 130px;
+  color: var(--text);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.atlas-dash-bar {
+  flex: 1;
+  height: 5px;
+  background: var(--surface);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.atlas-dash-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s;
+}
+.atlas-dash-pct {
+  flex: 0 0 55px;
+  text-align: right;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.65rem;
+  color: var(--dim);
+}
 
 .pos-select {
   display: flex;
@@ -613,6 +729,7 @@ hr.sep { border: none; border-top: 1px solid var(--border); margin: 6px 0; width
     <div class="mode-btn" data-game="river"><span class="mode-emoji">🌊</span>River</div>
     <div class="mode-btn full-hand" data-game="full"><span class="mode-emoji">🔥</span>Full Hand</div>
     <div class="mode-btn full-hand" data-game="reading"><span class="mode-emoji">🧠</span>Hand Reading</div>
+    <div class="mode-btn atlas-drill" data-game="atlas"><span class="mode-emoji">🗺️</span>Atlas Drill</div>
   </div>
 
   <div id="pos-select" class="hidden">
@@ -626,6 +743,9 @@ hr.sep { border: none; border-top: 1px solid var(--border); margin: 6px 0; width
   <div class="changelog">
     <details>
       <summary>Notes de version</summary>
+      <div class="changelog-entry">
+        <span class="changelog-ver">s49</span> Atlas Drill — 7 familles de flops (Acevedo Ch.10-12), spaced repetition, sizing + fréquence IP
+      </div>
       <div class="changelog-entry">
         <span class="changelog-ver">s44</span> Fix : straight flush faux positif (#47) + SPR bas SRP → all-in + 3BP visuel sur tous les panels
       </div>
@@ -918,6 +1038,28 @@ hr.sep { border: none; border-top: 1px solid var(--border); margin: 6px 0; width
       <div id="reading-reco"></div>
     </div>
 
+    <!-- ═══ Panel: Atlas Drill ═══ -->
+    <div id="panel-atlas" class="panel hidden">
+      <div id="atlas-step1">
+        <div class="atlas-step-label">Étape 1 — Sizing IP</div>
+        <div class="atlas-btns" id="atlas-sizing-btns">
+          <div class="atlas-btn" data-sizing="check"><span class="icon">👋</span><br>Check</div>
+          <div class="atlas-btn" data-sizing="small"><span class="icon">🪙</span><br>Bet 1/3</div>
+          <div class="atlas-btn" data-sizing="big"><span class="icon">💰</span><br>Bet 2/3</div>
+        </div>
+      </div>
+      <div id="atlas-step2" class="hidden">
+        <div class="atlas-step-label">Étape 2 — Fréquence IP</div>
+        <div class="atlas-btns" id="atlas-freq-btns">
+          <div class="atlas-btn" data-freq="high">🔥<br>High<br><span style="font-size:0.7rem;color:var(--dim)">75-95%</span></div>
+          <div class="atlas-btn" data-freq="mid">⚖️<br>Mid<br><span style="font-size:0.7rem;color:var(--dim)">50-65%</span></div>
+          <div class="atlas-btn" data-freq="low">❄️<br>Low<br><span style="font-size:0.7rem;color:var(--dim)">30-50%</span></div>
+        </div>
+      </div>
+      <div id="atlas-correction" class="atlas-correction hidden"></div>
+      <div id="atlas-dashboard" class="atlas-dashboard"></div>
+    </div>
+
     <!-- Feedback -->
     <div class="feedback-area">
       <div id="feedback"></div>
@@ -1040,6 +1182,11 @@ let answered = false;
 let score = 0, correctQ = 0, totalQ = 0, currentStreak = 0;
 let streakHistory = [];
 let accuracyData = {};
+
+// Atlas Drill state
+let atlasFamily = null;
+let atlasStep = 0;           // 0=sizing, 1=freq
+let atlasSizingAnswer = null;
 
 // ═══════════════════════════════════════════════════════════════
 //  CARD UTILITIES
@@ -1194,6 +1341,76 @@ function countStraights(vals, isUnpaired) {
     if (boardIn.length === 3) count++;
   }
   return count;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  ATLAS DRILL — 7 FAMILIES (Acevedo Ch.10-12)
+// ═══════════════════════════════════════════════════════════════
+const FAMILIES = {
+  1: { name: 'F1 — Paired', emoji: '👯', sizing: 'small', freq: 'high',
+       sizingOk: ['small'], freqOk: ['high'],
+       rx: 'Bet 1/3 · High (75-90%)',
+       desc: 'Range adv IP, nut adv BB (trips) → petit sizing, haute fréquence',
+       color: '#7c4dff', pct: 17 },
+  2: { name: 'F2 — A-high', emoji: '🅰️', sizing: 'big', freq: 'high',
+       sizingOk: ['big'], freqOk: ['high'],
+       rx: 'Bet 2/3 · High (75-95%)',
+       desc: 'Range adv + nut adv IP massifs → gros sizing, haute fréquence',
+       color: '#00e676', pct: 18 },
+  3: { name: 'F3 — K/Q/J-high dry', emoji: '👑', sizing: 'big', freq: 'high',
+       sizingOk: ['big'], freqOk: ['high'],
+       rx: 'Bet 2/3 · High (65-80%)',
+       desc: 'Range adv IP, BB peu de strong → gros sizing',
+       color: '#00e5ff', pct: 18 },
+  4: { name: 'F4 — Broadway connecté', emoji: '🔗', sizing: 'small', freq: 'mid',
+       sizingOk: ['small'], freqOk: ['mid'],
+       rx: 'Bet 1/3 · Mid (50-60%)',
+       desc: 'Les 2 ranges connectent, draws partout → petit sizing sélectif',
+       color: '#ffab40', pct: 5 },
+  5: { name: 'F5 — Mid semi-connecté', emoji: '🔄', sizing: 'small', freq: 'mid',
+       sizingOk: ['small'], freqOk: ['mid'],
+       rx: 'Bet 1/3 · Mid (55-65%)',
+       desc: 'Range adv IP modéré, board dynamique → 1/3 pot sélectif',
+       color: '#ff5252', pct: 18 },
+  6: { name: 'F6 — Low', emoji: '⬇️', sizing: 'check', freq: 'low',
+       sizingOk: ['check', 'small'], freqOk: ['low'],
+       rx: 'Check (ou 1/3) · Low (35-50%)',
+       desc: 'BB range advantage → check souvent, bet 1/3 polarisé',
+       color: '#6b7fa3', pct: 14 },
+  7: { name: 'F7 — Monotone', emoji: '🎨', sizing: 'check', freq: 'low',
+       sizingOk: ['check', 'small'], freqOk: ['low'],
+       rx: 'Check (ou 1/3) · Low (30-40%)',
+       desc: 'BB suited → IP nut adv réduit, check dominant',
+       color: '#e040fb', pct: 5 }
+};
+
+function mapToFamily(bInfo, flopCards) {
+  const vals = flopCards.map(c => rankVal(c)).sort((a, b) => b - a);
+  const hi = vals[0], mid = vals[1], lo = vals[2];
+
+  // F7 — Monotone overrides everything
+  if (bInfo.texture === 'monotone') return 7;
+
+  // F1 — Paired / Trips
+  if (bInfo.structure === 'paired' || bInfo.structure === 'trips') return 1;
+
+  // F4 — Broadway connected: all cards ≥ 9 (val ≥ 7) AND span ≤ 4
+  if (lo >= 7 && (hi - lo) <= 4) return 4;
+
+  // F2 — A-high (remaining)
+  if (hi === 12) return 2;
+
+  // Rank H territory: K/Q/J/T-high
+  if (hi >= 8) {
+    if (hi === 11) return 3;  // K-high → always F3
+    if (hi === 8) return 5;   // T-high → always F5
+    // Q/J-high: lower-card connectivity test
+    if ((mid - lo) <= 2 && mid >= 3) return 5;
+    return 3;
+  }
+
+  // F6 — Low (9-high and below, rank M/L)
+  return 6;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -2034,6 +2251,22 @@ function setCtxForStreet() {
 //  DEAL
 // ═══════════════════════════════════════════════════════════════
 function deal() {
+  if (gameMode === 'atlas') {
+    const target = pickWeightedFamily();
+    let attempts = 0;
+    do {
+      deck = shuffle(newDeck());
+      flop = [deck.pop(), deck.pop(), deck.pop()];
+      boardInfo = classifyBoard(flop);
+      atlasFamily = mapToFamily(boardInfo, flop);
+      attempts++;
+    } while (atlasFamily !== target && attempts < 200);
+    atlasStep = 0;
+    atlasSizingAnswer = null;
+    answered = false;
+    return;
+  }
+
   if (gameMode === 'full' || gameMode === 'reading') {
     fullPhase = 0;
     currentStreet = 'flop';
@@ -2093,9 +2326,57 @@ function updateActionButtons() {
 }
 
 // ═══════════════════════════════════════════════════════════════
+//  RENDER — ATLAS DRILL
+// ═══════════════════════════════════════════════════════════════
+function renderAtlasMode() {
+  // Board: show flop only
+  document.getElementById('flop-section').classList.remove('hidden');
+  document.getElementById('turn-section').classList.add('hidden');
+  document.getElementById('river-section').classList.add('hidden');
+
+  const flopEl = document.getElementById('flop-cards');
+  flopEl.innerHTML = '';
+  flop.forEach(c => renderCard(c, flopEl));
+
+  // Hide hero and context bar
+  document.getElementById('hero-section').classList.add('hidden');
+  document.getElementById('blocker-panel').innerHTML = '';
+  document.querySelector('.ctx-bar').style.display = 'none';
+
+  // Show atlas panel, hide all others
+  document.querySelectorAll('.panel').forEach(p => p.classList.add('hidden'));
+  document.getElementById('panel-atlas').classList.remove('hidden');
+
+  // Reset step visibility
+  document.getElementById('atlas-step1').classList.remove('hidden');
+  document.getElementById('atlas-step2').classList.add('hidden');
+  document.getElementById('atlas-correction').classList.add('hidden');
+
+  // Reset buttons
+  document.querySelectorAll('.atlas-btn').forEach(b => {
+    b.classList.remove('selected', 'correct', 'wrong', 'best', 'locked');
+  });
+
+  // Feedback area reset
+  document.getElementById('feedback').innerHTML = '';
+  document.getElementById('detail').textContent = '';
+  document.getElementById('next-btn').classList.remove('visible');
+  document.getElementById('skip-btn').classList.add('visible');
+
+  updateStats();
+  renderAtlasDashboard();
+}
+
+// ═══════════════════════════════════════════════════════════════
 //  RENDER
 // ═══════════════════════════════════════════════════════════════
 function render() {
+  // Atlas Drill — dedicated renderer, skip all normal logic
+  if (gameMode === 'atlas') {
+    renderAtlasMode();
+    return;
+  }
+
   handInfo = getHandInfo();
   setCtxForStreet();
   updateActionButtons();
@@ -2347,6 +2628,140 @@ function updateAccuracyPanel() {
     chip.innerHTML = `${key} <span class="pct ${level}">${pct}%</span><span style="color:var(--dim);font-size:0.65rem"> n=${data.total}</span>`;
     panel.appendChild(chip);
   });
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  ATLAS DRILL — ENGINE
+// ═══════════════════════════════════════════════════════════════
+function loadAtlasStats() {
+  try { return JSON.parse(localStorage.getItem('atlas_stats') || '{}'); }
+  catch(e) { return {}; }
+}
+
+function saveAtlasStats(stats) {
+  localStorage.setItem('atlas_stats', JSON.stringify(stats));
+}
+
+function pickWeightedFamily() {
+  const stats = loadAtlasStats();
+  const baseW = { 1: 17, 2: 18, 3: 18, 4: 5, 5: 18, 6: 14, 7: 5 };
+  const w = {};
+  for (let f = 1; f <= 7; f++) {
+    const s = stats[f] || { hit: 0, total: 0 };
+    const acc = s.total >= 3 ? s.hit / s.total : 0.5;
+    // Lower accuracy → higher weight (more repetitions needed)
+    w[f] = baseW[f] * (s.total >= 3 ? Math.max(1, 3 * (1 - acc)) : 1);
+  }
+  const total = Object.values(w).reduce((a, b) => a + b, 0);
+  let r = Math.random() * total;
+  for (let f = 1; f <= 7; f++) {
+    r -= w[f];
+    if (r <= 0) return f;
+  }
+  return 1;
+}
+
+function answerAtlasSizing(sizing) {
+  if (atlasStep !== 0 || answered) return;
+  atlasSizingAnswer = sizing;
+  atlasStep = 1;
+  // Highlight selected sizing, lock step 1
+  document.querySelectorAll('#atlas-sizing-btns .atlas-btn').forEach(b => {
+    if (b.dataset.sizing === sizing) b.classList.add('selected');
+    else b.classList.add('locked');
+  });
+  // Show step 2
+  document.getElementById('atlas-step2').classList.remove('hidden');
+}
+
+function answerAtlasFreq(freq) {
+  if (atlasStep !== 1 || answered) return;
+  answered = true;
+
+  const fam = FAMILIES[atlasFamily];
+  const sizingOk = fam.sizingOk.includes(atlasSizingAnswer);
+  const freqOk = fam.freqOk.includes(freq);
+  const bothCorrect = sizingOk && freqOk;
+
+  totalQ++;
+
+  // Highlight sizing result
+  document.querySelectorAll('#atlas-sizing-btns .atlas-btn').forEach(b => {
+    b.classList.remove('locked');
+    if (b.dataset.sizing === atlasSizingAnswer) {
+      b.classList.remove('selected');
+      b.classList.add(sizingOk ? 'correct' : 'wrong');
+    }
+    if (b.dataset.sizing === fam.sizing) b.classList.add('best');
+  });
+
+  // Highlight freq result
+  document.querySelectorAll('#atlas-freq-btns .atlas-btn').forEach(b => {
+    if (b.dataset.freq === freq) b.classList.add(freqOk ? 'correct' : 'wrong');
+    if (b.dataset.freq === fam.freq) b.classList.add('best');
+  });
+
+  // Scoring
+  if (bothCorrect) {
+    correctQ++;
+    score += 2 + Math.floor(currentStreak / 3);
+    currentStreak++;
+    showFeedback('correct', '✓ Correct !');
+  } else if (sizingOk || freqOk) {
+    score += 1;
+    currentStreak = 0;
+    showFeedback('partial', '~ 1/2 — ' + (sizingOk ? 'sizing OK, fréquence ratée' : 'fréquence OK, sizing raté'));
+  } else {
+    currentStreak = 0;
+    showFeedback('wrong', '✗ Raté');
+  }
+  streakHistory.push(bothCorrect);
+
+  // Track per-family
+  trackAccuracy('atlas F' + atlasFamily, bothCorrect);
+
+  // Persistent atlas stats
+  const stats = loadAtlasStats();
+  if (!stats[atlasFamily]) stats[atlasFamily] = { hit: 0, total: 0 };
+  stats[atlasFamily].total++;
+  if (bothCorrect) stats[atlasFamily].hit++;
+  saveAtlasStats(stats);
+
+  // Correction panel
+  const corr = document.getElementById('atlas-correction');
+  corr.classList.remove('hidden');
+  corr.innerHTML = `
+    <div class="atlas-family-tag" style="background:${fam.color}22;color:${fam.color};border:1px solid ${fam.color}">${fam.emoji} ${fam.name}</div>
+    <div class="atlas-prescription">→ ${fam.rx}</div>
+    <div class="atlas-family-desc">${fam.desc}</div>
+  `;
+
+  // Detail line
+  const rankLabels = { A:'A-high', H:'High', M:'Mid', L:'Low' };
+  showDetail(`${boardInfo.structure} · ${boardInfo.texture} · ${rankLabels[boardInfo.rank]} · ${boardInfo.straights} straight(s)`);
+
+  document.getElementById('next-btn').classList.add('visible');
+  updateStats();
+  renderAtlasDashboard();
+}
+
+function renderAtlasDashboard() {
+  const dash = document.getElementById('atlas-dashboard');
+  if (!dash) return;
+  const stats = loadAtlasStats();
+  let html = '<div class="atlas-dash-title">📊 Accuracy par famille</div>';
+  for (let f = 1; f <= 7; f++) {
+    const s = stats[f] || { hit: 0, total: 0 };
+    const pct = s.total > 0 ? Math.round(s.hit / s.total * 100) : 0;
+    const color = s.total < 3 ? 'var(--dim)' : pct >= 70 ? 'var(--green)' : pct >= 45 ? 'var(--orange)' : 'var(--red)';
+    const fam = FAMILIES[f];
+    html += `<div class="atlas-dash-row">
+      <div class="atlas-dash-label">${fam.emoji} F${f}</div>
+      <div class="atlas-dash-bar"><div class="atlas-dash-fill" style="width:${s.total > 0 ? pct : 0}%;background:${color}"></div></div>
+      <div class="atlas-dash-pct" style="color:${color}">${s.total > 0 ? pct + '%' : '—'} <span style="font-size:0.6rem">n=${s.total}</span></div>
+    </div>`;
+  }
+  dash.innerHTML = html;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -2830,6 +3245,11 @@ function showDetail(text) {
 }
 
 function handleNext() {
+  if (gameMode === 'atlas') {
+    deal();
+    render();
+    return;
+  }
   if (gameMode === 'reading') {
     if (fullPhase < 2) {
       fullPhase++;
@@ -2895,11 +3315,11 @@ function startGame(mode, pos) {
   currentTab = 'read';
 
   // Title
-  const titles = { flop:'FLOP TRAINER', turn:'TURN TRAINER', river:'RIVER TRAINER', full:'FULL HAND — ' + (pos === 'ip' ? 'IP' : 'OOP'), reading:'HAND READING — ' + (pos === 'ip' ? 'IP' : 'OOP') };
+  const titles = { flop:'FLOP TRAINER', turn:'TURN TRAINER', river:'RIVER TRAINER', full:'FULL HAND — ' + (pos === 'ip' ? 'IP' : 'OOP'), reading:'HAND READING — ' + (pos === 'ip' ? 'IP' : 'OOP'), atlas:'ATLAS DRILL — 7 Familles' };
   document.getElementById('game-title').textContent = titles[mode];
 
   // Tab labels
-  if (mode !== 'full' && mode !== 'reading') {
+  if (mode !== 'full' && mode !== 'reading' && mode !== 'atlas') {
     const tabLabels = {
       flop: { read:'Board Reading', ip:'C-Bet (IP)', oop:'Defense BB' },
       turn: { read:'Turn Card', ip:'IP Barrel', oop:'OOP Defense' },
@@ -2915,7 +3335,7 @@ function startGame(mode, pos) {
   document.getElementById('tab-blocker').classList.toggle('hidden', mode !== 'river');
 
   // Show/hide tabs vs progress bar
-  document.getElementById('tabs-bar').classList.toggle('hidden', mode === 'full' || mode === 'reading');
+  document.getElementById('tabs-bar').classList.toggle('hidden', mode === 'full' || mode === 'reading' || mode === 'atlas');
   document.getElementById('progress-bar').classList.toggle('hidden', mode !== 'full' && mode !== 'reading');
 
   // Show game, hide landing
@@ -2934,6 +3354,8 @@ function backToMenu() {
   document.getElementById('game').classList.add('hidden');
   document.getElementById('landing').classList.remove('hidden');
   document.getElementById('pos-select').classList.add('hidden');
+  // Restore ctx-bar visibility (hidden in atlas mode)
+  document.querySelector('.ctx-bar').style.display = '';
   gameMode = null;
 }
 
@@ -3038,6 +3460,16 @@ document.getElementById('btn-validate-turn').addEventListener('click', validateT
 document.getElementById('btn-validate-river').addEventListener('click', validateRiverReading);
 document.getElementById('btn-validate-blockers').addEventListener('click', validateBlockers);
 
+// Atlas Drill: sizing clicks
+document.querySelectorAll('#atlas-sizing-btns .atlas-btn').forEach(btn => {
+  btn.addEventListener('click', () => answerAtlasSizing(btn.dataset.sizing));
+});
+
+// Atlas Drill: frequency clicks
+document.querySelectorAll('#atlas-freq-btns .atlas-btn').forEach(btn => {
+  btn.addEventListener('click', () => answerAtlasFreq(btn.dataset.freq));
+});
+
 // Next & Skip buttons
 document.getElementById('next-btn').addEventListener('click', handleNext);
 document.getElementById('skip-btn').addEventListener('click', () => { deal(); render(); });
@@ -3063,6 +3495,20 @@ document.addEventListener('keydown', (e) => {
   }
 
   if (!answered) {
+    // Atlas Drill keyboard shortcuts
+    if (gameMode === 'atlas') {
+      if (atlasStep === 0) {
+        if (e.key === '1') answerAtlasSizing('check');
+        if (e.key === '2') answerAtlasSizing('small');
+        if (e.key === '3') answerAtlasSizing('big');
+      } else if (atlasStep === 1) {
+        if (e.key === '1') answerAtlasFreq('high');
+        if (e.key === '2') answerAtlasFreq('mid');
+        if (e.key === '3') answerAtlasFreq('low');
+      }
+      return;
+    }
+
     const isIPMode = (gameMode === 'full' && position === 'ip') || currentTab === 'ip';
     const isOOPMode = (gameMode === 'full' && position === 'oop') || currentTab === 'oop';
 
