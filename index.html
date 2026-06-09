@@ -1309,22 +1309,33 @@ function classifyBoard(flopCards) {
   if (structure === 'trips') cbetFreq = 'high';
   else if (structure === 'paired') cbetFreq = 'high';
   else {
-    if (rank === 'A') cbetFreq = 'high';
-    else if (rank === 'H') cbetFreq = straights >= 2 ? 'mid' : 'high';
-    else if (rank === 'M') cbetFreq = straights >= 2 ? 'low' : 'mid';
-    else cbetFreq = 'low';
+    // F4: broadway connecté (toutes cartes >= 9, connected)
+    const isBroadwayConn = connected && vals[2] >= 7; // 7 = card 9
+    // F5: sous-connectivité des cartes basses sous une haute carte
+    const lowerGap = vals[1] - vals[2];
+    const isSubConn = (lowerGap <= 2 && vals[1] >= 3 && hi <= 10); // 3=card 5, 10=Q
+    // T-high (rankVal=8) : range advantage IP insuffisant pour 2/3
+    const isTenHigh = (hi === 8);
+
+    if (rank === 'A') {
+      cbetFreq = isBroadwayConn ? 'mid' : 'high';
+    } else if (rank === 'H') {
+      if (isBroadwayConn) cbetFreq = 'mid';
+      else if (isTenHigh || isSubConn || straights >= 2) cbetFreq = 'mid';
+      else cbetFreq = 'high';
+    } else {
+      cbetFreq = 'low';
+    }
     if (texture === 'monotone') {
-      if (cbetFreq === 'high') cbetFreq = 'low';
-      else if (cbetFreq === 'mid') cbetFreq = 'low';
+      if (cbetFreq === 'high' || cbetFreq === 'mid') cbetFreq = 'low';
     }
   }
 
   let cbetSizing;
   if (structure === 'trips' || structure === 'paired') cbetSizing = 'small';
   else if (texture === 'monotone') cbetSizing = 'small';
-  else if (advantage === 'ip' && cbetFreq === 'high') cbetSizing = 'big';
-  else if (advantage === 'bb' || advantage === 'close') cbetSizing = straights >= 2 ? 'big' : 'mixed';
-  else cbetSizing = texture === 'rainbow' ? 'big' : 'mixed';
+  else if (cbetFreq === 'high') cbetSizing = 'big';
+  else cbetSizing = 'small';
 
   return { structure, texture, rank, dynamic, advantage, cbetFreq, cbetSizing, straights };
 }
@@ -1827,14 +1838,15 @@ function computeCbetAnswer(hInfo, bInfo, context) {
     return { best: 'check', acceptable: ['check', sizing], reason: 'Trash sans BDFD — check souvent (bet si fold equity)' };
   }
 
+  const szLow = cbetSizing === 'small' ? 'bet13' : 'bet23';
   if (eqb === 'strong') {
-    if (dynamic === 'static') return { best: 'check', acceptable: ['check','bet23'], reason: 'Low freq statique — trap' };
-    return { best: 'bet23', acceptable: ['bet23','check'], reason: 'Bet gros pour protection' };
+    if (dynamic === 'static') return { best: 'check', acceptable: ['check', szLow], reason: 'Low freq statique — trap' };
+    return { best: szLow, acceptable: [szLow,'check'], reason: 'Bet pour protection' };
   }
   if (eqb === 'good') return { best: 'check', acceptable: ['check'], reason: 'Low freq — check pour equity realization' };
   if (eqb === 'weak') return { best: 'check', acceptable: ['check'], reason: 'Low freq — check, trop risqué' };
-  if (hasBDFD) return { best: 'bet23', acceptable: ['bet23','check'], reason: 'Bluff polarisé' };
-  return { best: 'check', acceptable: ['check','bet23'], reason: 'Air — check souvent' };
+  if (hasBDFD) return { best: szLow, acceptable: [szLow,'check'], reason: 'Bluff polarisé' };
+  return { best: 'check', acceptable: ['check', szLow], reason: 'Air — check souvent' };
 }
 
 function computeFlopDefenseAnswer(hInfo, bInfo, context) {
