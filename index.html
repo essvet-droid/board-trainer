@@ -1449,7 +1449,7 @@ function classifyTurnCard(tc, flopCards) {
   }
   if (allBoardVals.includes(12)) {
     const lowCards = allBoardVals.filter(v => v <= 3);
-    if (lowCards.length >= 2 && (tRank <= 3 || tRank === 12)) isStraighty = true;
+    if (lowCards.length >= 3 && (tRank <= 3 || tRank === 12)) isStraighty = true;
   }
   if (isStraighty && !categories.includes('paired')) categories.push('straight');
 
