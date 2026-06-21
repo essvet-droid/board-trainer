@@ -2769,16 +2769,17 @@ function pickWeightedFamily() {
 }
 
 function answerAtlasStep1(val) {
-  if (atlasStep !== 0 || answered) return;
+  // Étape 1 modifiable tant que l'étape 2 n'est pas validée (anti miss-clic, sans clic en plus)
+  if (answered) return;
   atlasSizingAnswer = val;
   atlasStep = 1;
-  // Highlight selected answer, lock step 1 (groupe IP=sizing ou OOP=défense)
   const isIP = atlasSide === 'ip';
   const sel = isIP ? '#atlas-sizing-btns .atlas-btn' : '#atlas-defense-btns .atlas-btn';
   const key = isIP ? 'sizing' : 'defense';
+  // Pas de lock : on surligne le choix courant ; cliquer un autre bouton le remplace
   document.querySelectorAll(sel).forEach(b => {
-    if (b.dataset[key] === val) b.classList.add('selected');
-    else b.classList.add('locked');
+    b.classList.toggle('selected', b.dataset[key] === val);
+    b.classList.remove('locked');
   });
   // Show step 2
   document.getElementById('atlas-step2').classList.remove('hidden');
