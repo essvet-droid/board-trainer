@@ -155,6 +155,27 @@ body {
 .atlas-btn.best { border-color: var(--green); box-shadow: 0 0 10px rgba(0,230,118,0.3); }
 .atlas-btn.locked { opacity: 0.5; pointer-events: none; }
 
+.atlas-side-toggle {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+.atlas-side-btn {
+  padding: 7px 18px;
+  border: 2px solid var(--border);
+  border-radius: 20px;
+  background: var(--surface);
+  color: var(--dim);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.atlas-side-btn:hover { border-color: var(--accent); color: var(--accent); }
+.atlas-side-btn.active { border-color: var(--accent); background: rgba(0,229,255,0.12); color: var(--accent); }
+
 .atlas-correction {
   margin-top: 12px;
   padding: 14px 18px;
@@ -744,6 +765,9 @@ hr.sep { border: none; border-top: 1px solid var(--border); margin: 6px 0; width
     <details>
       <summary>Notes de version</summary>
       <div class="changelog-entry">
+        <span class="changelog-ver">s54</span> Atlas Drill — QCM action OOP (défense BB face c-bet) : largeur de défense + tendance x/r, toggle IP/OOP, stats accuracy séparées par côté
+      </div>
+      <div class="changelog-entry">
         <span class="changelog-ver">s51</span> Fix : classifyTurnCard ace-low wheel — seuil >= 3 (boards marginaux comme AQ2-4 ne sont plus flaggés "straight")
       </div>
       <div class="changelog-entry">
@@ -1046,24 +1070,37 @@ hr.sep { border: none; border-top: 1px solid var(--border); margin: 6px 0; width
 
     <!-- ═══ Panel: Atlas Drill ═══ -->
     <div id="panel-atlas" class="panel hidden">
+      <div class="atlas-side-toggle">
+        <div class="atlas-side-btn active" data-side="ip">🎯 IP — C-bet</div>
+        <div class="atlas-side-btn" data-side="oop">🛡️ OOP — Défense</div>
+      </div>
       <div id="atlas-step1">
-        <div class="atlas-step-label">Étape 1 — Sizing IP</div>
+        <div class="atlas-step-label" id="atlas-step1-label">Étape 1 — Sizing IP</div>
         <div class="atlas-btns" id="atlas-sizing-btns">
           <div class="atlas-btn" data-sizing="check"><span class="icon">👋</span><br>Check</div>
           <div class="atlas-btn" data-sizing="small"><span class="icon">🪙</span><br>Bet 1/3</div>
           <div class="atlas-btn" data-sizing="big"><span class="icon">💰</span><br>Bet 2/3</div>
         </div>
+        <div class="atlas-btns hidden" id="atlas-defense-btns">
+          <div class="atlas-btn" data-defense="wide">🌊<br>Large<br><span style="font-size:0.7rem;color:var(--dim)">défends ++</span></div>
+          <div class="atlas-btn" data-defense="medium">🎚️<br>Moyenne<br><span style="font-size:0.7rem;color:var(--dim)">sélectif</span></div>
+          <div class="atlas-btn" data-defense="tight">🔒<br>Serrée<br><span style="font-size:0.7rem;color:var(--dim)">fold ++</span></div>
+        </div>
       </div>
       <div id="atlas-step2" class="hidden">
-        <div class="atlas-step-label">Étape 2 — Fréquence IP</div>
+        <div class="atlas-step-label" id="atlas-step2-label">Étape 2 — Fréquence IP</div>
         <div class="atlas-btns" id="atlas-freq-btns">
           <div class="atlas-btn" data-freq="high">🔥<br>High<br><span style="font-size:0.7rem;color:var(--dim)">75-95%</span></div>
           <div class="atlas-btn" data-freq="mid">⚖️<br>Mid<br><span style="font-size:0.7rem;color:var(--dim)">50-65%</span></div>
           <div class="atlas-btn" data-freq="low">❄️<br>Low<br><span style="font-size:0.7rem;color:var(--dim)">30-50%</span></div>
         </div>
+        <div class="atlas-btns hidden" id="atlas-xr-btns">
+          <div class="atlas-btn" data-xr="high">⚡<br>Souvent<br><span style="font-size:0.7rem;color:var(--dim)">x/r ++</span></div>
+          <div class="atlas-btn" data-xr="mid">⚖️<br>Parfois<br><span style="font-size:0.7rem;color:var(--dim)">x/r sélectif</span></div>
+          <div class="atlas-btn" data-xr="low">🧊<br>Rare<br><span style="font-size:0.7rem;color:var(--dim)">x/r nutté</span></div>
+        </div>
       </div>
       <div id="atlas-correction" class="atlas-correction hidden"></div>
-      <div id="atlas-dashboard" class="atlas-dashboard"></div>
     </div>
 
     <!-- Feedback -->
@@ -1084,6 +1121,9 @@ hr.sep { border: none; border-top: 1px solid var(--border); margin: 6px 0; width
 
     <!-- Accuracy panel -->
     <div class="accuracy-panel" id="accuracy-panel"></div>
+
+    <!-- Atlas Drill accuracy dashboard (placé en bas pour ne pas repousser les boutons hors écran) -->
+    <div id="atlas-dashboard" class="atlas-dashboard hidden"></div>
   </div>
 </div>
 
@@ -1191,8 +1231,9 @@ let accuracyData = {};
 
 // Atlas Drill state
 let atlasFamily = null;
-let atlasStep = 0;           // 0=sizing, 1=freq
-let atlasSizingAnswer = null;
+let atlasSide = 'ip';        // 'ip' (c-bet agresseur) | 'oop' (défense BB face c-bet)
+let atlasStep = 0;           // 0=étape 1 (sizing/défense), 1=étape 2 (fréquence/x-r)
+let atlasSizingAnswer = null; // réponse étape 1 (check/small/big OU wide/medium/tight)
 
 // ═══════════════════════════════════════════════════════════════
 //  CARD UTILITIES
@@ -1363,41 +1404,67 @@ function countStraights(vals, isUnpaired) {
 // ═══════════════════════════════════════════════════════════════
 //  ATLAS DRILL — 7 FAMILIES (Acevedo Ch.10-12)
 // ═══════════════════════════════════════════════════════════════
+// IP fields  : sizing / freq / sizingOk / freqOk / rx / desc      (c-bet de l'agresseur en position)
+// OOP fields : defense / xr / defenseOk / xrOk / rxOOP / descOOP  (défense BB face au c-bet)
+//   defense : 'wide' (défends large) | 'medium' (sélectif) | 'tight' (fold ++)
+//   xr      : 'high' (souvent) | 'mid' (parfois) | 'low' (rare)  — tendance check-raise (AI à SPR 2-4)
+// Source : atlas_49_flops.md colonne « OOP vs c-bet » (Acevedo Ch.10-12).
 const FAMILIES = {
   1: { name: 'F1 — Paired', emoji: '👯', sizing: 'small', freq: 'high',
        sizingOk: ['small'], freqOk: ['high'],
        rx: 'Bet 1/3 · High (75-90%)',
        desc: 'Range adv IP, nut adv BB (trips) → petit sizing, haute fréquence',
+       defense: 'wide', xr: 'mid', defenseOk: ['wide'], xrOk: ['mid'],
+       rxOOP: 'x/c large · x/r AI trips · x/f trash',
+       descOOP: 'BB a le nut adv (trips) mais surtout du trash → défends large vs petit sizing, x/r seulement les trips',
        color: '#7c4dff', pct: 17 },
   2: { name: 'F2 — A-high', emoji: '🅰️', sizing: 'big', freq: 'high',
        sizingOk: ['big'], freqOk: ['high'],
        rx: 'Bet 2/3 · High (75-95%)',
        desc: 'Range adv + nut adv IP massifs → gros sizing, haute fréquence',
+       defense: 'tight', xr: 'low', defenseOk: ['tight'], xrOk: ['low'],
+       rxOOP: 'x/f >50% · x/c Ax + paires · x/r AI sets',
+       descOOP: 'IP domine massivement → fold >50%, garde Ax/paires, x/r très rare (peu de nuts BB)',
        color: '#00e676', pct: 18 },
   3: { name: 'F3 — K/Q/J-high dry', emoji: '👑', sizing: 'big', freq: 'high',
        sizingOk: ['big'], freqOk: ['high'],
        rx: 'Bet 2/3 · High (65-80%)',
        desc: 'Range adv IP, BB peu de strong → gros sizing',
+       defense: 'medium', xr: 'low', defenseOk: ['medium'], xrOk: ['low'],
+       rxOOP: 'x/f trash · x/c paires + draws · x/r AI sets',
+       descOOP: 'Range adv IP net → défense sélective : x/c les paires, fold le trash, x/r rare (peu de sets)',
        color: '#00e5ff', pct: 18 },
   4: { name: 'F4 — Broadway connecté', emoji: '🔗', sizing: 'small', freq: 'mid',
        sizingOk: ['small'], freqOk: ['mid'],
        rx: 'Bet 1/3 · Mid (50-60%)',
        desc: 'Les 2 ranges connectent, draws partout → petit sizing sélectif',
+       defense: 'wide', xr: 'high', defenseOk: ['wide'], xrOk: ['high'],
+       rxOOP: 'x/c large · x/r AI 2pair+ · x/f trash pur',
+       descOOP: 'Les broadways BB touchent → défends large, et x/r souvent (2pair+ nombreux, board dynamique à protéger)',
        color: '#ffab40', pct: 5 },
   5: { name: 'F5 — Mid semi-connecté', emoji: '🔄', sizing: 'small', freq: 'mid',
        sizingOk: ['small'], freqOk: ['mid'],
        rx: 'Bet 1/3 · Mid (55-65%)',
        desc: 'Range adv IP modéré, board dynamique → 1/3 pot sélectif',
+       defense: 'medium', xr: 'mid', defenseOk: ['medium'], xrOk: ['mid'],
+       rxOOP: 'x/c paires/draws · x/r AI sets/straights · x/f trash sans draw',
+       descOOP: 'Board dynamique : x/c les paires et les draws, x/r parfois (sets/straights), fold le trash sec',
        color: '#ff5252', pct: 18 },
   6: { name: 'F6 — Low', emoji: '⬇️', sizing: 'check', freq: 'low',
        sizingOk: ['check', 'small'], freqOk: ['low'],
        rx: 'Check (ou 1/3) · Low (35-50%)',
        desc: 'BB range advantage → check souvent, bet 1/3 polarisé',
+       defense: 'wide', xr: 'high', defenseOk: ['wide'], xrOk: ['high'],
+       rxOOP: 'x/c large · x/r AI sets/straights · x/f overcards sans draw',
+       descOOP: 'BB a le range advantage (connecteurs touchent) → défends large, x/r souvent (sets/straights/combo draws)',
        color: '#6b7fa3', pct: 14 },
   7: { name: 'F7 — Monotone', emoji: '🎨', sizing: 'check', freq: 'low',
        sizingOk: ['check', 'small'], freqOk: ['low'],
        rx: 'Check (ou 1/3) · Low (30-40%)',
        desc: 'BB suited → IP nut adv réduit, check dominant',
+       defense: 'medium', xr: 'low', defenseOk: ['medium'], xrOk: ['low'],
+       rxOOP: 'x/c FD+ · x/r AI flush · x/f sans draw ni paire',
+       descOOP: 'Continue surtout les flush draws+ (x/c FD+), x/r rare mais nutté (la flush faite). Fold sans draw ni paire',
        color: '#e040fb', pct: 5 }
 };
 
@@ -2365,6 +2432,16 @@ function renderAtlasMode() {
   document.querySelectorAll('.panel').forEach(p => p.classList.add('hidden'));
   document.getElementById('panel-atlas').classList.remove('hidden');
 
+  // Side toggle (IP c-bet vs OOP défense) — labels + button groups
+  const isIP = atlasSide === 'ip';
+  document.querySelectorAll('.atlas-side-btn').forEach(b => b.classList.toggle('active', b.dataset.side === atlasSide));
+  document.getElementById('atlas-step1-label').textContent = isIP ? 'Étape 1 — Sizing IP' : 'Étape 1 — Largeur de défense OOP';
+  document.getElementById('atlas-step2-label').textContent = isIP ? 'Étape 2 — Fréquence IP' : 'Étape 2 — Tendance x/r OOP';
+  document.getElementById('atlas-sizing-btns').classList.toggle('hidden', !isIP);
+  document.getElementById('atlas-defense-btns').classList.toggle('hidden', isIP);
+  document.getElementById('atlas-freq-btns').classList.toggle('hidden', !isIP);
+  document.getElementById('atlas-xr-btns').classList.toggle('hidden', isIP);
+
   // Reset step visibility
   document.getElementById('atlas-step1').classList.remove('hidden');
   document.getElementById('atlas-step2').classList.add('hidden');
@@ -2381,6 +2458,7 @@ function renderAtlasMode() {
   document.getElementById('next-btn').classList.remove('visible');
   document.getElementById('skip-btn').classList.add('visible');
 
+  document.getElementById('atlas-dashboard').classList.remove('hidden');
   updateStats();
   renderAtlasDashboard();
 }
@@ -2394,6 +2472,9 @@ function render() {
     renderAtlasMode();
     return;
   }
+
+  // Hors Atlas : masquer le dashboard accuracy (sinon il resterait visible en bas)
+  document.getElementById('atlas-dashboard').classList.add('hidden');
 
   handInfo = getHandInfo();
   setCtxForStreet();
@@ -2652,8 +2733,16 @@ function updateAccuracyPanel() {
 //  ATLAS DRILL — ENGINE
 // ═══════════════════════════════════════════════════════════════
 function loadAtlasStats() {
-  try { return JSON.parse(localStorage.getItem('atlas_stats') || '{}'); }
-  catch(e) { return {}; }
+  let raw;
+  try { raw = JSON.parse(localStorage.getItem('atlas_stats') || '{}'); }
+  catch(e) { raw = {}; }
+  // Migration : ancien format plat { '1':{hit,total}, ... } → imbriqué sous 'ip'
+  if (raw && !raw.ip && !raw.oop && (raw['1'] || raw['2'] || raw['3'] || raw['4'] || raw['5'] || raw['6'] || raw['7'])) {
+    raw = { ip: raw, oop: {} };
+  }
+  if (!raw.ip) raw.ip = {};
+  if (!raw.oop) raw.oop = {};
+  return raw;
 }
 
 function saveAtlasStats(stats) {
@@ -2661,7 +2750,7 @@ function saveAtlasStats(stats) {
 }
 
 function pickWeightedFamily() {
-  const stats = loadAtlasStats();
+  const stats = loadAtlasStats()[atlasSide];
   const baseW = { 1: 17, 2: 18, 3: 18, 4: 5, 5: 18, 6: 14, 7: 5 };
   const w = {};
   for (let f = 1; f <= 7; f++) {
@@ -2679,86 +2768,105 @@ function pickWeightedFamily() {
   return 1;
 }
 
-function answerAtlasSizing(sizing) {
+function answerAtlasStep1(val) {
   if (atlasStep !== 0 || answered) return;
-  atlasSizingAnswer = sizing;
+  atlasSizingAnswer = val;
   atlasStep = 1;
-  // Highlight selected sizing, lock step 1
-  document.querySelectorAll('#atlas-sizing-btns .atlas-btn').forEach(b => {
-    if (b.dataset.sizing === sizing) b.classList.add('selected');
+  // Highlight selected answer, lock step 1 (groupe IP=sizing ou OOP=défense)
+  const isIP = atlasSide === 'ip';
+  const sel = isIP ? '#atlas-sizing-btns .atlas-btn' : '#atlas-defense-btns .atlas-btn';
+  const key = isIP ? 'sizing' : 'defense';
+  document.querySelectorAll(sel).forEach(b => {
+    if (b.dataset[key] === val) b.classList.add('selected');
     else b.classList.add('locked');
   });
   // Show step 2
   document.getElementById('atlas-step2').classList.remove('hidden');
 }
 
-function answerAtlasFreq(freq) {
+function answerAtlasStep2(val) {
   if (atlasStep !== 1 || answered) return;
   answered = true;
 
   const fam = FAMILIES[atlasFamily];
-  const sizingOk = fam.sizingOk.includes(atlasSizingAnswer);
-  const freqOk = fam.freqOk.includes(freq);
-  const bothCorrect = sizingOk && freqOk;
+  const isIP = atlasSide === 'ip';
+  const s1Ok = (isIP ? fam.sizingOk : fam.defenseOk).includes(atlasSizingAnswer);
+  const s2Ok = (isIP ? fam.freqOk : fam.xrOk).includes(val);
+  const bothCorrect = s1Ok && s2Ok;
 
   totalQ++;
 
-  // Highlight sizing result
-  document.querySelectorAll('#atlas-sizing-btns .atlas-btn').forEach(b => {
+  // Highlight step 1 result (sizing IP ou défense OOP)
+  const s1sel = isIP ? '#atlas-sizing-btns .atlas-btn' : '#atlas-defense-btns .atlas-btn';
+  const s1key = isIP ? 'sizing' : 'defense';
+  const s1best = isIP ? fam.sizing : fam.defense;
+  document.querySelectorAll(s1sel).forEach(b => {
     b.classList.remove('locked');
-    if (b.dataset.sizing === atlasSizingAnswer) {
+    if (b.dataset[s1key] === atlasSizingAnswer) {
       b.classList.remove('selected');
-      b.classList.add(sizingOk ? 'correct' : 'wrong');
+      b.classList.add(s1Ok ? 'correct' : 'wrong');
     }
-    if (b.dataset.sizing === fam.sizing) b.classList.add('best');
+    if (b.dataset[s1key] === s1best) b.classList.add('best');
   });
 
-  // Highlight freq result
-  document.querySelectorAll('#atlas-freq-btns .atlas-btn').forEach(b => {
-    if (b.dataset.freq === freq) b.classList.add(freqOk ? 'correct' : 'wrong');
-    if (b.dataset.freq === fam.freq) b.classList.add('best');
+  // Highlight step 2 result (fréquence IP ou tendance x/r OOP)
+  const s2sel = isIP ? '#atlas-freq-btns .atlas-btn' : '#atlas-xr-btns .atlas-btn';
+  const s2key = isIP ? 'freq' : 'xr';
+  const s2best = isIP ? fam.freq : fam.xr;
+  document.querySelectorAll(s2sel).forEach(b => {
+    if (b.dataset[s2key] === val) b.classList.add(s2Ok ? 'correct' : 'wrong');
+    if (b.dataset[s2key] === s2best) b.classList.add('best');
   });
 
   // Scoring
+  const s1Label = isIP ? 'sizing' : 'défense';
+  const s2Label = isIP ? 'fréquence' : 'x/r';
   if (bothCorrect) {
     correctQ++;
     score += 2 + Math.floor(currentStreak / 3);
     currentStreak++;
     showFeedback('correct', '✓ Correct !');
-  } else if (sizingOk || freqOk) {
+  } else if (s1Ok || s2Ok) {
     score += 1;
     currentStreak = 0;
-    showFeedback('partial', '~ 1/2 — ' + (sizingOk ? 'sizing OK, fréquence ratée' : 'fréquence OK, sizing raté'));
+    showFeedback('partial', '~ 1/2 — ' + (s1Ok ? `${s1Label} ✓ · ${s2Label} ✗` : `${s2Label} ✓ · ${s1Label} ✗`));
   } else {
     currentStreak = 0;
     showFeedback('wrong', '✗ Raté');
   }
   streakHistory.push(bothCorrect);
 
-  // Track per-family
-  trackAccuracy('atlas F' + atlasFamily, bothCorrect);
+  // Track per-family (par côté)
+  trackAccuracy('atlas ' + atlasSide.toUpperCase() + ' F' + atlasFamily, bothCorrect);
 
-  // Persistent atlas stats
-  const stats = loadAtlasStats();
+  // Persistent atlas stats (séparées IP / OOP)
+  const allStats = loadAtlasStats();
+  const stats = allStats[atlasSide];
   if (!stats[atlasFamily]) stats[atlasFamily] = { hit: 0, total: 0 };
   stats[atlasFamily].total++;
   if (bothCorrect) stats[atlasFamily].hit++;
-  saveAtlasStats(stats);
+  saveAtlasStats(allStats);
 
-  // Correction panel
+  // Correction panel (prescription IP ou OOP)
+  const rx = isIP ? fam.rx : fam.rxOOP;
+  const desc = isIP ? fam.desc : fam.descOOP;
+  const sideTag = isIP ? '🎯 IP' : '🛡️ OOP';
   const corr = document.getElementById('atlas-correction');
   corr.classList.remove('hidden');
   corr.innerHTML = `
-    <div class="atlas-family-tag" style="background:${fam.color}22;color:${fam.color};border:1px solid ${fam.color}">${fam.emoji} ${fam.name}</div>
-    <div class="atlas-prescription">→ ${fam.rx}</div>
-    <div class="atlas-family-desc">${fam.desc}</div>
+    <div class="atlas-family-tag" style="background:${fam.color}22;color:${fam.color};border:1px solid ${fam.color}">${fam.emoji} ${fam.name} · ${sideTag}</div>
+    <div class="atlas-prescription">→ ${rx}</div>
+    <div class="atlas-family-desc">${desc}</div>
   `;
 
   // Detail line
   const rankLabels = { A:'A-high', H:'High', M:'Mid', L:'Low' };
   showDetail(`${boardInfo.structure} · ${boardInfo.texture} · ${rankLabels[boardInfo.rank]} · ${boardInfo.straights} straight(s)`);
 
-  document.getElementById('next-btn').classList.add('visible');
+  const nextBtn = document.getElementById('next-btn');
+  nextBtn.classList.add('visible');
+  // Tactile : garantir que SUIVANT est à l'écran après la réponse (la correction reste visible au-dessus)
+  try { nextBtn.scrollIntoView({ block: 'center' }); } catch (e) {}
   updateStats();
   renderAtlasDashboard();
 }
@@ -2766,8 +2874,9 @@ function answerAtlasFreq(freq) {
 function renderAtlasDashboard() {
   const dash = document.getElementById('atlas-dashboard');
   if (!dash) return;
-  const stats = loadAtlasStats();
-  let html = '<div class="atlas-dash-title">📊 Accuracy par famille</div>';
+  const stats = loadAtlasStats()[atlasSide];
+  const sideLabel = atlasSide === 'ip' ? '🎯 IP' : '🛡️ OOP';
+  let html = `<div class="atlas-dash-title">📊 Accuracy par famille · ${sideLabel}</div>`;
   for (let f = 1; f <= 7; f++) {
     const s = stats[f] || { hit: 0, total: 0 };
     const pct = s.total > 0 ? Math.round(s.hit / s.total * 100) : 0;
@@ -3374,6 +3483,7 @@ function backToMenu() {
   document.getElementById('pos-select').classList.add('hidden');
   // Restore ctx-bar visibility (hidden in atlas mode)
   document.querySelector('.ctx-bar').style.display = '';
+  document.getElementById('atlas-dashboard').classList.add('hidden');
   gameMode = null;
 }
 
@@ -3478,14 +3588,34 @@ document.getElementById('btn-validate-turn').addEventListener('click', validateT
 document.getElementById('btn-validate-river').addEventListener('click', validateRiverReading);
 document.getElementById('btn-validate-blockers').addEventListener('click', validateBlockers);
 
-// Atlas Drill: sizing clicks
+// Atlas Drill: step 1 clicks (IP sizing + OOP défense)
 document.querySelectorAll('#atlas-sizing-btns .atlas-btn').forEach(btn => {
-  btn.addEventListener('click', () => answerAtlasSizing(btn.dataset.sizing));
+  btn.addEventListener('click', () => answerAtlasStep1(btn.dataset.sizing));
+});
+document.querySelectorAll('#atlas-defense-btns .atlas-btn').forEach(btn => {
+  btn.addEventListener('click', () => answerAtlasStep1(btn.dataset.defense));
 });
 
-// Atlas Drill: frequency clicks
+// Atlas Drill: step 2 clicks (IP fréquence + OOP tendance x/r)
 document.querySelectorAll('#atlas-freq-btns .atlas-btn').forEach(btn => {
-  btn.addEventListener('click', () => answerAtlasFreq(btn.dataset.freq));
+  btn.addEventListener('click', () => answerAtlasStep2(btn.dataset.freq));
+});
+document.querySelectorAll('#atlas-xr-btns .atlas-btn').forEach(btn => {
+  btn.addEventListener('click', () => answerAtlasStep2(btn.dataset.xr));
+});
+
+// Atlas Drill: side toggle (IP c-bet ↔ OOP défense) — garde le flop, reset le QCM
+document.querySelectorAll('.atlas-side-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (gameMode !== 'atlas') return;
+    const side = btn.dataset.side;
+    if (side === atlasSide) return;
+    atlasSide = side;
+    atlasStep = 0;
+    atlasSizingAnswer = null;
+    answered = false;
+    render();
+  });
 });
 
 // Next & Skip buttons
@@ -3516,13 +3646,14 @@ document.addEventListener('keydown', (e) => {
     // Atlas Drill keyboard shortcuts
     if (gameMode === 'atlas') {
       if (atlasStep === 0) {
-        if (e.key === '1') answerAtlasSizing('check');
-        if (e.key === '2') answerAtlasSizing('small');
-        if (e.key === '3') answerAtlasSizing('big');
+        const ipMap = { '1': 'check', '2': 'small', '3': 'big' };
+        const oopMap = { '1': 'wide', '2': 'medium', '3': 'tight' };
+        const v = (atlasSide === 'ip' ? ipMap : oopMap)[e.key];
+        if (v) answerAtlasStep1(v);
       } else if (atlasStep === 1) {
-        if (e.key === '1') answerAtlasFreq('high');
-        if (e.key === '2') answerAtlasFreq('mid');
-        if (e.key === '3') answerAtlasFreq('low');
+        // IP fréquence et OOP x/r partagent high/mid/low
+        const v = { '1': 'high', '2': 'mid', '3': 'low' }[e.key];
+        if (v) answerAtlasStep2(v);
       }
       return;
     }
