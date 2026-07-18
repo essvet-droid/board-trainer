@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Feeling Équité — Phi Atlas</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', Consolas, monospace; background: #1a1a2e; color: #e0e0e0; padding: 16px; }
+h1 { text-align: center; color: #00d4ff; margin-bottom: 4px; font-size: 1.5em; letter-spacing: 1px; }
+.subtitle { text-align: center; color: #666; font-size: 0.82em; margin-bottom: 14px; }
+.container { max-width: 900px; margin: 0 auto; }
+.panel { background: #16213e; border: 1px solid #333; border-radius: 8px; padding: 16px; margin-bottom: 14px; }
+.block-label { font-size: 0.78em; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+
+.ctrl-row { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; }
+.ctrl-group { display: flex; align-items: center; gap: 8px; }
+.ctrl-group > .lbl { font-size: 0.78em; color: #aaa; }
+.seg { display: inline-flex; border: 1px solid #333; border-radius: 4px; overflow: hidden; }
+.seg button { background: #0f3460; color: #888; border: none; padding: 6px 12px; cursor: pointer;
+  font-family: inherit; font-size: 0.85em; }
+.seg button.active { background: #00d4ff; color: #000; font-weight: bold; }
+.seg.gold button.active { background: #f1c40f; color: #000; }
+select { background: #0f3460; border: 1px solid #555; color: #fff; padding: 6px 8px; border-radius: 4px;
+  font-family: inherit; font-size: 0.85em; }
+button.primary { background: #00d4ff; color: #000; border: none; padding: 8px 18px; border-radius: 4px;
+  cursor: pointer; font-weight: bold; font-family: inherit; font-size: 0.9em; letter-spacing: 0.5px; }
+button.primary:hover { background: #00b8d4; }
+button.ghost { background: transparent; color: #888; border: 1px solid #444; padding: 7px 14px;
+  border-radius: 4px; cursor: pointer; font-family: inherit; font-size: 0.85em; }
+button.ghost:hover:not(:disabled) { color: #00d4ff; border-color: #00d4ff; }
+button.ghost:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; }
+.stat-item { background: #0f1a2a; padding: 8px 10px; border-radius: 4px; border-left: 3px solid #00d4ff; }
+.stat-label { font-size: 0.72em; color: #888; text-transform: uppercase; letter-spacing: 0.5px; }
+.stat-value { font-size: 1.05em; font-weight: bold; color: #fff; font-family: Consolas, monospace; }
+
+.card-row { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; align-items: center; }
+.card-wrapper { display: inline-block; border-radius: 9px; line-height: 0; }
+.card-wrapper svg { display: block; }
+.spot-line { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; margin: 4px 0 12px; }
+.spot-line .street { color: #f1c40f; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; font-size: 0.85em; }
+.spot-line .pill { background: #0f1a2a; border-radius: 4px; padding: 4px 12px; font-size: 0.85em; }
+.spot-line .pill b { color: #00d4ff; }
+
+.question-text { font-size: 1.05em; color: #f1c40f; margin: 12px 0; }
+.bucket-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 10px 0; }
+.bucket-btn { padding: 14px 8px; border-radius: 6px; border: 2px solid; background: #0f1a2a; cursor: pointer;
+  font-family: inherit; font-weight: bold; font-size: 0.95em; color: #e0e0e0; transition: all 0.12s; }
+.bucket-btn .bk-range { display: block; font-size: 0.7em; font-weight: normal; color: #888; margin-top: 3px; }
+.bucket-btn:disabled { cursor: default; opacity: 0.5; }
+.bucket-btn.trash  { border-color: #e74c3c; } .bucket-btn.trash:not(:disabled):hover  { background: #e74c3c; color: #fff; }
+.bucket-btn.weak   { border-color: #e67e22; } .bucket-btn.weak:not(:disabled):hover   { background: #e67e22; color: #fff; }
+.bucket-btn.good   { border-color: #00d4ff; } .bucket-btn.good:not(:disabled):hover   { background: #00d4ff; color: #000; }
+.bucket-btn.strong { border-color: #2ecc71; } .bucket-btn.strong:not(:disabled):hover { background: #2ecc71; color: #000; }
+.bucket-btn.reveal-correct.trash  { background: #e74c3c; color: #fff; opacity: 1; }
+.bucket-btn.reveal-correct.weak   { background: #e67e22; color: #fff; opacity: 1; }
+.bucket-btn.reveal-correct.good   { background: #00d4ff; color: #000; opacity: 1; }
+.bucket-btn.reveal-correct.strong { background: #2ecc71; color: #000; opacity: 1; }
+.bucket-btn.reveal-wrong { opacity: 1; box-shadow: 0 0 0 2px #e74c3c inset; }
+
+.feedback { padding: 12px 14px; border-radius: 6px; margin: 12px 0; display: none; }
+.feedback.show { display: block; }
+.feedback.correct { background: #0a3622; border: 1px solid #2ecc71; }
+.feedback.wrong { background: #3a0a0a; border: 1px solid #e74c3c; }
+.feedback .ft { font-weight: bold; font-size: 1.05em; margin-bottom: 8px; }
+.feedback.correct .ft { color: #2ecc71; }
+.feedback.wrong .ft { color: #e74c3c; }
+.computing { color: #f1c40f; font-size: 0.85em; }
+
+.decl-title { font-size: 0.78em; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin: 12px 0 8px; }
+.decl-bars { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; align-items: end;
+  height: 150px; padding-top: 18px; }
+.decl-col { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; }
+.decl-bar { width: 100%; border-radius: 4px 4px 0 0; position: relative; min-height: 2px; transition: height 0.2s; }
+.decl-bar.trash { background: #e74c3c; } .decl-bar.weak { background: #e67e22; }
+.decl-bar.good { background: #00d4ff; } .decl-bar.strong { background: #2ecc71; }
+.decl-bar.sel { box-shadow: 0 0 0 2px #fff, 0 0 10px rgba(255,255,255,0.4); }
+.decl-eq { position: absolute; top: -17px; left: 0; right: 0; text-align: center; font-family: Consolas, monospace;
+  font-size: 0.78em; color: #e0e0e0; font-weight: bold; }
+.decl-x { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 3px; }
+.decl-x span { text-align: center; font-size: 0.72em; color: #888; font-family: Consolas, monospace; }
+.decl-x span.sel { color: #fff; font-weight: bold; }
+.form-line { margin-top: 12px; font-size: 0.88em; color: #ccc; }
+.form-line b { color: #00d4ff; }
+.form-line .chip { display: inline-block; background: #0f1a2a; border-radius: 4px; padding: 2px 8px; margin: 0 3px; font-family: Consolas, monospace; }
+
+.legend { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 10px; font-size: 0.76em; color: #aaa; }
+.legend .dot { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
+.source-tag { font-size: 0.72em; color: #666; font-style: italic; margin-top: 10px; }
+.help-section p { line-height: 1.55; margin: 8px 0; color: #ccc; font-size: 0.9em; }
+details { margin: 6px 0; } summary { cursor: pointer; color: #00d4ff; font-weight: bold; padding: 4px 0; font-size: 0.95em; }
+</style>
+</head>
+<body>
+<div class="container">
+<h1>Feeling Équité</h1>
+<p class="subtitle">Ta main vs la range de vilain. Devine ton bucket, vois la déclinaison.</p>
+
+<div class="panel">
+  <div class="ctrl-row">
+    <div class="ctrl-group">
+      <span class="lbl">Ma range max</span>
+      <div class="seg" id="hero-width"></div>
+    </div>
+    <button class="primary" id="btn-deal">🎲 Nouvelle main</button>
+  </div>
+  <div class="ctrl-row">
+    <div class="ctrl-group">
+      <span class="lbl">Range vilain</span>
+      <div class="seg gold" id="vill-width"></div>
+    </div>
+    <div class="ctrl-group">
+      <span class="lbl">Forme</span>
+      <select id="vill-shape">
+        <option value="linear">Linéaire</option>
+        <option value="condensed">Condensé (sans top 6,25%)</option>
+        <option value="polarized">Polarisé (top + bas)</option>
+      </select>
+    </div>
+  </div>
+  <div class="stats-grid" style="margin-top:6px">
+    <div class="stat-item"><div class="stat-label">Questions</div><div class="stat-value" id="s-total">0</div></div>
+    <div class="stat-item"><div class="stat-label">Correctes</div><div class="stat-value" id="s-correct">0</div></div>
+    <div class="stat-item"><div class="stat-label">Précision</div><div class="stat-value" id="s-acc">—</div></div>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="spot-line">
+    <span class="street" id="street-lbl">FLOP</span>
+    <span class="pill">Vilain : <b id="vill-desc">top 25% linéaire</b></span>
+  </div>
+  <div class="block-label">Ta main</div>
+  <div class="card-row" id="hero-cards"></div>
+  <div class="block-label">Board</div>
+  <div class="card-row" id="board-cards"></div>
+
+  <div class="question-text">Ton équité contre la range de vilain : quel bucket ?</div>
+  <div class="bucket-row" id="buckets">
+    <button class="bucket-btn trash"  data-bk="trash">Trash<span class="bk-range">&lt; 33%</span></button>
+    <button class="bucket-btn weak"   data-bk="weak">Weak<span class="bk-range">33–50%</span></button>
+    <button class="bucket-btn good"   data-bk="good">Good<span class="bk-range">50–75%</span></button>
+    <button class="bucket-btn strong" data-bk="strong">Strong<span class="bk-range">≥ 75%</span></button>
+  </div>
+  <div class="ctrl-row">
+    <button class="ghost" id="btn-turn" disabled>Turn →</button>
+    <button class="ghost" id="btn-river" disabled>River →</button>
+    <span class="computing" id="computing" style="display:none">calcul…</span>
+  </div>
+
+  <div class="feedback" id="feedback">
+    <div class="ft" id="fb-title"></div>
+    <div id="fb-text"></div>
+    <div class="decl-title">Déclinaison — ton équité vs la largeur de range vilain (forme <span id="decl-shape"></span>)</div>
+    <div class="decl-bars" id="decl-bars"></div>
+    <div class="decl-x" id="decl-x"></div>
+    <div class="form-line" id="form-line"></div>
+  </div>
+
+  <div class="legend">
+    <span><span class="dot" style="background:#2ecc71"></span>Strong ≥75%</span>
+    <span><span class="dot" style="background:#00d4ff"></span>Good 50–75%</span>
+    <span><span class="dot" style="background:#e67e22"></span>Weak 33–50%</span>
+    <span><span class="dot" style="background:#e74c3c"></span>Trash &lt;33%</span>
+  </div>
+  <div class="source-tag">Équité en direct (Monte-Carlo flop, exact turn/river) — moteur JS validé contre treys (0 écart / 20 000 showdowns). Paliers PPT de 6,25%.</div>
+</div>
+
+<div class="panel">
+  <details>
+    <summary>📖 Comment ça marche</summary>
+    <div class="help-section">
+      <p>Choisis ta <b>range max</b> (les mains qu'on te tire) et la <b>range de vilain</b> (largeur + forme). Une main + un flop te sont donnés.</p>
+      <p>Devine ton bucket d'équité (T/W/G/S). À la révélation : le bon bucket, ton équité exacte, <b>et la déclinaison</b> — comment ton équité change selon la largeur de la range vilain, plus l'effet de la forme.</p>
+      <p>Clique <b>Turn</b> puis <b>River</b> : même main, board qui s'allonge, tu re-devines et tu sens l'évolution rue par rue.</p>
+    </div>
+  </details>
+</div>
+</div>
+
+<script>
+// ═══════════════ Rendu cartes (jeu 4 couleurs, identique board_trainer/OSD) ═══════════════
+const SUIT_SYMBOL = { h:'♥', d:'♦', c:'♣', s:'♠' };
+const CARD_COLORS = { h:'#C0392B', d:'#1A6FA8', c:'#1E8449', s:'#1a1a1a' };
+function cardSvg(code) {
+  const rank = code[0]==='T'?'10':code[0].toUpperCase(), suit=code[1].toLowerCase();
+  const color=CARD_COLORS[suit]||'#333', sym=SUIT_SYMBOL[suit]||'?';
+  const w=60,h=84,rRank=32,rSym=48,rx=7,rankY=26,symY=76;
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" style="display:inline-block;vertical-align:middle;overflow:hidden;border-radius:${rx}px" xmlns="http://www.w3.org/2000/svg">
+    <rect width="${w}" height="${h}" rx="${rx}" fill="${color}"/>
+    <text x="${w/2}" y="${rankY}" text-anchor="middle" dominant-baseline="middle" style="font-family:'Segoe UI',sans-serif;font-weight:800;font-size:${rRank}px;fill:white">${rank}</text>
+    <text x="${w/2}" y="${symY}" text-anchor="middle" dominant-baseline="auto" style="font-family:Arial,sans-serif;font-weight:700;font-size:${rSym}px;fill:rgba(255,255,255,0.30)">${sym}</text></svg>`;
+}
+function cardHTML(c){ return `<div class="card-wrapper">${cardSvg(c)}</div>`; }
+
+// ═══════════════ Moteur d'équité (validé contre treys) ═══════════════
+const EV_RANK={ '2':2,'3':3,'4':4,'5':5,'6':6,'7':7,'8':8,'9':9,'T':10,'J':11,'Q':12,'K':13,'A':14 };
+const EV_SUIT={ s:0,h:1,d:2,c:3 };
+function evParse(str){ return { r:EV_RANK[str[0]], s:EV_SUIT[str[1]] }; }
+function evScore(cat,ts){ let v=cat; for(let i=0;i<5;i++) v=v*15+(ts[i]||0); return v; }
+function evStraightHigh(p){ for(let h=14;h>=6;h--){let ok=true;for(let k=0;k<5;k++)if(!p[h-k]){ok=false;break;}if(ok)return h;} if(p[14]&&p[5]&&p[4]&&p[3]&&p[2])return 5; return 0; }
+function eval7(cards){
+  const rc=new Array(15).fill(0),sc=[0,0,0,0];
+  for(const c of cards){rc[c.r]++;sc[c.s]++;}
+  let fs=-1;for(let s=0;s<4;s++)if(sc[s]>=5)fs=s;
+  const pres=new Array(15).fill(false);for(let r=2;r<=14;r++)if(rc[r]>0)pres[r]=true;
+  if(fs>=0){const fp=new Array(15).fill(false);for(const c of cards)if(c.s===fs)fp[c.r]=true;const sfh=evStraightHigh(fp);if(sfh>0)return evScore(8,[sfh]);}
+  const trips=[],pairs=[];let quad=0;
+  for(let r=14;r>=2;r--){if(rc[r]===4)quad=r;else if(rc[r]===3)trips.push(r);else if(rc[r]===2)pairs.push(r);}
+  if(quad){let k=0;for(let r=14;r>=2;r--)if(rc[r]>0&&r!==quad){k=r;break;}return evScore(7,[quad,k]);}
+  if(trips.length>=1&&(pairs.length>=1||trips.length>=2)){const t=trips[0],p=trips.length>=2?Math.max(trips[1],pairs.length?pairs[0]:0):pairs[0];return evScore(6,[t,p]);}
+  if(fs>=0){const fr=cards.filter(c=>c.s===fs).map(c=>c.r).sort((a,b)=>b-a).slice(0,5);return evScore(5,fr);}
+  const sh=evStraightHigh(pres);if(sh>0)return evScore(4,[sh]);
+  if(trips.length>=1){const t=trips[0],k=[];for(let r=14;r>=2;r--)if(rc[r]>0&&r!==t){k.push(r);if(k.length===2)break;}return evScore(3,[t,...k]);}
+  if(pairs.length>=2){const hp=pairs[0],lp=pairs[1];let k=0;for(let r=14;r>=2;r--)if(rc[r]>0&&r!==hp&&r!==lp){k=r;break;}return evScore(2,[hp,lp,k]);}
+  if(pairs.length===1){const p=pairs[0],k=[];for(let r=14;r>=2;r--)if(rc[r]>0&&r!==p){k.push(r);if(k.length===3)break;}return evScore(1,[p,...k]);}
+  const hc=[];for(let r=14;r>=2;r--)if(rc[r]>0){hc.push(r);if(hc.length===5)break;}return evScore(0,hc);
+}
+const EV_RANKS='23456789TJQKA';
+function evDeck(){const d=[];for(const r of EV_RANKS)for(const s of 'shdc')d.push(r+s);return d;}
+function evOut(hs,vs){return hs>vs?1:(hs<vs?0:0.5);}
+function equityVsRange(hero,board,vcombos,samples){
+  const used=new Set([...hero,...board]);
+  const heroC=hero.map(evParse),boardC=board.map(evParse);
+  const vc=vcombos.filter(c=>!used.has(c[0])&&!used.has(c[1])).map(c=>[evParse(c[0]),evParse(c[1]),c[0],c[1]]);
+  if(vc.length===0)return{eq:null,n:0};
+  if(board.length===5){let sum=0,n=0;const hs=eval7([...heroC,...boardC]);for(const v of vc){sum+=evOut(hs,eval7([v[0],v[1],...boardC]));n++;}return{eq:sum/n,n};}
+  if(board.length===4){let sum=0,n=0;for(const v of vc){const blk=new Set([...used,v[2],v[3]]);for(const rc of evDeck()){if(blk.has(rc))continue;const rk=evParse(rc);sum+=evOut(eval7([...heroC,...boardC,rk]),eval7([v[0],v[1],...boardC,rk]));n++;}}return{eq:sum/n,n};}
+  const toCome=5-board.length,N=samples||8000,deck=evDeck();let sum=0,n=0;
+  for(let i=0;i<N;i++){const v=vc[(Math.random()*vc.length)|0];const blk=new Set([...used,v[2],v[3]]);const run=[];
+    while(run.length<toCome){const c=deck[(Math.random()*52)|0];if(!blk.has(c)){blk.add(c);run.push(evParse(c));}}
+    sum+=evOut(eval7([...heroC,...boardC,...run]),eval7([v[0],v[1],...boardC,...run]));n++;}
+  return{eq:sum/n,n};
+}
+
+// ═══════════════ Paliers PPT 6,25% + parser ═══════════════
+const TIERS_NOTATION=[
+ "88+,ATs+,KQs,AQo+",
+ "77-66,A9s-A8s,KJs-KTs,QTs+,JTs,AJo-ATo,KJo+",
+ "55,A7s-A3s,K9s,Q9s,J9s,T9s,A9o,KTo,QJo",
+ "44,A2s,K8s-K5s,Q8s,J8s,T8s,98s,A8o-A7o,QTo,JTo",
+ "33,K4s-K3s,Q7s,T7s,87s,A5o-A4o,K9o,Q9o",
+ "22,K2s,Q6s-Q5s,J7s,97s,A6o,A3o,K8o,J9o,T9o",
+ "Q4s-Q2s,J6s-J5s,T6s,96s,86s,76s,65s,A2o,K7o-K5o",
+ "J4s,95s,85s,75s,54s,K4o,Q8o,J8o,T8o,98o",
+];
+const RVX={};for(let i=0;i<13;i++)RVX[EV_RANKS[i]]=i;
+function classCombos(cls){const out=[];
+  if(cls.length===2&&cls[0]===cls[1]){const cards=[...'shdc'].map(s=>cls[0]+s);for(let i=0;i<4;i++)for(let j=i+1;j<4;j++)out.push([cards[i],cards[j]]);}
+  else{const r1=cls[0],r2=cls[1],suf=cls[2]||'';for(const s1 of 'shdc')for(const s2 of 'shdc'){if(r1+s1===r2+s2)continue;const same=s1===s2;if(suf==='s'&&!same)continue;if(suf==='o'&&same)continue;const a=r1+s1,b=r2+s2;if(!out.some(x=>(x[0]===a&&x[1]===b)||(x[0]===b&&x[1]===a)))out.push([a,b]);}}
+  return out;}
+function expandTok(tok){const cl=new Set();
+  if(tok.includes('-')){const[a,b]=tok.split('-');if(a[0]===a[1]){const hi=RVX[a[0]],lo=RVX[b[0]];for(let v=Math.min(hi,lo);v<=Math.max(hi,lo);v++)cl.add(EV_RANKS[v]+EV_RANKS[v]);}else{const hc=a[0],suf=a[2]||'',k1=RVX[a[1]],k2=RVX[b[1]];for(let v=Math.min(k1,k2);v<=Math.max(k1,k2);v++)cl.add(hc+EV_RANKS[v]+suf);}}
+  else if(tok.endsWith('+')){const base=tok.slice(0,-1);if(base[0]===base[1]){const lo=RVX[base[0]];for(let v=lo;v<13;v++)cl.add(EV_RANKS[v]+EV_RANKS[v]);}else{const hc=base[0],suf=base[2]||'',klo=RVX[base[1]],khi=RVX[hc]-1;for(let v=klo;v<=khi;v++)cl.add(hc+EV_RANKS[v]+suf);}}
+  else cl.add(tok);return cl;}
+function tierCombos(notation){const out=[],seen=new Set();for(const tok of notation.split(','))for(const cls of expandTok(tok))for(const c of classCombos(cls)){const key=[c[0],c[1]].sort().join('');if(!seen.has(key)){seen.add(key);out.push(c);}}return out;}
+const TIER_COMBOS=TIERS_NOTATION.map(tierCombos);
+function eqbBucket(pct){return pct>=75?'strong':pct>=50?'good':pct>=33?'weak':'trash';}
+const BK_LABEL={trash:'Trash',weak:'Weak',good:'Good',strong:'Strong'};
+
+// ═══════════════ Composition de ranges ═══════════════
+// largeur en % -> nb de paliers (12,5->2 ; 25->4 ; 37,5->6 ; 50->8)
+function nTiers(widthPct){ return Math.round(widthPct/6.25); }
+function tiersFor(widthPct, shape){
+  const n=nTiers(widthPct), idx=[];for(let i=0;i<n;i++)idx.push(i);
+  if(shape==='linear')return idx;
+  if(shape==='condensed')return n>=2?idx.slice(1):idx;         // sans le top 6,25%
+  // polarisé : top 6,25% + la bande la plus basse incluse
+  return n>=2?[0,n-1]:[0];
+}
+function heroRangeCombos(widthPct){ // union des paliers 0..n-1
+  const n=nTiers(widthPct),out=[];for(let i=0;i<n;i++)out.push(...TIER_COMBOS[i]);
+  // dédup
+  const seen=new Set(),res=[];for(const c of out){const k=[c[0],c[1]].sort().join('');if(!seen.has(k)){seen.add(k);res.push(c);}}return res;
+}
+
+// ═══════════════ État & UI ═══════════════
+const WIDTHS=[12.5,25,37.5,50];
+const SHAPE_LABEL={linear:'linéaire',condensed:'condensé',polarized:'polarisé'};
+let heroWidth=50, villWidth=25, villShape='linear';
+let hero=[], fullBoard=[], street='flop';
+let perTierCache={}; // par street -> [{eq,n} x8]
+let answered=false;
+const stats={total:0,correct:0};
+
+function boardFor(st){ return st==='flop'?fullBoard.slice(0,3):st==='turn'?fullBoard.slice(0,4):fullBoard.slice(0,5); }
+function el(id){ return document.getElementById(id); }
+
+function buildSeg(container, values, current, fmt, onPick){
+  container.innerHTML='';
+  values.forEach(v=>{
+    const b=document.createElement('button');
+    b.textContent=fmt(v); b.dataset.val=v;
+    if(v===current)b.classList.add('active');
+    b.addEventListener('click',()=>onPick(v));
+    container.appendChild(b);
+  });
+}
+function refreshSeg(container,current){ [...container.children].forEach(b=>b.classList.toggle('active', parseFloat(b.dataset.val)===current)); }
+
+function villDesc(){ return `top ${villWidth}% ${SHAPE_LABEL[villShape]}`; }
+
+function deal(){
+  const hr=heroRangeCombos(heroWidth);
+  hero=hr[(Math.random()*hr.length)|0].slice();
+  const deck=evDeck().filter(c=>!hero.includes(c));
+  for(let i=deck.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[deck[i],deck[j]]=[deck[j],deck[i]];}
+  fullBoard=deck.slice(0,5);
+  street='flop'; perTierCache={};
+  goStreet('flop');
+}
+
+function goStreet(st){
+  street=st; answered=false;
+  el('street-lbl').textContent=st.toUpperCase();
+  el('vill-desc').textContent=villDesc();
+  el('hero-cards').innerHTML=hero.map(cardHTML).join('');
+  el('board-cards').innerHTML=boardFor(st).map(cardHTML).join('');
+  [...el('buckets').children].forEach(b=>{b.disabled=false;b.className='bucket-btn '+b.dataset.bk;});
+  el('feedback').classList.remove('show','correct','wrong');
+  el('btn-turn').disabled = !(st==='flop');
+  el('btn-river').disabled = !(st==='turn');
+}
+
+function perTier(){
+  if(perTierCache[street]) return perTierCache[street];
+  const b=boardFor(street);
+  const samples = 12000;
+  const per=TIER_COMBOS.map(tc=>equityVsRange(hero,b,tc,samples));
+  perTierCache[street]=per;
+  return per;
+}
+function compose(per, tierIdx){
+  let sw=0,sc=0;for(const i of tierIdx){if(per[i].eq==null)continue;sw+=per[i].eq*per[i].n;sc+=per[i].n;}
+  return sc?sw/sc*100:null;
+}
+
+function answer(pick){
+  if(answered||!hero.length) return;
+  answered=true;
+  el('computing').style.display='';
+  setTimeout(()=>{
+    const per=perTier();
+    const targetEq=compose(per, tiersFor(villWidth, villShape));
+    const correctBk=eqbBucket(targetEq);
+    const ok=pick===correctBk;
+    stats.total++; if(ok)stats.correct++;
+    el('s-total').textContent=stats.total; el('s-correct').textContent=stats.correct;
+    el('s-acc').textContent=Math.round(stats.correct/stats.total*100)+'%';
+
+    [...el('buckets').children].forEach(b=>{b.disabled=true;
+      if(b.dataset.bk===correctBk)b.classList.add('reveal-correct');
+      else if(b.dataset.bk===pick)b.classList.add('reveal-wrong');});
+
+    const fb=el('feedback'); fb.classList.add('show', ok?'correct':'wrong');
+    el('fb-title').textContent=ok?'✅ Correct':'❌ Raté';
+    el('fb-text').textContent = ok
+      ? `Ton équité vs ${villDesc()} : ${Math.round(targetEq)}% → ${BK_LABEL[correctBk]}.`
+      : `Tu as dit ${BK_LABEL[pick]} — ton équité vs ${villDesc()} : ${Math.round(targetEq)}% → ${BK_LABEL[correctBk]}.`;
+
+    // déclinaison : 4 largeurs, forme courante
+    el('decl-shape').textContent=SHAPE_LABEL[villShape];
+    const bars=WIDTHS.map(w=>({w, eq:compose(per, tiersFor(w, villShape))}));
+    el('decl-bars').innerHTML=bars.map(b=>{
+      if(b.eq==null)return `<div class="decl-col"></div>`;
+      const bk=eqbBucket(b.eq), sel=b.w===villWidth?' sel':'';
+      return `<div class="decl-col"><div class="decl-bar ${bk}${sel}" style="height:${b.eq.toFixed(1)}%"><span class="decl-eq">${Math.round(b.eq)}%</span></div></div>`;
+    }).join('');
+    el('decl-x').innerHTML=bars.map(b=>`<span class="${b.w===villWidth?'sel':''}">top ${b.w}%</span>`).join('');
+
+    // effet de la forme, à la largeur sélectionnée
+    const forms=['linear','condensed','polarized'].map(sh=>{
+      const eq=compose(per, tiersFor(villWidth, sh));
+      return {sh, eq};
+    });
+    el('form-line').innerHTML = `À <b>top ${villWidth}%</b> selon la forme : ` + forms.map(f=>
+      f.eq==null?'' : `<span class="chip">${SHAPE_LABEL[f.sh]} ${Math.round(f.eq)}% (${BK_LABEL[eqbBucket(f.eq)]})</span>`).join(' ');
+
+    el('computing').style.display='none';
+  },15);
+}
+
+// listeners
+buildSeg(el('hero-width'), WIDTHS, heroWidth, v=>v+'%', v=>{ heroWidth=v; refreshSeg(el('hero-width'),v); deal(); });
+buildSeg(el('vill-width'), WIDTHS, villWidth, v=>v+'%', v=>{ villWidth=v; refreshSeg(el('vill-width'),v); if(hero.length) goStreet(street); });
+el('vill-shape').addEventListener('change', e=>{ villShape=e.target.value; if(hero.length) goStreet(street); });
+[...el('buckets').children].forEach(b=>b.addEventListener('click',()=>answer(b.dataset.bk)));
+el('btn-deal').addEventListener('click', deal);
+el('btn-turn').addEventListener('click',()=>{ if(!el('btn-turn').disabled) goStreet('turn'); });
+el('btn-river').addEventListener('click',()=>{ if(!el('btn-river').disabled) goStreet('river'); });
+
+deal();
+</script>
+</body>
+</html>
