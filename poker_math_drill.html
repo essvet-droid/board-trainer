@@ -149,7 +149,7 @@ details { margin: 6px 0; } summary { cursor: pointer; color: #00d4ff; font-weigh
     <summary>📖 Comment ça marche</summary>
     <div class="help-section">
       <p><b>🅐 Fondamentaux (Owen Gaines)</b> — la base arithmétique : <b>Cotes</b> (call ou fold ?), <b>EV</b> du call, <b>Sklansky-bucks</b> (ton EV réel d'un all-in vs la main montrée), <b>G-bucks</b> (ton EV vs toute sa <i>range</i> — la révélation compare les deux pour montrer pourquoi ils diffèrent). Équité par le moteur validé treys.</p>
-      <p><b>🅑 Ratios GTO (Acevedo)</b> — les fréquences d'équilibre : <b>α</b> (part de bluff qui rend ta mise non-exploitable), <b>MDF</b> (fréquence minimale de défense), <b>EqR</b> et <b>EqR_min</b> (taux de réalisation de l'équité). Formules identiques à <i>calculateur_gto</i>.</p>
+      <p><b>🅑 Ratios GTO (Acevedo)</b> — les fréquences d'équilibre : <b>α</b> (la fold equity qu'un bluff exige = fréquence de fold max du défenseur, 1−MDF), <b>MDF</b> (fréquence min de défense), <b>% Bluff</b> (part de bluffs de ta range de mise = b/(p+2b), à ne pas confondre avec α), <b>EqR</b> / <b>EqR_min</b> (taux de réalisation). Formules identiques à <i>calculateur_gto</i>.</p>
       <p>Choisis <b>Mélange</b> pour que le drill enchaîne tous les types ; avec <b>répétition espacée</b>, il te sert plus souvent ce que tu rates. Tape ta réponse et valide (ou clique Call/Fold). La correction montre le calcul exact + le pourquoi.</p>
     </div>
   </details>
@@ -399,11 +399,12 @@ function genAlpha(){
   return {
     module:'B', sub:'alpha', street:st, board, noHole:true,
     pills:[`Pot (avant mise) <b>${potBefore} bb</b>`, `Mise <b>${bet} bb</b>`],
-    question:`Quelle fraction de bluffs (<b>α</b>) rend cette mise non-exploitable ? (en %)`,
+    question:`<b>α</b> : quelle <b>fold equity</b> ton bluff a-t-il besoin ? (= fréquence de fold max du défenseur, en %)`,
     answerType:'number', unit:'%', tol:2.0, correct:a*100,
     calcHTML:`α = Mise / (Mise + Pot) = ${bet}/(${bet}+${potBefore}) = <b>${pct(a)}</b>`,
-    whyHTML:`Au-delà de ${pct(a)} de bluffs dans ta range de mise, un <i>bluff-catcher</i> adverse devient +EV en callant. `+
-            `Plus la mise est grosse, plus tu peux bluffer (le pot que tu offres est plus cher).`
+    whyHTML:`α = la <b>fold equity</b> qu'un bluff pur (0% d'équité) exige pour être rentable : tu risques ${bet} pour `+
+            `gagner ${potBefore}, il te faut donc ${pct(a)} de folds. C'est aussi la fréquence de fold <b>max</b> du `+
+            `défenseur (α = 1 − MDF). ⚠️ Ce n'est PAS la part de bluffs de ta range — ça, c'est le mode « % Bluff ».`
   };
 }
 
@@ -421,6 +422,26 @@ function genMDF(){
     calcHTML:`MDF = Pot / (Pot + Mise) = ${potBefore}/(${potBefore}+${bet}) = <b>${pct(m)}</b> = 1 − α`,
     whyHTML:`Si tu défends moins de ${pct(m)}, vilain peut bluffer n'importe quelles deux cartes avec profit. `+
             `Défendre ${pct(m)} le rend indifférent à bluffer.`
+  };
+}
+
+function genBluffPct(){
+  const st=randStreet(), len=streetLen(st), used=new Set();
+  const board=dealCards(len, used);
+  const potBefore=ri(4,20);
+  const bet=Math.max(1, Math.round(potBefore*pick([0.33,0.5,0.66,0.75,1.0,1.5])));
+  const bf=bet/(potBefore+2*bet);   // fraction de bluff de la range de mise
+  const vb=(potBefore+bet)/bet;     // ratio value:bluff (X:1)
+  return {
+    module:'B', sub:'bluffpct', street:st, board, noHole:true,
+    pills:[`Pot (avant mise) <b>${potBefore} bb</b>`, `Mise <b>${bet} bb</b>`],
+    question:`Quelle <b>fraction de bluffs</b> dans ta range de mise rend le défenseur indifférent ? (en %)`,
+    answerType:'number', unit:'%', tol:2.0, correct:bf*100,
+    calcHTML:`% bluff = Mise / (Pot + 2×Mise) = ${bet}/(${potBefore}+2×${bet}) = <b>${pct(bf)}</b><br>`+
+             `→ value:bluff = (Pot+Mise) : Mise = ${potBefore+bet} : ${bet} = <b>${vb.toFixed(1)} : 1</b>`,
+    whyHTML:`Sur une range polarisée (value + bluffs) face à un bluff-catcher, tu bluffes ${pct(bf)} de tes mises `+
+            `(soit ${vb.toFixed(1)} mains de value pour 1 bluff). Au-delà, son bluff-catcher call avec profit ; `+
+            `en-deçà, tu sous-bluffes. À NE PAS confondre avec α (la fold equity, = ${pct(calcAlpha(bet,potBefore))} ici).`
   };
 }
 
@@ -472,25 +493,26 @@ function genEqRmin(){
 
 const GENERATORS = {
   cotes:genCotes, ev:genEV, sklansky:genSklansky, gbucks:genGbucks,
-  alpha:genAlpha, mdf:genMDF, eqr:genEqR, eqrmin:genEqRmin
+  alpha:genAlpha, mdf:genMDF, bluffpct:genBluffPct, eqr:genEqR, eqrmin:genEqRmin
 };
 const SUBMODES = {
   A:[['mix','Mélange'],['cotes','Cotes'],['ev','EV'],['sklansky','Sklansky-bucks'],['gbucks','G-bucks']],
-  B:[['mix','Mélange'],['alpha','α'],['mdf','MDF'],['eqr','EqR'],['eqrmin','EqR_min']]
+  B:[['mix','Mélange'],['alpha','α'],['mdf','MDF'],['bluffpct','% Bluff'],['eqr','EqR'],['eqrmin','EqR_min']]
 };
-const SUB_LABEL={cotes:'Cotes',ev:'EV',sklansky:'Sklansky-bucks',gbucks:'G-bucks',alpha:'α',mdf:'MDF',eqr:'EqR',eqrmin:'EqR_min'};
+const SUB_LABEL={cotes:'Cotes',ev:'EV',sklansky:'Sklansky-bucks',gbucks:'G-bucks',alpha:'α',mdf:'MDF',bluffpct:'% Bluff',eqr:'EqR',eqrmin:'EqR_min'};
 // Formule théorique générique affichée AVEC la question (mémorisation par répétition)
 const FORMULAS={
   cotes:'Cote = Call ÷ (Pot + Call) &nbsp;→&nbsp; call si Éq ≥ Cote',
   ev:'EV = Éq × Pot − (1 − Éq) × Call',
   sklansky:'Sklansky-bucks = Éq × Pot<sub>final</sub> − investi',
   gbucks:'G-bucks = Éq<sub>(vs range)</sub> × Pot<sub>final</sub> − investi',
-  alpha:'α = Mise ÷ (Mise + Pot)',
+  alpha:'α = Mise ÷ (Mise + Pot) &nbsp;<span style="color:#888;font-size:.85em">fold equity / fréq. fold max = 1 − MDF</span>',
   mdf:'MDF = Pot ÷ (Pot + Mise) = 1 − α',
+  bluffpct:'% bluff = Mise ÷ (Pot + 2×Mise) &nbsp;·&nbsp; value:bluff = (Pot+Mise) : Mise',
   eqr:'EqR = EV ÷ (Éq × Pot) &nbsp;·&nbsp; EV = Éq × Pot − (1 − Éq) × Call',
   eqrmin:'EqR<sub>min</sub> = Cote ÷ Éq &nbsp;·&nbsp; Cote = Call ÷ (Pot + Call)'
 };
-const MODULE_SUBS={A:['cotes','ev','sklansky','gbucks'], B:['alpha','mdf','eqr','eqrmin']};
+const MODULE_SUBS={A:['cotes','ev','sklansky','gbucks'], B:['alpha','mdf','bluffpct','eqr','eqrmin']};
 const SOURCE={A:'Fondamentaux — Owen Gaines, « Poker Math That Matters ». Équité exacte vs main précise (moteur validé treys).',
               B:'Ratios GTO — Michael Acevedo, « Modern Poker Theory ». Formules identiques à calculateur_gto.html.'};
 
