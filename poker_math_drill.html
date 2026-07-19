@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Poker Math Drill — Phi Atlas</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', Consolas, monospace; background: #1a1a2e; color: #e0e0e0; padding: 16px; }
+h1 { text-align: center; color: #00d4ff; margin-bottom: 4px; font-size: 1.5em; letter-spacing: 1px; }
+.subtitle { text-align: center; color: #666; font-size: 0.82em; margin-bottom: 14px; }
+.container { max-width: 860px; margin: 0 auto; }
+.panel { background: #16213e; border: 1px solid #333; border-radius: 8px; padding: 16px; margin-bottom: 14px; }
+.block-label { font-size: 0.78em; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+
+.ctrl-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; }
+.ctrl-group { display: flex; align-items: center; gap: 8px; }
+.ctrl-group > .lbl { font-size: 0.78em; color: #aaa; }
+.seg { display: inline-flex; border: 1px solid #333; border-radius: 4px; overflow: hidden; flex-wrap: wrap; }
+.seg button { background: #0f3460; color: #8aa; border: none; padding: 6px 12px; cursor: pointer;
+  font-family: inherit; font-size: 0.85em; }
+.seg button.active { background: #00d4ff; color: #000; font-weight: bold; }
+.seg.gold button.active { background: #f1c40f; color: #000; }
+.seg.mod button { padding: 9px 18px; font-size: 0.95em; }
+
+/* module tabs */
+.tabs { display: flex; gap: 0; border: 1px solid #333; border-radius: 6px; overflow: hidden; margin-bottom: 12px; }
+.tabs button { flex: 1; background: #0f1a2a; color: #8aa; border: none; padding: 12px; cursor: pointer;
+  font-family: inherit; font-size: 1em; font-weight: bold; letter-spacing: 0.5px; }
+.tabs button.active { background: #0f3460; color: #00d4ff; box-shadow: inset 0 -3px 0 #00d4ff; }
+
+button.primary { background: #00d4ff; color: #000; border: none; padding: 8px 18px; border-radius: 4px;
+  cursor: pointer; font-weight: bold; font-family: inherit; font-size: 0.9em; letter-spacing: 0.5px; }
+button.primary:hover { background: #00b8d4; }
+button.ghost { background: transparent; color: #888; border: 1px solid #444; padding: 7px 14px;
+  border-radius: 4px; cursor: pointer; font-family: inherit; font-size: 0.85em; }
+button.ghost:hover:not(:disabled) { color: #00d4ff; border-color: #00d4ff; }
+label.toggle { font-size: 0.78em; color: #aaa; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 8px; }
+.stat-item { background: #0f1a2a; padding: 8px 10px; border-radius: 4px; border-left: 3px solid #00d4ff; }
+.stat-label { font-size: 0.72em; color: #888; text-transform: uppercase; letter-spacing: 0.5px; }
+.stat-value { font-size: 1.05em; font-weight: bold; color: #fff; font-family: Consolas, monospace; }
+
+.card-row { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; align-items: center; }
+.card-wrapper { display: inline-block; border-radius: 9px; line-height: 0; }
+.card-wrapper svg { display: block; }
+.vs { color: #888; font-size: 0.9em; padding: 0 4px; }
+
+.spot-line { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin: 4px 0 12px; }
+.spot-line .street { color: #f1c40f; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; font-size: 0.85em; }
+.pill { background: #0f1a2a; border-radius: 4px; padding: 5px 12px; font-size: 0.9em; }
+.pill b { color: #00d4ff; }
+.pill .eq b, .eq b { color: #2ecc71; }
+
+.question-text { font-size: 1.12em; color: #f1c40f; margin: 14px 0 8px; line-height: 1.4; }
+.formula-box { background: #0f1a2a; border-left: 3px solid #f1c40f; border-radius: 4px; padding: 9px 13px;
+  margin: 0 0 14px; font-family: Consolas, monospace; font-size: 1.0em; color: #ffe082; letter-spacing: 0.3px; }
+.formula-box::before { content: 'ƒ'; color: #f1c40f; font-weight: bold; margin-right: 8px; opacity: 0.8; }
+.formula-box sub { font-size: 0.78em; }
+
+.answer-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin: 8px 0; }
+.binary-btn { padding: 14px 30px; border-radius: 6px; border: 2px solid; background: #0f1a2a; cursor: pointer;
+  font-family: inherit; font-weight: bold; font-size: 1.05em; color: #e0e0e0; transition: all 0.12s; }
+.binary-btn.call { border-color: #2ecc71; } .binary-btn.call:not(:disabled):hover { background: #2ecc71; color: #000; }
+.binary-btn.fold { border-color: #e74c3c; } .binary-btn.fold:not(:disabled):hover { background: #e74c3c; color: #fff; }
+.binary-btn.reveal-correct.call { background: #2ecc71; color: #000; }
+.binary-btn.reveal-correct.fold { background: #e74c3c; color: #fff; }
+.binary-btn.reveal-wrong { box-shadow: 0 0 0 2px #e74c3c inset; }
+.binary-btn:disabled { cursor: default; }
+input.num { background: #0f1a2a; border: 2px solid #00d4ff; color: #fff; padding: 12px 14px; border-radius: 6px;
+  font-family: Consolas, monospace; font-size: 1.15em; width: 130px; text-align: right; }
+input.num:disabled { border-color: #444; opacity: 0.7; }
+.unit { color: #888; font-size: 0.95em; }
+.hint { color: #666; font-size: 0.76em; }
+
+.feedback { padding: 12px 14px; border-radius: 6px; margin: 12px 0; display: none; }
+.feedback.show { display: block; }
+.feedback.correct { background: #0a3622; border: 1px solid #2ecc71; }
+.feedback.wrong { background: #3a0a0a; border: 1px solid #e74c3c; }
+.feedback .ft { font-weight: bold; font-size: 1.08em; margin-bottom: 8px; }
+.feedback.correct .ft { color: #2ecc71; }
+.feedback.wrong .ft { color: #e74c3c; }
+.feedback .calc { font-family: Consolas, monospace; font-size: 0.92em; color: #e0e0e0; margin: 8px 0;
+  background: #0f1a2a; padding: 10px 12px; border-radius: 4px; line-height: 1.7; }
+.feedback .calc b { color: #00d4ff; }
+.feedback .why { font-size: 0.9em; color: #ccc; line-height: 1.55; margin-top: 8px; }
+
+.source-tag { font-size: 0.72em; color: #666; font-style: italic; margin-top: 12px; }
+.help-section p { line-height: 1.55; margin: 8px 0; color: #ccc; font-size: 0.9em; }
+details { margin: 6px 0; } summary { cursor: pointer; color: #00d4ff; font-weight: bold; padding: 4px 0; font-size: 0.95em; }
+.mini-stats { font-size: 0.74em; color: #778; margin-top: 8px; font-family: Consolas, monospace; }
+.mini-stats span { margin-right: 12px; }
+</style>
+</head>
+<body>
+<div class="container">
+<h1>Poker Math Drill</h1>
+<p class="subtitle">Générateur de spots auto-notés — fondamentaux (Gaines) + ratios GTO (Acevedo)</p>
+
+<div class="tabs" id="tabs">
+  <button data-mod="A" class="active">🅐 Fondamentaux</button>
+  <button data-mod="B">🅑 Ratios GTO</button>
+</div>
+
+<div class="panel">
+  <div class="ctrl-row">
+    <div class="ctrl-group">
+      <span class="lbl">Type</span>
+      <div class="seg" id="submodes"></div>
+    </div>
+  </div>
+  <div class="ctrl-row">
+    <button class="primary" id="btn-deal">🎲 Nouveau spot</button>
+    <label class="toggle"><input type="checkbox" id="spaced"> Répétition espacée (cible tes points faibles)</label>
+    <button class="ghost" id="btn-reset">Reset stats</button>
+  </div>
+  <div class="stats-grid">
+    <div class="stat-item"><div class="stat-label">Spots</div><div class="stat-value" id="s-total">0</div></div>
+    <div class="stat-item"><div class="stat-label">Corrects</div><div class="stat-value" id="s-correct">0</div></div>
+    <div class="stat-item"><div class="stat-label">Précision</div><div class="stat-value" id="s-acc">—</div></div>
+  </div>
+  <div class="mini-stats" id="mini-stats"></div>
+</div>
+
+<div class="panel">
+  <div class="spot-line">
+    <span class="street" id="street-lbl"></span>
+    <span id="pills"></span>
+  </div>
+  <div id="cards-zone"></div>
+
+  <div class="question-text" id="question"></div>
+  <div class="formula-box" id="formula"></div>
+  <div class="answer-row" id="answer-zone"></div>
+  <div class="hint" id="hint"></div>
+
+  <div class="feedback" id="feedback">
+    <div class="ft" id="fb-title"></div>
+    <div class="calc" id="fb-calc"></div>
+    <div class="why" id="fb-why"></div>
+  </div>
+
+  <div class="source-tag" id="source-tag"></div>
+</div>
+
+<div class="panel">
+  <details>
+    <summary>📖 Comment ça marche</summary>
+    <div class="help-section">
+      <p><b>🅐 Fondamentaux (Owen Gaines)</b> — la base arithmétique : <b>Cotes</b> (call ou fold ?), <b>EV</b> du call, <b>Sklansky-bucks</b> (ton EV réel d'un all-in vs la main montrée), <b>G-bucks</b> (ton EV vs toute sa <i>range</i> — la révélation compare les deux pour montrer pourquoi ils diffèrent). Équité par le moteur validé treys.</p>
+      <p><b>🅑 Ratios GTO (Acevedo)</b> — les fréquences d'équilibre : <b>α</b> (part de bluff qui rend ta mise non-exploitable), <b>MDF</b> (fréquence minimale de défense), <b>EqR</b> et <b>EqR_min</b> (taux de réalisation de l'équité). Formules identiques à <i>calculateur_gto</i>.</p>
+      <p>Choisis <b>Mélange</b> pour que le drill enchaîne tous les types ; avec <b>répétition espacée</b>, il te sert plus souvent ce que tu rates. Tape ta réponse et valide (ou clique Call/Fold). La correction montre le calcul exact + le pourquoi.</p>
+    </div>
+  </details>
+</div>
+</div>
+
+<script>
+// ═══════════════ Rendu cartes (jeu 4 couleurs, identique board_trainer/OSD/feeling_equite) ═══════════════
+const SUIT_SYMBOL = { h:'♥', d:'♦', c:'♣', s:'♠' };
+const CARD_COLORS = { h:'#C0392B', d:'#1A6FA8', c:'#1E8449', s:'#1a1a1a' };
+function cardSvg(code) {
+  const rank = code[0]==='T'?'10':code[0].toUpperCase(), suit=code[1].toLowerCase();
+  const color=CARD_COLORS[suit]||'#333', sym=SUIT_SYMBOL[suit]||'?';
+  const w=54,h=76,rRank=29,rSym=44,rx=7,rankY=24,symY=68;
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" style="display:inline-block;vertical-align:middle;overflow:hidden;border-radius:${rx}px" xmlns="http://www.w3.org/2000/svg">
+    <rect width="${w}" height="${h}" rx="${rx}" fill="${color}"/>
+    <text x="${w/2}" y="${rankY}" text-anchor="middle" dominant-baseline="middle" style="font-family:'Segoe UI',sans-serif;font-weight:800;font-size:${rRank}px;fill:white">${rank}</text>
+    <text x="${w/2}" y="${symY}" text-anchor="middle" dominant-baseline="auto" style="font-family:Arial,sans-serif;font-weight:700;font-size:${rSym}px;fill:rgba(255,255,255,0.30)">${sym}</text></svg>`;
+}
+function cardHTML(c){ return `<div class="card-wrapper">${cardSvg(c)}</div>`; }
+
+// ═══════════════ Moteur d'équité (identique feeling_equite, validé contre treys) ═══════════════
+const EV_RANK={ '2':2,'3':3,'4':4,'5':5,'6':6,'7':7,'8':8,'9':9,'T':10,'J':11,'Q':12,'K':13,'A':14 };
+const EV_SUIT={ s:0,h:1,d:2,c:3 };
+function evParse(str){ return { r:EV_RANK[str[0]], s:EV_SUIT[str[1]] }; }
+function evScore(cat,ts){ let v=cat; for(let i=0;i<5;i++) v=v*15+(ts[i]||0); return v; }
+function evStraightHigh(p){ for(let h=14;h>=6;h--){let ok=true;for(let k=0;k<5;k++)if(!p[h-k]){ok=false;break;}if(ok)return h;} if(p[14]&&p[5]&&p[4]&&p[3]&&p[2])return 5; return 0; }
+function eval7(cards){
+  const rc=new Array(15).fill(0),sc=[0,0,0,0];
+  for(const c of cards){rc[c.r]++;sc[c.s]++;}
+  let fs=-1;for(let s=0;s<4;s++)if(sc[s]>=5)fs=s;
+  const pres=new Array(15).fill(false);for(let r=2;r<=14;r++)if(rc[r]>0)pres[r]=true;
+  if(fs>=0){const fp=new Array(15).fill(false);for(const c of cards)if(c.s===fs)fp[c.r]=true;const sfh=evStraightHigh(fp);if(sfh>0)return evScore(8,[sfh]);}
+  const trips=[],pairs=[];let quad=0;
+  for(let r=14;r>=2;r--){if(rc[r]===4)quad=r;else if(rc[r]===3)trips.push(r);else if(rc[r]===2)pairs.push(r);}
+  if(quad){let k=0;for(let r=14;r>=2;r--)if(rc[r]>0&&r!==quad){k=r;break;}return evScore(7,[quad,k]);}
+  if(trips.length>=1&&(pairs.length>=1||trips.length>=2)){const t=trips[0],p=trips.length>=2?Math.max(trips[1],pairs.length?pairs[0]:0):pairs[0];return evScore(6,[t,p]);}
+  if(fs>=0){const fr=cards.filter(c=>c.s===fs).map(c=>c.r).sort((a,b)=>b-a).slice(0,5);return evScore(5,fr);}
+  const sh=evStraightHigh(pres);if(sh>0)return evScore(4,[sh]);
+  if(trips.length>=1){const t=trips[0],k=[];for(let r=14;r>=2;r--)if(rc[r]>0&&r!==t){k.push(r);if(k.length===2)break;}return evScore(3,[t,...k]);}
+  if(pairs.length>=2){const hp=pairs[0],lp=pairs[1];let k=0;for(let r=14;r>=2;r--)if(rc[r]>0&&r!==hp&&r!==lp){k=r;break;}return evScore(2,[hp,lp,k]);}
+  if(pairs.length===1){const p=pairs[0],k=[];for(let r=14;r>=2;r--)if(rc[r]>0&&r!==p){k.push(r);if(k.length===3)break;}return evScore(1,[p,...k]);}
+  const hc=[];for(let r=14;r>=2;r--)if(rc[r]>0){hc.push(r);if(hc.length===5)break;}return evScore(0,hc);
+}
+const EV_RANKS='23456789TJQKA';
+function evDeck(){const d=[];for(const r of EV_RANKS)for(const s of 'shdc')d.push(r+s);return d;}
+function evOut(hs,vs){return hs>vs?1:(hs<vs?0:0.5);}
+// Équité EXACTE de hero vs UNE main précise vilain (énumération complète — pas de MC)
+function equityExact(hero, board, vill){
+  const used=new Set([...hero,...board,...vill]);
+  const H=hero.map(evParse), B=board.map(evParse), V=vill.map(evParse);
+  if(board.length===5){ return evOut(eval7([...H,...B]), eval7([...V,...B])); }
+  const deck=evDeck().filter(c=>!used.has(c)).map(evParse);
+  if(board.length===4){
+    let s=0,n=0; for(const r of deck){ s+=evOut(eval7([...H,...B,r]),eval7([...V,...B,r])); n++; } return s/n;
+  }
+  // flop : énumère tous les runouts turn+river (C(47,2)≈1081)
+  let s=0,n=0;
+  for(let i=0;i<deck.length;i++)for(let j=i+1;j<deck.length;j++){
+    s+=evOut(eval7([...H,...B,deck[i],deck[j]]), eval7([...V,...B,deck[i],deck[j]])); n++;
+  }
+  return s/n;
+}
+
+// ═══════════════ Moteur de RANGE (identique feeling_equite) — pour les G-bucks ═══════════════
+// Équité MC de hero vs une range (liste de combos). Board 4/5 = exact, board 3 = Monte-Carlo.
+function equityVsRange(hero,board,vcombos,samples){
+  const used=new Set([...hero,...board]);
+  const heroC=hero.map(evParse),boardC=board.map(evParse);
+  const vc=vcombos.filter(c=>!used.has(c[0])&&!used.has(c[1])).map(c=>[evParse(c[0]),evParse(c[1]),c[0],c[1]]);
+  if(vc.length===0)return{eq:null,n:0};
+  if(board.length===5){let sum=0,n=0;const hs=eval7([...heroC,...boardC]);for(const v of vc){sum+=evOut(hs,eval7([v[0],v[1],...boardC]));n++;}return{eq:sum/n,n};}
+  if(board.length===4){let sum=0,n=0;for(const v of vc){const blk=new Set([...used,v[2],v[3]]);for(const rc of evDeck()){if(blk.has(rc))continue;const rk=evParse(rc);sum+=evOut(eval7([...heroC,...boardC,rk]),eval7([v[0],v[1],...boardC,rk]));n++;}}return{eq:sum/n,n};}
+  const toCome=5-board.length,N=samples||10000,deck=evDeck();let sum=0,n=0;
+  for(let i=0;i<N;i++){const v=vc[(Math.random()*vc.length)|0];const blk=new Set([...used,v[2],v[3]]);const run=[];
+    while(run.length<toCome){const c=deck[(Math.random()*52)|0];if(!blk.has(c)){blk.add(c);run.push(evParse(c));}}
+    sum+=evOut(eval7([...heroC,...boardC,...run]),eval7([v[0],v[1],...boardC,...run]));n++;}
+  return{eq:sum/n,n};
+}
+// Paliers PPT de 6,25% (identiques feeling_equite) → composition de ranges par largeur + forme
+const TIERS_NOTATION=[
+ "88+,ATs+,KQs,AQo+","77-66,A9s-A8s,KJs-KTs,QTs+,JTs,AJo-ATo,KJo+",
+ "55,A7s-A3s,K9s,Q9s,J9s,T9s,A9o,KTo,QJo","44,A2s,K8s-K5s,Q8s,J8s,T8s,98s,A8o-A7o,QTo,JTo",
+ "33,K4s-K3s,Q7s,T7s,87s,A5o-A4o,K9o,Q9o","22,K2s,Q6s-Q5s,J7s,97s,A6o,A3o,K8o,J9o,T9o",
+ "Q4s-Q2s,J6s-J5s,T6s,96s,86s,76s,65s,A2o,K7o-K5o","J4s,95s,85s,75s,54s,K4o,Q8o,J8o,T8o,98o"];
+const RVX={};for(let i=0;i<13;i++)RVX[EV_RANKS[i]]=i;
+function classCombos(cls){const out=[];
+  if(cls.length===2&&cls[0]===cls[1]){const cards=[...'shdc'].map(s=>cls[0]+s);for(let i=0;i<4;i++)for(let j=i+1;j<4;j++)out.push([cards[i],cards[j]]);}
+  else{const r1=cls[0],r2=cls[1],suf=cls[2]||'';for(const s1 of 'shdc')for(const s2 of 'shdc'){if(r1+s1===r2+s2)continue;const same=s1===s2;if(suf==='s'&&!same)continue;if(suf==='o'&&same)continue;const a=r1+s1,b=r2+s2;if(!out.some(x=>(x[0]===a&&x[1]===b)||(x[0]===b&&x[1]===a)))out.push([a,b]);}}
+  return out;}
+function expandTok(tok){const cl=new Set();
+  if(tok.includes('-')){const[a,b]=tok.split('-');if(a[0]===a[1]){const hi=RVX[a[0]],lo=RVX[b[0]];for(let v=Math.min(hi,lo);v<=Math.max(hi,lo);v++)cl.add(EV_RANKS[v]+EV_RANKS[v]);}else{const hc=a[0],suf=a[2]||'',k1=RVX[a[1]],k2=RVX[b[1]];for(let v=Math.min(k1,k2);v<=Math.max(k1,k2);v++)cl.add(hc+EV_RANKS[v]+suf);}}
+  else if(tok.endsWith('+')){const base=tok.slice(0,-1);if(base[0]===base[1]){const lo=RVX[base[0]];for(let v=lo;v<13;v++)cl.add(EV_RANKS[v]+EV_RANKS[v]);}else{const hc=base[0],suf=base[2]||'',klo=RVX[base[1]],khi=RVX[hc]-1;for(let v=klo;v<=khi;v++)cl.add(hc+EV_RANKS[v]+suf);}}
+  else cl.add(tok);return cl;}
+function tierCombos(notation){const out=[],seen=new Set();for(const tok of notation.split(','))for(const cls of expandTok(tok))for(const c of classCombos(cls)){const key=[c[0],c[1]].sort().join('');if(!seen.has(key)){seen.add(key);out.push(c);}}return out;}
+const TIER_COMBOS=TIERS_NOTATION.map(tierCombos);
+function nTiers(w){ return Math.round(w/6.25); }
+function tiersFor(w, shape){ const n=nTiers(w), idx=[]; for(let i=0;i<n;i++)idx.push(i);
+  if(shape==='linear')return idx;
+  if(shape==='condensed')return n>=2?idx.slice(1):idx;   // sans le top 6,25%
+  return n>=2?[0,n-1]:[0];                                 // polarisé : top + bande basse
+}
+function villainRangeCombos(width, shape){ const idx=tiersFor(width,shape),seen=new Set(),out=[];
+  for(const i of idx)for(const c of TIER_COMBOS[i]){const k=[c[0],c[1]].sort().join('');if(!seen.has(k)){seen.add(k);out.push(c);}}
+  return out;
+}
+const SHAPE_FR={linear:'linéaire',condensed:'condensé',polarisé:'polarisé',polarized:'polarisé'};
+
+// ═══════════════ Formules GTO (identiques calculateur_gto.html → diagnostics.py) ═══════════════
+// Convention CRITIQUE : le pot inclut déjà la mise de vilain ; Cote = call/(pot+call).
+function calcAlpha(bet, pot){ const t=bet+pot; return t>0?bet/t:null; }        // α = B/(B+P)   P = pot AVANT la mise
+function calcMDF(bet, pot){ const t=bet+pot; return t>0?pot/t:null; }           // MDF = P/(P+B) = 1-α
+function potOdds(call, pot){ const pf=pot+call; return pf>0?call/pf:null; }     // pot inclut la mise vilain
+function evCall(eq, pot, call){ return eq*pot - (1.0-eq)*call; }                // EV = Eq×Pot - (1-Eq)×Call
+function eqrDefenseur(eq, pot, call){ if(eq<=0||pot<=0)return null; return evCall(eq,pot,call)/(eq*pot); } // EV/(Eq×Pot)
+function eqrMinDefenseur(call, pot, eq){ if(eq<=0)return null; const po=potOdds(call,pot); return po==null?null:po/eq; } // Cote/Eq
+
+// ═══════════════ Helpers format ═══════════════
+function pct(x){ return (x*100).toFixed(1)+'%'; }
+function bb(x){ return (x>=0?'+':'')+x.toFixed(2)+' bb'; }
+function bbAbs(x){ return x.toFixed(2)+' bb'; }
+function ri(a,b){ return a + Math.floor(Math.random()*(b-a+1)); }
+function pick(arr){ return arr[(Math.random()*arr.length)|0]; }
+
+// ═══════════════ Deal utilitaire ═══════════════
+function dealCards(n, used){
+  const deck=evDeck().filter(c=>!used.has(c));
+  const out=[];
+  for(let i=0;i<n;i++){ const idx=(Math.random()*deck.length)|0; out.push(deck.splice(idx,1)[0]); }
+  return out;
+}
+function randStreet(){ return pick(['flop','flop','turn']); } // flop plus fréquent (équité non triviale)
+function streetLen(st){ return st==='flop'?3:st==='turn'?4:5; }
+
+// ═══════════════ Générateurs de spots ═══════════════
+// Chaque générateur renvoie : {module, sub, street, hero, vill, board, pills[], question,
+//   answerType:'binary'|'number', unit, tol, correct (nombre ou 'call'/'fold'), calcHTML, whyHTML}
+
+// cœur commun Cotes/EV : renvoie les valeurs brutes (pas de parsing de pills)
+function coreCallSpot(){
+  const st=randStreet(), len=streetLen(st), used=new Set();
+  const hero=dealCards(2, used); hero.forEach(c=>used.add(c));
+  const vill=dealCards(2, used); vill.forEach(c=>used.add(c));
+  const board=dealCards(len, used); board.forEach(c=>used.add(c));
+  const potBefore=ri(3,20);                                            // pot avant la mise de vilain
+  const bet=Math.max(1, Math.round(potBefore*pick([0.5,0.66,0.75,1.0]))); // mise de vilain
+  const potF=potBefore+bet, call=bet;                                  // potF = pot mise INCLUSE (convention formule)
+  const eq=equityExact(hero, board, vill);
+  return {st, hero, vill, board, potBefore, bet, potF, call, eq};
+}
+
+function genCotes(){
+  const s=coreCallSpot();
+  const po=potOdds(s.call, s.potF);
+  const ev=evCall(s.eq, s.potF, s.call);
+  const correct = s.eq>=po ? 'call' : 'fold';
+  return {
+    module:'A', sub:'cotes', street:s.st, hero:s.hero, vill:s.vill, board:s.board,
+    pills:[`Pot (mise incl.) <b>${s.potF} bb</b>`, `Tu paies <b>${s.call} bb</b>`],
+    question:`Vilain (main visible) mise. As-tu la cote pour <b>call</b> ?`,
+    answerType:'binary', correct,
+    calcHTML:`Cote = Call/(Pot+Call) = ${s.call}/(${s.potF}+${s.call}) = <b>${pct(po)}</b><br>`+
+             `Ton équité vs sa main = <b>${pct(s.eq)}</b><br>`+
+             `EV du call = Éq×Pot − (1−Éq)×Call = <b>${bb(ev)}</b>`,
+    whyHTML: s.eq>=po
+      ? `Ton équité (${pct(s.eq)}) ≥ la cote (${pct(po)}) → <b>call +EV</b>. Le pot inclut déjà la mise de vilain.`
+      : `Ton équité (${pct(s.eq)}) < la cote (${pct(po)}) → <b>fold</b>. Payer coûte plus que ta part du pot.`
+  };
+}
+
+function genEV(){
+  const s=coreCallSpot();
+  const ev=evCall(s.eq, s.potF, s.call);
+  return {
+    module:'A', sub:'ev', street:s.st, hero:s.hero, vill:s.vill, board:s.board,
+    pills:[`Pot (mise incl.) <b>${s.potF} bb</b>`, `Tu paies <b>${s.call} bb</b>`, `<span class="eq">Ton équité <b>${pct(s.eq)}</b></span>`],
+    question:`Quelle est l'<b>EV</b> de ton call (en bb) ?`,
+    answerType:'number', unit:'bb', tol:Math.max(0.4, s.potF*0.05), correct:ev,
+    calcHTML:`EV = Éq×Pot − (1−Éq)×Call<br>`+
+             `= ${s.eq.toFixed(3)}×${s.potF} − ${(1-s.eq).toFixed(3)}×${s.call} = <b>${bb(ev)}</b>`,
+    whyHTML:`Le pot (${s.potF} bb) inclut la mise de vilain ; tu ajoutes ${s.call} bb. `+
+            (ev>=0?`EV positive → call rentable sur le long terme.`:`EV négative → fold correct.`)
+  };
+}
+
+function genSklansky(){
+  const st=pick(['flop','turn']), len=streetLen(st), used=new Set();
+  const hero=dealCards(2, used); hero.forEach(c=>used.add(c));
+  const vill=dealCards(2, used); vill.forEach(c=>used.add(c));
+  const board=dealCards(len, used); board.forEach(c=>used.add(c));
+  const invest=ri(8,25);                 // ta mise (all-in, stacks égaux)
+  const potF=invest*2;                   // pot final HU
+  const eq=equityExact(hero, board, vill);
+  const sk=eq*potF - invest;             // Sklansky-bucks = part d'équité − investissement
+  return {
+    module:'A', sub:'sklansky', street:st, hero, vill, board,
+    pills:[`<b>ALL-IN</b>`, `Pot final <b>${potF} bb</b>`, `Tu as investi <b>${invest} bb</b>`],
+    question:`Vilain montre sa main. Combien de <b>Sklansky-bucks</b> gagnes-tu sur ce coup (ton EV réel, peu importe le résultat) ?`,
+    answerType:'number', unit:'bb', tol:Math.max(0.5, potF*0.04), correct:sk,
+    calcHTML:`Sklansky-bucks = Éq×Pot_final − investissement<br>`+
+             `= ${pct(eq)}×${potF} − ${invest} = <b>${bb(sk)}</b>`,
+    whyHTML:`Ton argent est rentré en valant <b>${bb(sk)}</b> — c'est ce que tu «&nbsp;gagnes&nbsp;» en moyenne sur ce spot, `+
+            `que la rivière tombe pour toi ou non. C'est ta décision qui est jugée, pas le résultat.`
+  };
+}
+
+function genGbucks(){
+  for(let tries=0; tries<30; tries++){
+    const st=pick(['flop','turn']), len=streetLen(st), used=new Set();
+    const hero=dealCards(2, used); hero.forEach(c=>used.add(c));
+    const board=dealCards(len, used); board.forEach(c=>used.add(c));
+    const width=pick([12.5,25,37.5,50]), shape=pick(['linear','condensed','polarized']);
+    const rcombos=villainRangeCombos(width, shape).filter(c=>!used.has(c[0])&&!used.has(c[1]));
+    if(rcombos.length<6) continue;
+    const villHand=rcombos[(Math.random()*rcombos.length)|0].slice();  // main réellement retournée (tirée dans la range)
+    const invest=ri(10,25), potF=invest*2;
+    const eqR=equityVsRange(hero, board, rcombos, 14000).eq;
+    if(eqR==null) continue;
+    const eqH=equityExact(hero, board, villHand);
+    const g=eqR*potF - invest, sk=eqH*potF - invest;
+    const rdesc=`top ${width}% ${SHAPE_FR[shape]}`;
+    return {
+      module:'A', sub:'gbucks', street:st, hero, vill:villHand, board,
+      pills:[`<b>ALL-IN</b>`, `Pot final <b>${potF} bb</b>`, `Investi <b>${invest} bb</b>`,
+             `Range vilain <b>${rdesc}</b>`, `<span class="eq">Éq vs range <b>${pct(eqR)}</b></span>`],
+      question:`Vilain jouait une range <b>${rdesc}</b> et retourne une main de cette range. Combien de <b>G-bucks</b> gagnes-tu (ton EV vs sa RANGE) ?`,
+      answerType:'number', unit:'bb', tol:Math.max(0.6, potF*0.05), correct:g,
+      calcHTML:`G-bucks = Éq(vs range)×Pot_final − investi<br>= ${pct(eqR)}×${potF} − ${invest} = <b>${bb(g)}</b><br>`+
+               `<span style="color:#888">Sklansky (vs la main montrée) = ${pct(eqH)}×${potF} − ${invest} = ${bb(sk)}</span>`,
+      whyHTML:`Les <b>G-bucks</b> jugent ta décision contre <b>toute sa range</b>, pas la seule main qu'il retourne. `+
+        (Math.abs(g-sk)>=1
+          ? (g>sk
+              ? `Écart net : vs sa main tu es à ${bb(sk)}, mais vs sa range à ${bb(g)}. Il a retourné le <b>haut</b> de sa range — ta décision reste bonne malgré ce combo.`
+              : `Écart net : vs sa main tu es à ${bb(sk)}, mais vs sa range à ${bb(g)}. Sa range contenait surtout des mains que tu domines — ne te rassure pas sur ce combo précis.`)
+          : `Ici main montrée et range donnent des G-bucks proches (${bb(sk)} vs ${bb(g)}).`)
+    };
+  }
+  return genSklansky();
+}
+
+function genAlpha(){
+  const st=randStreet(), len=streetLen(st), used=new Set();
+  const board=dealCards(len, used);
+  const potBefore=ri(4,20);
+  const bet=Math.max(1, Math.round(potBefore*pick([0.33,0.5,0.66,0.75,1.0,1.5])));
+  const a=calcAlpha(bet, potBefore);
+  return {
+    module:'B', sub:'alpha', street:st, board, noHole:true,
+    pills:[`Pot (avant mise) <b>${potBefore} bb</b>`, `Mise <b>${bet} bb</b>`],
+    question:`Quelle fraction de bluffs (<b>α</b>) rend cette mise non-exploitable ? (en %)`,
+    answerType:'number', unit:'%', tol:2.0, correct:a*100,
+    calcHTML:`α = Mise / (Mise + Pot) = ${bet}/(${bet}+${potBefore}) = <b>${pct(a)}</b>`,
+    whyHTML:`Au-delà de ${pct(a)} de bluffs dans ta range de mise, un <i>bluff-catcher</i> adverse devient +EV en callant. `+
+            `Plus la mise est grosse, plus tu peux bluffer (le pot que tu offres est plus cher).`
+  };
+}
+
+function genMDF(){
+  const st=randStreet(), len=streetLen(st), used=new Set();
+  const board=dealCards(len, used);
+  const potBefore=ri(4,20);
+  const bet=Math.max(1, Math.round(potBefore*pick([0.33,0.5,0.66,0.75,1.0,1.5])));
+  const m=calcMDF(bet, potBefore);
+  return {
+    module:'B', sub:'mdf', street:st, board, noHole:true,
+    pills:[`Pot (avant mise) <b>${potBefore} bb</b>`, `Vilain mise <b>${bet} bb</b>`],
+    question:`Quelle est ta fréquence minimale de défense (<b>MDF</b>) face à cette mise ? (en %)`,
+    answerType:'number', unit:'%', tol:2.0, correct:m*100,
+    calcHTML:`MDF = Pot / (Pot + Mise) = ${potBefore}/(${potBefore}+${bet}) = <b>${pct(m)}</b> = 1 − α`,
+    whyHTML:`Si tu défends moins de ${pct(m)}, vilain peut bluffer n'importe quelles deux cartes avec profit. `+
+            `Défendre ${pct(m)} le rend indifférent à bluffer.`
+  };
+}
+
+// EqR / EqR_min : on tire un vrai spot, on AFFICHE l'équité (le drill porte sur le ratio, pas sur l'estimation d'équité)
+function genEqRSpot(){
+  for(let tries=0; tries<40; tries++){
+    const st=pick(['flop','turn']), len=streetLen(st), used=new Set();
+    const hero=dealCards(2, used); hero.forEach(c=>used.add(c));
+    const vill=dealCards(2, used); vill.forEach(c=>used.add(c));
+    const board=dealCards(len, used); board.forEach(c=>used.add(c));
+    const potBefore=ri(6,20), bet=Math.max(1, Math.round(potBefore*pick([0.5,0.66,0.75,1.0])));
+    const potF=potBefore+bet, call=bet;
+    const eq=equityExact(hero, board, vill);
+    const po=potOdds(call, potF);
+    if(eq < po+0.02 || eq > 0.90) continue;   // garder un call +EV et lisible (EqR ∈ [0,1])
+    return {hero, vill, board, st, potBefore, bet, potF, call, eq, po};
+  }
+  return null;
+}
+function genEqR(){
+  const s=genEqRSpot(); if(!s) return genAlpha();
+  const eqr=eqrDefenseur(s.eq, s.potF, s.call);
+  const ev=evCall(s.eq, s.potF, s.call);
+  return {
+    module:'B', sub:'eqr', street:s.st, hero:s.hero, vill:s.vill, board:s.board,
+    pills:[`Pot <b>${s.potBefore}</b>+<b>${s.bet}</b> = <b>${s.potF} bb</b>`, `Call <b>${s.call} bb</b>`, `<span class="eq">Équité <b>${pct(s.eq)}</b></span>`],
+    question:`Quel <b>taux de réalisation (EqR)</b> ton call atteint-il ? (en %)`,
+    answerType:'number', unit:'%', tol:3.0, correct:eqr*100,
+    calcHTML:`EV = Eq×Pot − (1−Eq)×Call = <b>${bb(ev)}</b><br>`+
+             `EqR = EV / (Eq×Pot) = ${ev.toFixed(2)} / (${s.eq.toFixed(3)}×${s.potF}) = <b>${pct(eqr)}</b>`,
+    whyHTML:`EqR mesure quelle part de ta part d'équité brute (Eq×Pot) tu encaisses vraiment en callant. `+
+            `Ici tu réalises ${pct(eqr)} de ton équité — le coût du call ronge le reste.`
+  };
+}
+function genEqRmin(){
+  const s=genEqRSpot(); if(!s) return genMDF();
+  const eqrm=eqrMinDefenseur(s.call, s.potF, s.eq);
+  return {
+    module:'B', sub:'eqrmin', street:s.st, hero:s.hero, vill:s.vill, board:s.board,
+    pills:[`Pot <b>${s.potBefore}</b>+<b>${s.bet}</b> = <b>${s.potF} bb</b>`, `Call <b>${s.call} bb</b>`, `<span class="eq">Équité <b>${pct(s.eq)}</b></span>`],
+    question:`Quel <b>EqR minimum</b> faut-il pour que ce call soit break-even ? (en %)`,
+    answerType:'number', unit:'%', tol:3.0, correct:eqrm*100,
+    calcHTML:`Cote = Call/(Pot+Call) = ${s.call}/(${s.potF}+${s.call}) = ${pct(s.po)}<br>`+
+             `EqR_min = Cote / Éq = ${pct(s.po)} / ${pct(s.eq)} = <b>${pct(eqrm)}</b>`,
+    whyHTML:`Il te faut réaliser au moins ${pct(eqrm)} de ton équité pour rentabiliser le call. `+
+            `Si ton EqR réel (position, jouabilité) tombe sous ce seuil, le fold devient correct malgré la cote.`
+  };
+}
+
+const GENERATORS = {
+  cotes:genCotes, ev:genEV, sklansky:genSklansky, gbucks:genGbucks,
+  alpha:genAlpha, mdf:genMDF, eqr:genEqR, eqrmin:genEqRmin
+};
+const SUBMODES = {
+  A:[['mix','Mélange'],['cotes','Cotes'],['ev','EV'],['sklansky','Sklansky-bucks'],['gbucks','G-bucks']],
+  B:[['mix','Mélange'],['alpha','α'],['mdf','MDF'],['eqr','EqR'],['eqrmin','EqR_min']]
+};
+const SUB_LABEL={cotes:'Cotes',ev:'EV',sklansky:'Sklansky-bucks',gbucks:'G-bucks',alpha:'α',mdf:'MDF',eqr:'EqR',eqrmin:'EqR_min'};
+// Formule théorique générique affichée AVEC la question (mémorisation par répétition)
+const FORMULAS={
+  cotes:'Cote = Call ÷ (Pot + Call) &nbsp;→&nbsp; call si Éq ≥ Cote',
+  ev:'EV = Éq × Pot − (1 − Éq) × Call',
+  sklansky:'Sklansky-bucks = Éq × Pot<sub>final</sub> − investi',
+  gbucks:'G-bucks = Éq<sub>(vs range)</sub> × Pot<sub>final</sub> − investi',
+  alpha:'α = Mise ÷ (Mise + Pot)',
+  mdf:'MDF = Pot ÷ (Pot + Mise) = 1 − α',
+  eqr:'EqR = EV ÷ (Éq × Pot) &nbsp;·&nbsp; EV = Éq × Pot − (1 − Éq) × Call',
+  eqrmin:'EqR<sub>min</sub> = Cote ÷ Éq &nbsp;·&nbsp; Cote = Call ÷ (Pot + Call)'
+};
+const MODULE_SUBS={A:['cotes','ev','sklansky','gbucks'], B:['alpha','mdf','eqr','eqrmin']};
+const SOURCE={A:'Fondamentaux — Owen Gaines, « Poker Math That Matters ». Équité exacte vs main précise (moteur validé treys).',
+              B:'Ratios GTO — Michael Acevedo, « Modern Poker Theory ». Formules identiques à calculateur_gto.html.'};
+
+// ═══════════════ État & persistance ═══════════════
+const LSKEY='pokermath_stats_v1';
+function loadStats(){
+  try{ const s=JSON.parse(localStorage.getItem(LSKEY)); if(s&&s.subs){
+    Object.keys(GENERATORS).forEach(k=>{ if(!s.subs[k]) s.subs[k]={t:0,c:0}; });  // migration : nouveaux sous-modes
+    return s;
+  } }catch(e){}
+  const subs={}; Object.keys(GENERATORS).forEach(k=>subs[k]={t:0,c:0});
+  return {subs};
+}
+function saveStats(){ try{ localStorage.setItem(LSKEY, JSON.stringify(stats)); }catch(e){} }
+let stats=loadStats();
+let module='A', submode='mix', spaced=false, spot=null, answered=false;
+
+function el(id){ return document.getElementById(id); }
+
+// choix du sous-mode effectif (gère Mélange + répétition espacée)
+function chooseSub(){
+  if(submode!=='mix') return submode;
+  const subs=MODULE_SUBS[module];
+  if(!spaced) return pick(subs);
+  // pondération par faiblesse : poids = (1 - précision) + base
+  const weights=subs.map(k=>{ const s=stats.subs[k]; const acc=s.t?s.c/s.t:0; return (1-acc)+0.20; });
+  const sum=weights.reduce((a,b)=>a+b,0); let r=Math.random()*sum;
+  for(let i=0;i<subs.length;i++){ r-=weights[i]; if(r<=0) return subs[i]; }
+  return subs[subs.length-1];
+}
+
+function buildSubmodes(){
+  const c=el('submodes'); c.innerHTML='';
+  SUBMODES[module].forEach(([val,lbl])=>{
+    const b=document.createElement('button'); b.textContent=lbl; b.dataset.val=val;
+    if(val===submode) b.classList.add('active');
+    b.addEventListener('click',()=>{ submode=val; buildSubmodes(); deal(); });
+    c.appendChild(b);
+  });
+}
+
+function refreshStats(){
+  let t=0,c=0; MODULE_SUBS[module].forEach(k=>{ t+=stats.subs[k].t; c+=stats.subs[k].c; });
+  el('s-total').textContent=t; el('s-correct').textContent=c;
+  el('s-acc').textContent = t? Math.round(c/t*100)+'%' : '—';
+  el('mini-stats').innerHTML = MODULE_SUBS[module].map(k=>{
+    const s=stats.subs[k]; const acc=s.t?Math.round(s.c/s.t*100)+'%':'—';
+    return `<span>${SUB_LABEL[k]} : ${s.c}/${s.t} (${acc})</span>`;
+  }).join('');
+}
+
+function renderSpot(){
+  el('street-lbl').textContent = spot.street? spot.street.toUpperCase() : '';
+  el('pills').innerHTML = spot.pills.map(p=>`<span class="pill${p.includes('class="eq"')?' ':''}">${p}</span>`).join(' ');
+  // zone cartes
+  let cz='';
+  if(!spot.noHole && spot.hero){
+    cz += `<div class="block-label">Ta main${spot.vill?' &nbsp;·&nbsp; vs &nbsp;·&nbsp; Vilain':''}</div><div class="card-row">`;
+    cz += spot.hero.map(cardHTML).join('');
+    if(spot.vill){ cz += `<span class="vs">vs</span>` + spot.vill.map(cardHTML).join(''); }
+    cz += `</div>`;
+  }
+  if(spot.board && spot.board.length){
+    cz += `<div class="block-label">Board</div><div class="card-row">`+spot.board.map(cardHTML).join('')+`</div>`;
+  }
+  el('cards-zone').innerHTML=cz;
+  el('question').innerHTML=spot.question;
+  el('formula').innerHTML=FORMULAS[spot.sub]||'';
+
+  // zone réponse
+  const az=el('answer-zone'); az.innerHTML=''; el('hint').textContent='';
+  if(spot.answerType==='binary'){
+    ['call','fold'].forEach(v=>{
+      const b=document.createElement('button');
+      b.className='binary-btn '+v; b.dataset.v=v; b.textContent = v==='call'?'CALL':'FOLD';
+      b.addEventListener('click',()=>submitAnswer(v));
+      az.appendChild(b);
+    });
+  } else {
+    const inp=document.createElement('input');
+    inp.type='number'; inp.step='0.01'; inp.className='num'; inp.id='num-input'; inp.placeholder='?';
+    inp.addEventListener('keydown',e=>{ if(e.key==='Enter') submitAnswer(parseFloat(inp.value)); });
+    const u=document.createElement('span'); u.className='unit'; u.textContent=spot.unit;
+    const btn=document.createElement('button'); btn.className='primary'; btn.textContent='Valider';
+    btn.addEventListener('click',()=>submitAnswer(parseFloat(inp.value)));
+    az.appendChild(inp); az.appendChild(u); az.appendChild(btn);
+    el('hint').textContent = spot.unit==='%'? 'Tolérance ±'+spot.tol+' pts' : 'Tolérance ±'+spot.tol.toFixed(2)+' bb';
+    setTimeout(()=>inp.focus(),20);
+  }
+  el('feedback').classList.remove('show','correct','wrong');
+  el('source-tag').textContent=SOURCE[module];
+}
+
+function submitAnswer(val){
+  if(answered || !spot) return;
+  let ok;
+  if(spot.answerType==='binary'){
+    if(val!=='call'&&val!=='fold') return;
+    ok = (val===spot.correct);
+    [...el('answer-zone').children].forEach(b=>{
+      b.disabled=true;
+      if(b.dataset.v===spot.correct) b.classList.add('reveal-correct');
+      else if(b.dataset.v===val) b.classList.add('reveal-wrong');
+    });
+  } else {
+    if(isNaN(val)) return;
+    ok = Math.abs(val - spot.correct) <= spot.tol;
+    const inp=el('num-input'); if(inp) inp.disabled=true;
+    [...el('answer-zone').children].forEach(b=>{ if(b.tagName==='BUTTON') b.disabled=true; });
+  }
+  answered=true;
+  const s=stats.subs[spot.sub]; s.t++; if(ok)s.c++; saveStats(); refreshStats();
+
+  const fb=el('feedback'); fb.classList.add('show', ok?'correct':'wrong');
+  el('fb-title').textContent = ok?'✅ Correct':'❌ Raté';
+  let corrStr = spot.answerType==='binary'
+    ? (spot.correct==='call'?'CALL':'FOLD')
+    : (spot.unit==='%'? spot.correct.toFixed(1)+' %' : bbAbs(spot.correct));
+  el('fb-calc').innerHTML = (ok?'':`<div style="color:#e67e22;margin-bottom:6px">Réponse exacte : <b>${corrStr}</b></div>`) + spot.calcHTML;
+  el('fb-why').innerHTML = spot.whyHTML;
+}
+
+function deal(){
+  answered=false;
+  const sub=chooseSub();
+  spot=GENERATORS[sub]();
+  renderSpot();
+}
+
+// ═══════════════ Wiring ═══════════════
+[...el('tabs').children].forEach(b=>b.addEventListener('click',()=>{
+  module=b.dataset.mod; submode='mix';
+  [...el('tabs').children].forEach(x=>x.classList.toggle('active', x===b));
+  buildSubmodes(); refreshStats(); deal();
+}));
+el('btn-deal').addEventListener('click', deal);
+el('spaced').addEventListener('change', e=>{ spaced=e.target.checked; });
+el('btn-reset').addEventListener('click', ()=>{
+  if(!confirm('Remettre toutes les stats à zéro ?')) return;
+  Object.keys(stats.subs).forEach(k=>{ stats.subs[k]={t:0,c:0}; });
+  saveStats(); refreshStats();
+});
+
+buildSubmodes(); refreshStats(); deal();
+</script>
+</body>
+</html>
