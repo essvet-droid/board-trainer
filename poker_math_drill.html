@@ -91,6 +91,21 @@ input.num:disabled { border-color: #444; opacity: 0.7; }
 details { margin: 6px 0; } summary { cursor: pointer; color: #00d4ff; font-weight: bold; padding: 4px 0; font-size: 0.95em; }
 .mini-stats { font-size: 0.74em; color: #778; margin-top: 8px; font-family: Consolas, monospace; }
 .mini-stats span { margin-right: 12px; }
+
+.refcard { overflow-x: auto; }
+.ref-intro { font-size: 0.88em; color: #ccc; line-height: 1.5; margin: 8px 0; }
+.ref-table { border-collapse: collapse; width: 100%; min-width: 440px; font-family: Consolas, monospace; margin: 10px 0; }
+.ref-table th, .ref-table td { border: 1px solid #2a3a55; padding: 7px 9px; text-align: center; font-size: 0.9em; }
+.ref-table thead th { background: #0f1a2a; color: #00d4ff; font-weight: 700; }
+.ref-table thead th span { display: block; font-family: 'Segoe UI', sans-serif; font-weight: 400; font-size: 0.72em; color: #888; margin-top: 2px; }
+.ref-table tbody td:first-child { color: #f1c40f; font-weight: bold; }
+.ref-table tbody td { color: #e0e0e0; }
+.ref-table .frac { color: #888; font-size: 0.82em; margin-left: 4px; }
+.ref-table .bluffcol { color: #ffab40; font-weight: bold; }
+.ref-table tfoot td { background: #0f1a2a; color: #6b9; font-style: italic; font-size: 0.82em; }
+.ref-table tfoot td:first-child { color: #888; }
+.ref-note { font-size: 0.8em; color: #888; line-height: 1.55; margin-top: 8px; }
+.ref-note b { color: #aaa; }
 </style>
 </head>
 <body>
@@ -151,6 +166,29 @@ details { margin: 6px 0; } summary { cursor: pointer; color: #00d4ff; font-weigh
       <p><b>🅐 Fondamentaux (Owen Gaines)</b> — la base arithmétique : <b>Cotes</b> (call ou fold ?), <b>EV</b> du call, <b>Sklansky-bucks</b> (ton EV réel d'un all-in vs la main montrée), <b>G-bucks</b> (ton EV vs toute sa <i>range</i> — la révélation compare les deux pour montrer pourquoi ils diffèrent). Équité par le moteur validé treys.</p>
       <p><b>🅑 Ratios GTO (Acevedo)</b> — les fréquences d'équilibre : <b>α</b> (la fold equity qu'un bluff exige = fréquence de fold max du défenseur, 1−MDF), <b>MDF</b> (fréquence min de défense), <b>% Bluff</b> (part de bluffs de ta range de mise = b/(p+2b), à ne pas confondre avec α), <b>EqR</b> / <b>EqR_min</b> (taux de réalisation). Formules identiques à <i>calculateur_gto</i>.</p>
       <p>Choisis <b>Mélange</b> pour que le drill enchaîne tous les types ; avec <b>répétition espacée</b>, il te sert plus souvent ce que tu rates. Tape ta réponse et valide (ou clique Call/Fold). La correction montre le calcul exact + le pourquoi.</p>
+    </div>
+  </details>
+  <details>
+    <summary>🧭 Carte de référence — sizings en cinquièmes du pot</summary>
+    <div class="refcard">
+      <p class="ref-intro">Si tu cales tes mises sur des <b>cinquièmes du pot</b> (20 / 40 / 60 / 80 %), tout devient une double échelle qui monte d'un cran. <b>k</b> = numéro du cinquième. Tes 38 % / 62 % ≈ 40 % / 60 %.</p>
+      <table class="ref-table">
+        <thead><tr>
+          <th>Mise</th>
+          <th>α<span>fold eq / fold max</span></th>
+          <th>MDF<span>défense min</span></th>
+          <th>% Bluff<span>part de bluffs</span></th>
+          <th>value:bluff</th>
+        </tr></thead>
+        <tbody>
+          <tr><td>20%<span class="frac">1/5</span></td><td>1/6</td><td>5/6</td><td class="bluffcol">1/7</td><td>6:1</td></tr>
+          <tr><td>40%<span class="frac">2/5</span></td><td>2/7</td><td>5/7</td><td class="bluffcol">2/9</td><td>7:2</td></tr>
+          <tr><td>60%<span class="frac">3/5</span></td><td>3/8</td><td>5/8</td><td class="bluffcol">3/11</td><td>8:3</td></tr>
+          <tr><td>80%<span class="frac">4/5</span></td><td>4/9</td><td>5/9</td><td class="bluffcol">4/13</td><td>9:4</td></tr>
+        </tbody>
+        <tfoot><tr><td>formule</td><td>k/(k+5)</td><td>5/(k+5)</td><td>k/(2k+5)</td><td>(k+5):k</td></tr></tfoot>
+      </table>
+      <p class="ref-note"><b>Lecture :</b> α monte 1/6→4/9 (num &amp; dénom +1) · MDF = 5/6→5/9 (num figé à 5) · % Bluff = 1/7→4/13 (num +1, dénom <b>+2</b>). À chaque cran α + MDF = 1 (6/6, 7/7, 8/8, 9/9). ⚠️ α (fold equity que ton bluff exige) ≠ % Bluff (part de bluffs de ta range) — toujours plus petite.</p>
     </div>
   </details>
 </div>
