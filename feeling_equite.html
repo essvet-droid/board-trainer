@@ -149,6 +149,9 @@ details { margin: 6px 0; } summary { cursor: pointer; color: #00d4ff; font-weigh
     <button class="ghost" id="btn-river" disabled>River →</button>
     <span class="computing" id="computing" style="display:none">calcul…</span>
   </div>
+  <div class="ctrl-row">
+    <button class="primary" id="btn-deal2">🎲 Nouvelle main</button>
+  </div>
 
   <div class="feedback" id="feedback">
     <div class="ft" id="fb-title"></div>
@@ -388,6 +391,7 @@ buildSeg(el('vill-width'), WIDTHS, villWidth, v=>v+'%', v=>{ villWidth=v; refres
 el('vill-shape').addEventListener('change', e=>{ villShape=e.target.value; if(hero.length) goStreet(street); });
 [...el('buckets').children].forEach(b=>b.addEventListener('click',()=>answer(b.dataset.bk)));
 el('btn-deal').addEventListener('click', deal);
+el('btn-deal2').addEventListener('click', deal);
 el('btn-turn').addEventListener('click',()=>{ if(!el('btn-turn').disabled) goStreet('turn'); });
 el('btn-river').addEventListener('click',()=>{ if(!el('btn-river').disabled) goStreet('river'); });
 
