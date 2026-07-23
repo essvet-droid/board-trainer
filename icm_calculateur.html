@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Calculateur ICM — bubble factor & seuil de call</title>
+<style>
+  :root{
+    --bg:#0e1116; --panel:#171c24; --panel2:#1e252f; --line:#2a323d;
+    --txt:#e6ebf1; --dim:#9aa7b5; --accent:#4da3ff; --accent2:#2b6cb0;
+    --good:#39d98a; --bad:#ff5c6c; --warn:#ffbe4d; --chip:#232b36;
+    --icm:#c9a6ff; --icm-bg:#1a1526; --icm-line:#6b4fa0;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{background:var(--bg); color:var(--txt); font-size:16px; line-height:1.45;
+       font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  .wrap{max-width:680px; margin:0 auto; padding:14px 14px 60px}
+  h1{font-size:19px; margin:0 0 2px; font-weight:700}
+  .sub{color:var(--dim); font-size:12.5px; margin-bottom:14px}
+  h2{font-size:12px; text-transform:uppercase; letter-spacing:.6px; color:var(--dim);
+     margin:20px 0 8px; font-weight:800}
+
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:13px;
+        padding:13px 14px; margin-bottom:12px}
+  label{font-size:11px; color:var(--dim); text-transform:uppercase; letter-spacing:.4px}
+  input,select{background:var(--panel2); color:var(--txt); border:1px solid var(--line);
+               border-radius:8px; padding:7px 9px; font-size:15px; font-family:inherit}
+  input[type=number]{width:78px}
+  .row{display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end}
+  .field{display:flex; flex-direction:column; gap:3px}
+  .seg{display:flex; gap:3px; flex-wrap:wrap}
+  .seg button{background:var(--chip); color:var(--dim); border:1px solid transparent;
+              border-radius:7px; padding:6px 11px; font-size:13px; cursor:pointer; font-weight:600}
+  .seg button.on{background:var(--accent2); color:#fff; border-color:var(--accent)}
+
+  table{width:100%; border-collapse:collapse; font-size:13.5px}
+  th,td{padding:6px 7px; text-align:right; border-bottom:1px solid var(--line)}
+  th{color:var(--dim); font-size:10.5px; text-transform:uppercase; letter-spacing:.4px; font-weight:700}
+  td:first-child,th:first-child{text-align:left}
+  tr:last-child td{border-bottom:none}
+  .joueurs td{vertical-align:middle}
+  .joueurs input[type=number]{width:66px}
+  .tag{font-size:10px; font-weight:800; padding:2px 6px; border-radius:5px; margin-left:5px}
+  .tag.hero{background:var(--accent); color:#022}
+  .tag.push{background:var(--bad); color:#fff}
+  .mini{background:none; border:1px solid var(--line); color:var(--dim); border-radius:6px;
+        padding:3px 8px; font-size:11px; cursor:pointer; font-weight:700}
+  .mini.on{border-color:var(--accent); background:var(--accent2); color:#fff}
+
+  .verdict{background:var(--icm-bg); border:1px solid var(--icm-line); border-radius:13px;
+           padding:15px; margin-bottom:12px}
+  .grand{display:flex; gap:12px; flex-wrap:wrap; margin-bottom:10px}
+  .kpi{flex:1; min-width:120px; background:var(--panel2); border:1px solid var(--line);
+       border-radius:11px; padding:11px 12px; text-align:center}
+  .kpi .v{font-size:25px; font-weight:800; line-height:1.15}
+  .kpi .k{font-size:10px; color:var(--dim); text-transform:uppercase; letter-spacing:.4px; margin-top:2px}
+  .kpi .v.icm{color:var(--icm)} .kpi .v.chip{color:var(--dim)} .kpi .v.ecart{color:var(--warn)}
+  .expl{font-size:13px; color:var(--txt); margin-top:4px}
+  .expl b{color:var(--icm)}
+
+  .grid{display:grid; grid-template-columns:repeat(13,1fr); gap:2px; margin-top:8px}
+  .gc{aspect-ratio:1/1; border-radius:3px; font-size:8.5px; font-weight:700; color:#fff;
+      display:flex; align-items:center; justify-content:center; background:#1b2027; color:#454e59}
+  .gc.in{background:#2f9e5f; color:#fff}
+  .gc.lim{background:#7a6a2f; color:#fff}
+  .legende{display:flex; gap:12px; margin-top:7px; font-size:11px; color:var(--dim); flex-wrap:wrap}
+  .legende i{width:10px; height:10px; border-radius:3px; display:inline-block; margin-right:4px}
+  .note{font-size:12px; color:var(--dim); margin-top:10px; line-height:1.55}
+  .bf td.hot{color:var(--bad); font-weight:800}
+  .bf td.cold{color:var(--good); font-weight:800}
+  .err{background:#3a1620; border:1px solid var(--bad); color:var(--bad);
+       border-radius:10px; padding:10px 12px; font-size:13px; margin-bottom:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Calculateur ICM</h1>
+  <div class="sub">Bubble factor et seuil de call exact, pour n'importe quels tapis — sans solveur.</div>
+
+  <div class="card">
+    <div class="row" style="margin-bottom:10px">
+      <div class="field">
+        <label>Structure de gains</label>
+        <select id="preset"></select>
+      </div>
+      <div class="field">
+        <label>Joueurs</label>
+        <select id="nplayers"></select>
+      </div>
+      <div class="field"><label>SB</label><input type="number" id="sb" value="0.5" step="0.1" min="0"></div>
+      <div class="field"><label>BB</label><input type="number" id="bb" value="1" step="0.5" min="0.5"></div>
+      <div class="field"><label>Ante / joueur</label><input type="number" id="ante" value="0" step="0.01" min="0"></div>
+    </div>
+    <div id="payoutsRow" class="row"></div>
+  </div>
+
+  <h2>Tapis (en bb)</h2>
+  <div class="card">
+    <table class="joueurs"><tbody id="joueurs"></tbody></table>
+    <div class="note" id="noteTable"></div>
+  </div>
+
+  <div id="sortie"></div>
+
+  <h2>Bubble factors — qui peut affronter qui</h2>
+  <div class="card">
+    <table class="bf"><tbody id="bfTable"></tbody></table>
+    <div class="note">
+      Ligne = celui qui décide, colonne = son adversaire. Au-dessus de 3, l'affrontement
+      est ruineux : c'est un tapis à éviter. En dessous de 1,5, il est presque gratuit —
+      c'est là qu'on attaque. Le tableau est asymétrique : couvrir n'est pas être couvert.
+    </div>
+  </div>
+
+  <div class="note" id="pied"></div>
+</div>
+
+<script type="application/json" id="equity-data">{"largeurs":[15,30,45,60,80,100],"ordre":["AA","KK","QQ","JJ","TT","99","88","AKs","AQs","77","AJs","AKo","ATs","AQo","AJo","KQs","66","A9s","ATo","KJs","A8s","KTs","KQo","A7s","A9o","KJo","55","QJs","KTo","A6s","K9s","A8o","A5s","QTs","A4s","A7o","QJo","A3s","K8s","K7s","A6o","QTo","A5o","Q9s","JTs","A2s","K9o","44","A4o","K6s","A3o","K8o","K5s","Q8s","J9s","JTo","Q9o","K7o","A2o","K4s","Q7s","K6o","Q8o","K3s","33","T9s","J9o","J8s","K2s","K5o","Q6s","J7s","Q5s","T8s","K4o","Q7o","Q4s","K3o","T9o","J8o","Q3s","J6s","Q6o","T7s","98s","K2o","Q2s","22","Q5o","J5s","T8o","J7o","J4s","Q4o","97s","T6s","J3s","Q3o","87s","J6o","98o","T7o","Q2o","J5o","T5s","J2s","96s","T4s","97o","86s","J4o","T6o","T3s","95s","J3o","76s","T2s","87o","85s","96o","T5o","J2o","94s","75s","93s","T4o","86o","T3o","65s","84s","95o","92s","76o","T2o","74s","85o","54s","83s","64s","75o","94o","73s","82s","93o","65o","53s","63s","84o","92o","43s","72s","64o","74o","54o","52s","62s","83o","73o","42s","82o","53o","32s","63o","43o","72o","52o","62o","42o","32o"],"combos":{"AA":6,"AKs":4,"AQs":4,"AJs":4,"ATs":4,"A9s":4,"A8s":4,"A7s":4,"A6s":4,"A5s":4,"A4s":4,"A3s":4,"A2s":4,"AKo":12,"KK":6,"KQs":4,"KJs":4,"KTs":4,"K9s":4,"K8s":4,"K7s":4,"K6s":4,"K5s":4,"K4s":4,"K3s":4,"K2s":4,"AQo":12,"KQo":12,"QQ":6,"QJs":4,"QTs":4,"Q9s":4,"Q8s":4,"Q7s":4,"Q6s":4,"Q5s":4,"Q4s":4,"Q3s":4,"Q2s":4,"AJo":12,"KJo":12,"QJo":12,"JJ":6,"JTs":4,"J9s":4,"J8s":4,"J7s":4,"J6s":4,"J5s":4,"J4s":4,"J3s":4,"J2s":4,"ATo":12,"KTo":12,"QTo":12,"JTo":12,"TT":6,"T9s":4,"T8s":4,"T7s":4,"T6s":4,"T5s":4,"T4s":4,"T3s":4,"T2s":4,"A9o":12,"K9o":12,"Q9o":12,"J9o":12,"T9o":12,"99":6,"98s":4,"97s":4,"96s":4,"95s":4,"94s":4,"93s":4,"92s":4,"A8o":12,"K8o":12,"Q8o":12,"J8o":12,"T8o":12,"98o":12,"88":6,"87s":4,"86s":4,"85s":4,"84s":4,"83s":4,"82s":4,"A7o":12,"K7o":12,"Q7o":12,"J7o":12,"T7o":12,"97o":12,"87o":12,"77":6,"76s":4,"75s":4,"74s":4,"73s":4,"72s":4,"A6o":12,"K6o":12,"Q6o":12,"J6o":12,"T6o":12,"96o":12,"86o":12,"76o":12,"66":6,"65s":4,"64s":4,"63s":4,"62s":4,"A5o":12,"K5o":12,"Q5o":12,"J5o":12,"T5o":12,"95o":12,"85o":12,"75o":12,"65o":12,"55":6,"54s":4,"53s":4,"52s":4,"A4o":12,"K4o":12,"Q4o":12,"J4o":12,"T4o":12,"94o":12,"84o":12,"74o":12,"64o":12,"54o":12,"44":6,"43s":4,"42s":4,"A3o":12,"K3o":12,"Q3o":12,"J3o":12,"T3o":12,"93o":12,"83o":12,"73o":12,"63o":12,"53o":12,"43o":12,"33":6,"32s":4,"A2o":12,"K2o":12,"Q2o":12,"J2o":12,"T2o":12,"92o":12,"82o":12,"72o":12,"62o":12,"52o":12,"42o":12,"32o":12,"22":6},"equites":{"AA":[85.6,85.7,85.6,84.9,84.8,84.4],"KK":[73.9,76.2,78.3,80.5,81.0,81.5],"QQ":[68.3,71.0,73.6,75.5,78.6,80.1],"JJ":[62.9,66.0,68.2,72.0,77.5,77.5],"TT":[57.6,63.2,66.2,69.4,72.5,75.8],"99":[53.8,60.1,63.8,65.4,68.3,71.7],"88":[49.9,56.2,59.6,62.8,65.8,68.5],"AKs":[62.8,65.5,67.8,66.8,66.5,68.3],"AQs":[56.9,62.7,65.0,66.9,65.7,66.6],"77":[47.1,54.1,58.0,59.5,63.1,65.5],"AJs":[51.8,59.6,62.3,63.6,64.3,64.9],"AKo":[60.0,64.5,66.4,66.0,66.1,65.2],"ATs":[48.0,58.2,60.8,63.4,63.4,66.0],"AQo":[54.2,61.4,63.3,63.9,64.7,63.8],"AJo":[49.7,58.2,61.1,62.4,63.8,64.0],"KQs":[45.2,51.3,57.9,59.9,61.8,62.6],"66":[45.5,52.0,56.8,58.1,60.8,62.7],"A9s":[44.7,53.6,58.5,60.0,62.2,62.1],"ATo":[46.6,55.3,59.3,59.7,62.8,61.8],"KJs":[41.8,49.0,55.7,58.8,60.8,63.4],"A8s":[42.0,52.3,55.8,59.3,60.7,62.5],"KTs":[38.8,48.6,53.6,57.8,59.7,61.7],"KQo":[43.1,49.7,55.5,58.2,60.0,61.5],"A7s":[41.5,50.5,55.0,58.4,58.2,61.0],"A9o":[40.0,52.5,54.6,57.7,60.7,61.2],"KJo":[39.7,46.6,52.6,55.9,58.3,60.8],"55":[43.4,50.8,53.8,54.5,56.3,60.7],"QJs":[38.4,44.9,49.6,55.5,58.6,61.1],"KTo":[34.0,44.2,51.0,55.0,57.7,59.5],"A6s":[40.7,48.9,54.3,55.4,58.7,58.8],"K9s":[35.9,45.8,50.5,53.7,57.8,58.9],"A8o":[38.7,50.2,54.7,56.9,57.6,60.5],"A5s":[40.8,47.5,53.3,55.8,57.4,59.9],"QTs":[37.4,44.6,48.7,54.2,57.9,59.3],"A4s":[39.2,46.2,52.3,54.9,57.2,59.1],"A7o":[38.3,46.9,52.1,54.4,57.2,58.7],"QJo":[35.3,41.6,47.9,52.0,57.1,58.5],"A3s":[40.3,46.3,51.9,53.8,56.6,57.1],"K8s":[37.0,41.4,47.6,52.4,56.3,57.6],"K7s":[34.6,40.5,46.5,52.7,55.3,57.5],"A6o":[36.3,45.2,50.4,52.8,55.6,58.6],"QTo":[34.1,39.7,45.7,50.5,54.9,57.2],"A5o":[38.4,45.2,50.6,53.5,56.5,58.6],"Q9s":[36.6,41.8,46.2,50.5,55.7,57.7],"JTs":[37.6,41.7,46.0,50.0,54.8,56.5],"A2s":[39.8,46.7,50.3,53.2,54.7,56.7],"K9o":[33.0,40.9,47.6,52.3,55.4,56.5],"44":[42.8,48.9,50.3,53.9,53.6,58.7],"A4o":[37.4,44.6,48.0,52.1,55.4,55.3],"K6s":[35.5,41.5,46.3,50.8,54.1,57.2],"A3o":[36.6,43.0,49.2,52.4,53.4,55.7],"K8o":[29.8,37.6,46.2,49.6,54.5,56.4],"K5s":[34.6,40.0,44.4,48.6,52.9,56.2],"Q8s":[35.2,37.4,42.6,48.0,53.2,56.9],"J9s":[36.5,39.9,43.4,46.3,52.2,55.5],"JTo":[34.6,38.6,43.0,47.8,52.4,55.6],"Q9o":[31.5,37.3,42.8,46.1,52.7,54.4],"K7o":[30.7,37.3,43.9,49.0,53.4,56.5],"A2o":[36.0,44.6,48.0,51.6,52.8,54.2],"K4s":[34.7,38.2,43.7,48.0,51.8,54.1],"Q7s":[33.3,36.1,40.2,46.8,51.4,54.1],"K6o":[29.6,36.0,44.7,47.0,51.8,54.1],"Q8o":[32.5,35.5,40.0,46.3,50.8,53.7],"K3s":[33.6,38.9,43.4,46.4,50.3,55.2],"33":[41.4,44.9,48.7,50.1,52.3,53.7],"T9s":[36.4,40.2,42.6,45.0,50.2,54.3],"J9o":[32.1,37.2,40.5,44.0,50.1,52.3],"J8s":[36.3,37.7,40.9,44.2,50.6,54.4],"K2s":[33.9,38.5,41.6,45.8,50.2,53.1],"K5o":[29.7,35.4,41.8,47.6,50.1,54.0],"Q6s":[33.9,37.7,41.2,45.5,51.0,54.4],"J7s":[34.3,36.6,38.1,44.1,48.3,53.6],"Q5s":[33.3,37.1,39.8,43.9,48.4,52.7],"T8s":[34.8,39.2,40.8,43.0,48.8,53.1],"K4o":[29.8,35.6,41.2,45.3,48.6,51.5],"Q7o":[30.6,33.0,37.6,43.7,48.0,52.4],"Q4s":[33.9,36.7,38.8,42.9,48.8,51.5],"K3o":[29.4,35.1,39.7,45.1,47.6,50.7],"T9o":[34.0,37.6,39.0,42.2,47.3,51.2],"J8o":[32.0,34.4,36.4,42.7,46.7,52.7],"Q3s":[34.8,35.1,38.4,43.1,47.8,51.7],"J6s":[33.9,35.6,38.2,41.3,47.1,51.5],"Q6o":[30.4,33.0,37.1,41.5,47.8,51.6],"T7s":[34.4,37.3,38.0,39.7,46.1,50.9],"98s":[36.4,39.6,41.8,42.6,46.6,50.6],"K2o":[29.9,34.0,40.9,43.7,49.2,51.1],"Q2s":[32.8,35.5,38.2,42.9,46.3,49.2],"22":[40.8,45.7,46.8,47.8,49.0,50.0],"Q5o":[29.1,33.5,37.2,41.1,46.3,51.1],"J5s":[32.2,35.6,37.3,40.2,47.1,49.8],"T8o":[32.6,35.1,37.4,39.4,45.2,50.1],"J7o":[31.1,32.5,35.3,39.3,45.2,49.8],"J4s":[32.2,34.0,36.7,40.6,45.0,49.0],"Q4o":[30.9,32.1,36.1,40.6,45.2,49.1],"97s":[35.1,38.8,38.6,41.2,44.9,50.5],"T6s":[34.1,36.2,38.7,39.0,44.2,48.5],"J3s":[32.1,35.4,37.2,38.7,44.4,47.7],"Q3o":[29.7,31.1,35.7,39.7,44.8,48.3],"87s":[36.5,38.3,40.0,40.3,45.0,48.7],"J6o":[29.2,31.6,34.6,37.9,43.5,47.6],"98o":[32.6,35.1,37.4,38.4,43.3,48.8],"T7o":[30.8,33.5,34.6,37.2,43.0,48.5],"Q2o":[29.4,31.9,35.1,38.2,43.6,48.2],"J5o":[28.4,31.4,35.5,36.1,42.8,47.5],"T5s":[32.3,34.7,36.3,38.3,42.0,48.4],"J2s":[32.1,34.2,37.4,38.8,43.3,45.2],"96s":[34.0,34.7,38.1,39.3,42.9,47.3],"T4s":[32.2,34.1,36.0,37.9,42.2,46.2],"97o":[30.7,35.2,35.9,36.6,40.8,46.2],"86s":[35.9,38.3,38.5,39.5,41.0,45.8],"J4o":[28.3,31.9,32.8,35.9,41.2,46.0],"T6o":[30.3,33.3,34.9,36.8,41.9,45.5],"T3s":[31.2,34.8,37.4,37.6,41.1,46.2],"95s":[33.4,36.5,37.3,37.3,40.4,44.7],"J3o":[28.9,31.5,32.4,35.1,40.6,46.0],"76s":[36.2,38.6,38.3,39.7,42.1,45.8],"T2s":[30.6,33.5,35.0,35.7,40.0,45.1],"87o":[32.7,34.7,35.3,37.9,40.5,45.2],"85s":[32.4,35.9,36.7,37.8,39.5,44.1],"96o":[29.6,33.0,35.6,35.8,39.5,43.9],"T5o":[28.4,30.5,32.4,33.2,39.2,43.3],"J2o":[28.1,31.2,31.6,34.6,41.0,44.2],"94s":[31.1,33.1,34.8,36.6,38.7,44.4],"75s":[34.4,36.7,38.4,38.3,40.8,43.3],"93s":[31.5,33.1,35.4,36.3,38.5,41.3],"T4o":[27.9,30.6,32.8,33.1,38.0,42.3],"86o":[32.3,34.3,34.6,35.7,39.6,43.1],"T3o":[28.5,30.2,31.6,31.7,37.3,40.8],"65s":[35.6,37.2,38.9,39.1,40.6,42.5],"84s":[31.6,34.3,35.4,36.2,38.3,41.6],"95o":[28.3,31.3,32.5,33.9,36.8,41.2],"92s":[31.5,32.9,34.1,35.8,38.4,41.5],"76o":[32.5,35.6,34.5,37.9,38.7,42.7],"T2o":[27.5,30.5,31.8,33.0,37.7,41.9],"74s":[33.5,36.5,36.8,37.8,38.7,41.5],"85o":[30.4,33.1,33.4,34.0,36.9,41.1],"54s":[34.3,37.3,39.5,37.9,40.4,41.3],"83s":[30.4,33.0,34.3,35.7,36.7,40.2],"64s":[34.5,36.3,37.9,38.0,38.4,41.6],"75o":[30.9,33.6,34.9,35.7,36.1,40.4],"94o":[28.9,31.2,30.5,32.6,35.3,41.4],"73s":[32.2,33.7,33.4,36.3,36.6,39.4],"82s":[31.1,33.1,33.8,34.3,36.5,40.5],"93o":[27.7,29.8,31.9,31.6,35.2,40.4],"65o":[31.3,33.3,35.4,36.9,35.3,39.2],"53s":[32.8,35.1,37.1,36.6,38.2,38.6],"63s":[32.8,34.3,36.2,36.5,37.3,40.2],"84o":[29.4,30.2,33.0,33.2,34.4,39.1],"92o":[27.6,31.1,30.5,31.6,35.4,39.2],"43s":[32.8,35.1,36.0,37.9,37.0,37.8],"72s":[29.6,34.0,33.6,32.7,36.4,37.3],"64o":[30.5,32.5,33.3,35.3,36.4,38.9],"74o":[29.3,32.3,33.1,34.5,32.9,39.2],"54o":[31.6,32.9,34.4,34.6,35.6,38.3],"52s":[31.8,34.6,35.1,35.2,36.4,37.3],"62s":[31.5,33.5,35.2,34.1,35.2,37.1],"83o":[27.9,29.0,29.6,30.1,33.4,37.5],"73o":[27.7,30.3,30.3,31.6,33.1,37.2],"42s":[31.2,34.1,33.6,36.3,35.5,36.2],"82o":[26.9,29.4,30.1,31.3,32.2,36.5],"53o":[28.3,30.6,33.1,34.0,33.7,36.8],"32s":[30.6,32.6,33.7,34.9,36.1,36.2],"63o":[29.6,31.0,31.3,33.3,33.7,35.8],"43o":[29.1,31.6,32.2,33.8,33.9,35.3],"72o":[27.1,29.4,30.5,30.7,32.3,34.2],"52o":[29.2,30.1,32.2,32.3,32.4,34.7],"62o":[27.4,30.6,30.6,31.4,31.5,33.9],"42o":[27.5,30.4,29.8,31.8,32.7,33.0],"32o":[27.1,29.7,30.6,31.2,32.1,31.7]},"note":"equite all-in preflop, %, vs les X %% de mains les plus fortes"}</script>
+<script>
+"use strict";
+(function(){
+  var TABLE = JSON.parse(document.getElementById('equity-data').textContent);
+  var COMBOS = TABLE.combos, EQUITES = TABLE.equites, LARGEURS = TABLE.largeurs;
+  var RANGS = ['A','K','Q','J','T','9','8','7','6','5','4','3','2'];
+
+  // Structures de gains de référence. Les DoN paient à parts égales, d'où la
+  // taxe ICM très supérieure : voir la ligne "bubble factor" une fois calculée.
+  var PRESETS = {
+    'don6':   {nom:'DoN 6 joueurs — 3 payés à parts égales', payouts:[33.34,33.33,33.33], n:4, ante:0},
+    'sng15':  {nom:'SNG15 — 4 payés (40/30/20/10)',          payouts:[40,30,20,10],       n:5, ante:0.05},
+    'expresso':{nom:'Expresso — vainqueur seul',              payouts:[100],               n:3, ante:0},
+    'libre':  {nom:'Structure libre',                         payouts:[50,30,20],          n:4, ante:0}
+  };
+
+  var NOMS_SIEGES = {
+    2:['SB','BB'], 3:['BTN','SB','BB'], 4:['CO','BTN','SB','BB'],
+    5:['UTG','CO','BTN','SB','BB'], 6:['UTG','HJ','CO','BTN','SB','BB'],
+    7:['UTG','UTG+1','HJ','CO','BTN','SB','BB'],
+    8:['UTG','UTG+1','MP','HJ','CO','BTN','SB','BB'],
+    9:['UTG','UTG+1','MP','MP+1','HJ','CO','BTN','SB','BB']
+  };
+
+  var etat = {
+    preset:'don6', n:4, payouts:[33.34,33.33,33.33],
+    stacks:[10,10,10,10], aMaTable:[true,true,true,true],
+    hero:3, vilain:1, largeur:100,
+    sb:0.5, bb:1, ante:0
+  };
+
+  // ---------- ICM (Malmuth-Harville) ----------
+  // Un joueur à 0 jeton finit dernier : il prend la part la plus basse encore
+  // en jeu, et on recalcule les survivants sur les places restantes. Sans ça,
+  // une élimination "vaut 0" — juste à la bulle, faux dès que la dernière
+  // place est payée (4 joueurs / 4 payés, par exemple).
+  function icm(stacks, payouts){
+    var vivants=[], morts=[];
+    for(var i=0;i<stacks.length;i++) (stacks[i]>1e-9?vivants:morts).push(i);
+    var eq = new Array(stacks.length).fill(0);
+    var parts = payouts.slice();
+    while(parts.length < stacks.length) parts.push(0);
+    if(morts.length){
+      for(var k=0;k<morts.length;k++) eq[morts[k]] = parts.pop();
+      var sousStacks = vivants.map(function(i){return stacks[i];});
+      var sous = icmPur(sousStacks, parts);
+      for(var v=0;v<vivants.length;v++) eq[vivants[v]] = sous[v];
+      return eq;
+    }
+    return icmPur(stacks, parts);
+  }
+
+  function icmPur(S, P){
+    var n = S.length;
+    if(n===0) return [];
+    var memo = {};
+    function pFirst(alive, target){
+      var total=0;
+      for(var i=0;i<n;i++) if(alive & (1<<i)) total += S[i];
+      return total>0 ? S[target]/total : 0;
+    }
+    function pPlace(alive, target, place){
+      if(!(alive & (1<<target))) return 0;
+      if(place===0) return pFirst(alive, target);
+      var nb=0; for(var b=0;b<n;b++) if(alive & (1<<b)) nb++;
+      if(place>=nb) return 0;
+      var cle = alive+'|'+target+'|'+place;
+      if(memo[cle]!==undefined) return memo[cle];
+      var res=0;
+      for(var j=0;j<n;j++){
+        if(j===target || !(alive & (1<<j))) continue;
+        var pj = pFirst(alive, j);
+        if(pj<=0) continue;
+        res += pj * pPlace(alive & ~(1<<j), target, place-1);
+      }
+      memo[cle]=res;
+      return res;
+    }
+    var full=(1<<n)-1, out=[];
+    for(var i=0;i<n;i++){
+      var ev=0;
+      for(var k=0;k<n;k++) ev += pPlace(full, i, k) * (P[k]||0);
+      out.push(ev);
+    }
+    return out;
+  }
+
+  // ---------- Règlement du pot ----------
+  // Un joueur ne remporte de chaque adversaire que ce qu'il COUVRE : sans ce
+  // plafond, un court "gagnerait" le tapis entier d'un gros, et l'ICM lirait
+  // une table de jetons qui n'existe pas.
+  function contributions(hero, vilain, heroPaie){
+    var s = etat.stacks, n = s.length;
+    var c = new Array(n).fill(0);
+    var idx = indicesMaTable();
+    for(var k=0;k<idx.length;k++) c[idx[k]] = etat.ante;
+    // SB et BB = les deux derniers sièges de ma table
+    if(idx.length>=2){
+      c[idx[idx.length-2]] += etat.sb;
+      c[idx[idx.length-1]] += etat.bb;
+    }
+    c[vilain] = s[vilain];
+    if(heroPaie) c[hero] = Math.min(s[hero], s[vilain]);
+    for(var i=0;i<n;i++) c[i] = Math.min(c[i], s[i]);
+    return c;
+  }
+  function regler(c, gagnant){
+    var s = etat.stacks, n = s.length, out=[];
+    for(var i=0;i<n;i++) out.push(s[i]-c[i]);
+    var gain=0;
+    for(var j=0;j<n;j++) gain += Math.min(c[j], c[gagnant]);
+    out[gagnant] += gain;
+    for(var k=0;k<n;k++) if(k!==gagnant) out[k] += Math.max(0, c[k]-c[gagnant]);
+    return out;
+  }
+
+  function indicesMaTable(){
+    var out=[];
+    for(var i=0;i<etat.n;i++) if(etat.aMaTable[i]) out.push(i);
+    return out;
+  }
+  function compteMaTable(){ return indicesMaTable().length; }
+
+  // ---------- Calculs ----------
+  function bubbleFactor(hero, vilain){
+    var s = etat.stacks, p = payoutsNorm();
+    var mise = Math.min(s[hero], s[vilain]);
+    var maintenant = icm(s, p)[hero];
+    var g = s.slice(); g[hero]+=mise; g[vilain]-=mise;
+    var pe = s.slice(); pe[hero]-=mise; pe[vilain]+=mise;
+    var eg = icm(g,p)[hero], ep = icm(pe,p)[hero];
+    if(eg - maintenant <= 1e-12) return null;
+    return (maintenant - ep) / (eg - maintenant);
+  }
+
+  function seuils(hero, vilain){
+    var p = payoutsNorm();
+    var cf = contributions(hero, vilain, false);
+    var cc = contributions(hero, vilain, true);
+    var ef = icm(regler(cf, vilain), p)[hero];
+    var ep = icm(regler(cc, vilain), p)[hero];
+    var eg = icm(regler(cc, hero), p)[hero];
+    var aPayer = cc[hero] - cf[hero];
+    var pot = 0;
+    for(var i=0;i<cc.length;i++) pot += Math.min(cc[i], cc[hero]);
+    return {
+      icm: (eg-ep>1e-12) ? 100*(ef-ep)/(eg-ep) : null,
+      chip: pot>0 ? 100*aPayer/pot : null,
+      aPayer: aPayer, pot: pot
+    };
+  }
+
+  function payoutsNorm(){
+    var t=0, p=etat.payouts;
+    for(var i=0;i<p.length;i++) t+=p[i];
+    return t>0 ? p.map(function(x){return x/t;}) : p.slice();
+  }
+
+  // ---------- Rendu ----------
+  function fmt(x, d){ return (x==null||isNaN(x)) ? '—' : x.toFixed(d==null?1:d); }
+
+  function rendreConfig(){
+    var sel=document.getElementById('preset');
+    if(!sel.options.length){
+      for(var k in PRESETS) sel.add(new Option(PRESETS[k].nom, k));
+      sel.value = etat.preset;
+      sel.onchange=function(){
+        var p=PRESETS[sel.value];
+        etat.preset=sel.value;
+        etat.payouts=p.payouts.slice();
+        etat.n=p.n; etat.ante=p.ante;
+        document.getElementById('ante').value=p.ante;
+        etat.stacks=new Array(etat.n).fill(10);
+        etat.aMaTable=new Array(etat.n).fill(true);
+        etat.hero=etat.n-1; etat.vilain=Math.max(0, etat.n-3);
+        document.getElementById('nplayers').value=etat.n;
+        tout();
+      };
+    }
+    var np=document.getElementById('nplayers');
+    if(!np.options.length){
+      for(var i=2;i<=9;i++) np.add(new Option(i+' joueurs', i));
+      np.value=etat.n;
+      np.onchange=function(){
+        var n=+np.value, anc=etat.n;
+        etat.n=n;
+        while(etat.stacks.length<n){ etat.stacks.push(10); etat.aMaTable.push(true); }
+        etat.stacks.length=n; etat.aMaTable.length=n;
+        if(etat.hero>=n) etat.hero=n-1;
+        if(etat.vilain>=n) etat.vilain=Math.max(0,n-3);
+        if(etat.vilain===etat.hero) etat.vilain=(etat.hero+1)%n;
+        tout();
+      };
+    }
+    ['sb','bb','ante'].forEach(function(id){
+      var el=document.getElementById(id);
+      el.value = (id==='ante'?etat.ante:(id==='sb'?etat.sb:etat.bb));
+      el.oninput=function(){
+        var v=parseFloat(el.value); if(isNaN(v)) return;
+        if(id==='ante') etat.ante=v; else if(id==='sb') etat.sb=v; else etat.bb=v;
+        calculer();
+      };
+    });
+
+    var pr=document.getElementById('payoutsRow'), h='';
+    for(var j=0;j<etat.payouts.length;j++){
+      h+='<div class="field"><label>'+(j+1)+(j?'e':'er')+'</label>'+
+         '<input type="number" data-p="'+j+'" value="'+etat.payouts[j]+'" step="1" min="0"></div>';
+    }
+    h+='<div class="field"><label>&nbsp;</label><div class="seg">'+
+       '<button id="addP">+ place</button><button id="delP">− place</button></div></div>';
+    pr.innerHTML=h;
+    pr.querySelectorAll('input[data-p]').forEach(function(el){
+      el.oninput=function(){
+        var v=parseFloat(el.value); if(isNaN(v)) return;
+        etat.payouts[+el.getAttribute('data-p')]=v; etat.preset='libre'; calculer();
+      };
+    });
+    document.getElementById('addP').onclick=function(){ etat.payouts.push(0); rendreConfig(); calculer(); };
+    document.getElementById('delP').onclick=function(){
+      if(etat.payouts.length>1){ etat.payouts.pop(); rendreConfig(); calculer(); }
+    };
+  }
+
+  function rendreJoueurs(){
+    var sieges = NOMS_SIEGES[compteMaTable()] || [];
+    var idx = indicesMaTable(), h='';
+    h+='<tr><th>Siège</th><th>Tapis</th><th>Équité ICM</th><th>À ma table</th><th>Rôle</th></tr>';
+    var eq = icm(etat.stacks, payoutsNorm());
+    for(var i=0;i<etat.n;i++){
+      var pos = etat.aMaTable[i] ? (sieges[idx.indexOf(i)]||('J'+(i+1))) : 'autre table';
+      h+='<tr>'+
+        '<td>'+pos+
+          (i===etat.hero?'<span class="tag hero">TOI</span>':'')+
+          (i===etat.vilain?'<span class="tag push">PUSH</span>':'')+'</td>'+
+        '<td><input type="number" data-s="'+i+'" value="'+etat.stacks[i]+'" step="0.5" min="0.1"></td>'+
+        '<td>'+fmt(100*eq[i])+' %</td>'+
+        '<td><button class="mini'+(etat.aMaTable[i]?' on':'')+'" data-t="'+i+'">'+
+            (etat.aMaTable[i]?'oui':'non')+'</button></td>'+
+        '<td><button class="mini'+(i===etat.hero?' on':'')+'" data-h="'+i+'">moi</button> '+
+            '<button class="mini'+(i===etat.vilain?' on':'')+'" data-v="'+i+'">pousse</button></td>'+
+      '</tr>';
+    }
+    var tb=document.getElementById('joueurs');
+    tb.innerHTML=h;
+    tb.querySelectorAll('input[data-s]').forEach(function(el){
+      el.oninput=function(){
+        var v=parseFloat(el.value); if(isNaN(v)||v<=0) return;
+        etat.stacks[+el.getAttribute('data-s')]=v; calculer(); rendreBF();
+        // l'équité ICM affichée dépend des tapis : on rafraîchit la colonne
+        var eq2=icm(etat.stacks, payoutsNorm()), lignes=tb.querySelectorAll('tr');
+        for(var r=1;r<lignes.length;r++) lignes[r].children[2].textContent=fmt(100*eq2[r-1])+' %';
+      };
+    });
+    tb.querySelectorAll('button[data-h]').forEach(function(b){
+      b.onclick=function(){ var i=+b.getAttribute('data-h');
+        if(i===etat.vilain) etat.vilain=etat.hero; etat.hero=i; tout(); };
+    });
+    tb.querySelectorAll('button[data-v]').forEach(function(b){
+      b.onclick=function(){ var i=+b.getAttribute('data-v');
+        if(i===etat.hero) etat.hero=etat.vilain; etat.vilain=i; tout(); };
+    });
+    tb.querySelectorAll('button[data-t]').forEach(function(b){
+      b.onclick=function(){ var i=+b.getAttribute('data-t');
+        etat.aMaTable[i]=!etat.aMaTable[i]; tout(); };
+    });
+
+    var horsTable = etat.n - compteMaTable();
+    document.getElementById('noteTable').innerHTML = horsTable > 0
+      ? 'ICM calculé sur les <b>'+etat.n+' tapis</b> du tournoi, blinds et antes sur les '+
+        compteMaTable()+' joueurs de ta table. C\'est le cas des tables multiples : '+
+        'ceux d\'en face ne peuvent pas te sortir, mais ils pèsent sur ton équité.'
+      : 'Tous les joueurs sont à ta table. Décoche « à ma table » pour modéliser '+
+        'un tournoi à plusieurs tables : leurs tapis comptent dans l\'ICM, pas dans le pot.';
+  }
+
+  function rendreBF(){
+    var sieges=NOMS_SIEGES[compteMaTable()]||[], idx=indicesMaTable();
+    function nom(i){ return etat.aMaTable[i] ? (sieges[idx.indexOf(i)]||('J'+(i+1))) : 'T2·'+(i+1); }
+    var h='<tr><th></th>';
+    for(var c=0;c<etat.n;c++) h+='<th>'+nom(c)+'</th>';
+    h+='</tr>';
+    for(var r=0;r<etat.n;r++){
+      h+='<tr><td>'+nom(r)+' <span style="color:var(--dim)">'+fmt(etat.stacks[r])+'</span></td>';
+      for(var c2=0;c2<etat.n;c2++){
+        if(r===c2){ h+='<td style="color:#39414c">—</td>'; continue; }
+        var b=bubbleFactor(r,c2);
+        var cl = b==null?'':(b>=3?'hot':(b<=1.5?'cold':''));
+        h+='<td class="'+cl+'">'+fmt(b,2)+'</td>';
+      }
+      h+='</tr>';
+    }
+    document.getElementById('bfTable').innerHTML=h;
+  }
+
+  function rendreSortie(){
+    var s=seuils(etat.hero, etat.vilain);
+    var bf=bubbleFactor(etat.hero, etat.vilain);
+    var sieges=NOMS_SIEGES[compteMaTable()]||[], idx=indicesMaTable();
+    var nH=etat.aMaTable[etat.hero]?(sieges[idx.indexOf(etat.hero)]||'toi'):'toi';
+    var nV=etat.aMaTable[etat.vilain]?(sieges[idx.indexOf(etat.vilain)]||'lui'):'lui';
+    var out=document.getElementById('sortie');
+
+    if(!etat.aMaTable[etat.hero] || !etat.aMaTable[etat.vilain]){
+      out.innerHTML='<div class="err">Toi et le joueur qui pousse devez être à la même table '+
+                    'pour qu\'un pot vous oppose. Coche « à ma table » pour les deux.</div>';
+      return;
+    }
+    if(s.icm==null){ out.innerHTML='<div class="err">Configuration impossible à évaluer.</div>'; return; }
+
+    var ecart=s.icm-s.chip;
+    var h='<div class="verdict">';
+    h+='<div class="grand">'+
+       '<div class="kpi"><div class="v chip">'+fmt(s.chip)+' %</div><div class="k">Seuil chip-EV</div></div>'+
+       '<div class="kpi"><div class="v icm">'+fmt(s.icm)+' %</div><div class="k">Seuil ICM</div></div>'+
+       '<div class="kpi"><div class="v ecart">+'+fmt(ecart)+' pts</div><div class="k">Taxe de bulle</div></div>'+
+       '<div class="kpi"><div class="v">×'+fmt(bf,2)+'</div><div class="k">Bubble factor</div></div>'+
+       '</div>';
+    h+='<div class="expl">'+nH+' paie '+fmt(s.aPayer,1)+' bb pour un pot de '+fmt(s.pot,1)+' bb. '+
+       'La cote seule réclamerait <b>'+fmt(s.chip)+' %</b> d\'équité ; l\'ICM en réclame <b>'+
+       fmt(s.icm)+' %</b>.</div>';
+    h+=rendreRange(s.icm, s.chip);
+    h+='</div>';
+    out.innerHTML=h;
+
+    out.querySelectorAll('button[data-l]').forEach(function(b){
+      b.onclick=function(){ etat.largeur=+b.getAttribute('data-l'); rendreSortie(); };
+    });
+  }
+
+  function rendreRange(seuilIcm, seuilChip){
+    var iL = LARGEURS.indexOf(etat.largeur);
+    if(iL<0) iL = LARGEURS.length-1;
+    var h='<div style="margin-top:14px">';
+    h+='<label>Range de push supposée en face</label><div class="seg" style="margin:5px 0 9px">';
+    for(var i=0;i<LARGEURS.length;i++){
+      h+='<button class="'+(LARGEURS[i]===etat.largeur?'on':'')+'" data-l="'+LARGEURS[i]+'">'+
+         LARGEURS[i]+' %</button>';
+    }
+    h+='</div>';
+
+    var dedans=0, total=0, cells='';
+    for(var r=0;r<13;r++){
+      for(var c=0;c<13;c++){
+        var nom = r===c ? RANGS[r]+RANGS[r]
+                : (r<c ? RANGS[r]+RANGS[c]+'s' : RANGS[c]+RANGS[r]+'o');
+        var e = (EQUITES[nom]||[])[iL];
+        var nb = COMBOS[nom]||0;
+        total += nb;
+        var cl='';
+        if(e!=null){
+          if(e>=seuilIcm){ cl=' in'; dedans+=nb; }
+          else if(e>=seuilChip){ cl=' lim'; }
+        }
+        cells+='<div class="gc'+cl+'" title="'+nom+' : '+fmt(e)+' %">'+nom.substring(0,2)+'</div>';
+      }
+    }
+    h+='<div class="grid">'+cells+'</div>';
+    h+='<div class="legende">'+
+       '<span><i style="background:#2f9e5f"></i>Tu paies ('+fmt(100*dedans/total)+' % des mains)</span>'+
+       '<span><i style="background:#7a6a2f"></i>Le chip-EV paierait, pas l\'ICM</span>'+
+       '<span><i style="background:#1b2027"></i>Fold</span></div>';
+    h+='<div class="note">Les cases jaunes sont le prix de la bulle : des mains rentables en jetons '+
+       'que la structure de gains te fait jeter.<br>'+
+       'Équités mesurées contre les <b>'+etat.largeur+' %</b> de mains les plus fortes. '+
+       'Le seuil en pourcentage, lui, est exact ; cette grille en est une <b>lecture indicative</b>, '+
+       'parce qu\'elle suppose une range nette alors qu\'un solveur pousse en fréquences mixtes — '+
+       'donc plus mou. Vu contre un solve HRC : prends <b>un cran plus large</b> que la largeur de '+
+       'push que tu estimes (il poussait 20 %, la grille à 30 % tombait juste).</div>';
+    return h+'</div>';
+  }
+
+  function calculer(){ rendreSortie(); rendreBF(); }
+  function tout(){ rendreConfig(); rendreJoueurs(); calculer(); }
+
+  tout();
+  document.getElementById('pied').innerHTML =
+    'Modèle Malmuth-Harville. Le seuil ICM est exact (trois évaluations : je me couche / '+
+    'je paie et je perds / je paie et je gagne) — vérifié contre trois solves HRC à moins '+
+    'd\'un point. Il vaut pour un <b>call face à un tapis</b> ; il ne dit rien de ta range de '+
+    'push, qui dépend de la fold equity et demande un solve.';
+})();
+</script>
+</body>
+</html>

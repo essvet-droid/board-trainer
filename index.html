@@ -11,7 +11,7 @@
 :root{
   --bg:#0a0e17; --surface:#111827; --surface2:#1a2235; --border:#2a3a55;
   --text:#e0e6f0; --dim:#6b7fa3; --accent:#00e5ff; --accent2:#7c4dff;
-  --green:#00e676; --gold:#ffd740; --orange:#ffab40;
+  --green:#00e676; --gold:#ffd740; --orange:#ffab40; --violet:#c9a6ff;
 }
 *{margin:0; padding:0; box-sizing:border-box}
 body{
@@ -43,6 +43,7 @@ body{
 .app.fe{border-left-color:var(--gold)} .app.fe:hover{border-color:var(--gold)} .app.fe:hover .arrow{color:var(--gold)}
 .app.bt{border-left-color:var(--accent2)} .app.bt:hover{border-color:var(--accent2)} .app.bt:hover .arrow{color:var(--accent2)}
 .app.pm{border-left-color:var(--orange)} .app.pm:hover{border-color:var(--orange)} .app.pm:hover .arrow{color:var(--orange)}
+.app.ic{border-left-color:var(--violet)} .app.ic:hover{border-color:var(--violet)} .app.ic:hover .arrow{color:var(--violet)}
 .tag{display:inline-block; font-family:'Share Tech Mono',monospace; font-size:.6rem; letter-spacing:1px;
      color:var(--dim); border:1px solid var(--border); border-radius:4px; padding:1px 6px; margin-top:6px}
 
@@ -60,8 +61,8 @@ body{
       <span class="emoji">🎯</span>
       <span class="body">
         <div class="name">Push/Fold Drill</div>
-        <div class="desc">Préflop Nash HRC · HU + 3-max · 10/15/25bb · EV &amp; fréquences exactes</div>
-        <span class="tag">NASH HRC</span>
+        <div class="desc">Préflop HRC · bulles DoN &amp; SNG15 (ICM) + HU/3-max · EV &amp; fréquences exactes, Nash vs ICM côte à côte</div>
+        <span class="tag">ICM + NASH</span>
       </span>
       <span class="arrow">›</span>
     </a>
@@ -92,6 +93,16 @@ body{
         <div class="name">Poker Math Drill</div>
         <div class="desc">Fondamentaux (Gaines) &amp; ratios GTO (Acevedo) · cotes, EV, Sklansky, G-bucks, α, MDF, EqR</div>
         <span class="tag">MATHS</span>
+      </span>
+      <span class="arrow">›</span>
+    </a>
+
+    <a class="app ic" href="icm_calculateur.html">
+      <span class="emoji">📐</span>
+      <span class="body">
+        <div class="name">Calculateur ICM</div>
+        <div class="desc">Bubble factor &amp; seuil de call exact · n'importe quels tapis, y compris 2 tables</div>
+        <span class="tag">ICM</span>
       </span>
       <span class="arrow">›</span>
     </a>
