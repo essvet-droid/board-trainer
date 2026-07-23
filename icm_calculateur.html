@@ -47,6 +47,12 @@
   .mini{background:none; border:1px solid var(--line); color:var(--dim); border-radius:6px;
         padding:3px 8px; font-size:11px; cursor:pointer; font-weight:700}
   .mini.on{border-color:var(--accent); background:var(--accent2); color:#fff}
+  .pivotrow{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:11px}
+  .pivot{background:var(--accent2); color:#fff; border:1px solid var(--accent); border-radius:9px;
+         padding:10px 15px; font-size:14px; font-weight:800; cursor:pointer}
+  .pivot:active{transform:scale(.98)}
+  #pivotInfo{font-size:12.5px; color:var(--dim)}
+  #pivotInfo b{color:var(--accent)}
 
   .verdict{background:var(--icm-bg); border:1px solid var(--icm-line); border-radius:13px;
            padding:15px; margin-bottom:12px}
@@ -98,6 +104,10 @@
   <h2>Tapis (en bb)</h2>
   <div class="card">
     <table class="joueurs"><tbody id="joueurs"></tbody></table>
+    <div class="pivotrow">
+      <button class="pivot" id="pivot">↻ Nouvelle main (le bouton avance)</button>
+      <span id="pivotInfo"></span>
+    </div>
     <div class="note" id="noteTable"></div>
   </div>
 
@@ -145,7 +155,8 @@
     preset:'don6', n:4, payouts:[33.34,33.33,33.33],
     stacks:[10,10,10,10], aMaTable:[true,true,true,true],
     hero:3, vilain:1, largeur:100,
-    sb:0.5, bb:1, ante:0
+    sb:0.5, bb:1, ante:0,
+    decalage:0   // rotation du bouton : les tapis restent, les positions tournent
   };
 
   // ---------- ICM (Malmuth-Harville) ----------
@@ -213,11 +224,10 @@
     var c = new Array(n).fill(0);
     var idx = indicesMaTable();
     for(var k=0;k<idx.length;k++) c[idx[k]] = etat.ante;
-    // SB et BB = les deux derniers sièges de ma table
-    if(idx.length>=2){
-      c[idx[idx.length-2]] += etat.sb;
-      c[idx[idx.length-1]] += etat.bb;
-    }
+    // SB et BB suivent la rotation du bouton (pas les deux derniers index)
+    var sb=joueurEn('SB'), bb=joueurEn('BB');
+    if(sb>=0) c[sb] += etat.sb;
+    if(bb>=0) c[bb] += etat.bb;
     c[vilain] = s[vilain];
     if(heroPaie) c[hero] = Math.min(s[hero], s[vilain]);
     for(var i=0;i<n;i++) c[i] = Math.min(c[i], s[i]);
@@ -239,6 +249,23 @@
     return out;
   }
   function compteMaTable(){ return indicesMaTable().length; }
+
+  // Position (label) d'un joueur, en tenant compte de la rotation du bouton.
+  // Le bouton avance d'un siège à chaque main : le décalage fait tourner les
+  // labels sur des tapis fixes — c'est le geste "nouvelle main" en jeu.
+  function posDe(i){
+    if(!etat.aMaTable[i]) return null;
+    var idx=indicesMaTable(), sg=NOMS_SIEGES[idx.length]||[], n=sg.length;
+    if(!n) return 'J'+(i+1);
+    var rang=idx.indexOf(i);
+    return sg[((rang - etat.decalage) % n + n) % n] || ('J'+(i+1));
+  }
+  // Index du joueur qui porte un label donné (pour poster SB / BB au bon siège).
+  function joueurEn(label){
+    var idx=indicesMaTable();
+    for(var k=0;k<idx.length;k++) if(posDe(idx[k])===label) return idx[k];
+    return -1;
+  }
 
   // ---------- Calculs ----------
   function bubbleFactor(hero, vilain){
@@ -287,7 +314,7 @@
         var p=PRESETS[sel.value];
         etat.preset=sel.value;
         etat.payouts=p.payouts.slice();
-        etat.n=p.n; etat.ante=p.ante;
+        etat.n=p.n; etat.ante=p.ante; etat.decalage=0;
         document.getElementById('ante').value=p.ante;
         etat.stacks=new Array(etat.n).fill(10);
         etat.aMaTable=new Array(etat.n).fill(true);
@@ -302,7 +329,7 @@
       np.value=etat.n;
       np.onchange=function(){
         var n=+np.value, anc=etat.n;
-        etat.n=n;
+        etat.n=n; etat.decalage=0;
         while(etat.stacks.length<n){ etat.stacks.push(10); etat.aMaTable.push(true); }
         etat.stacks.length=n; etat.aMaTable.length=n;
         if(etat.hero>=n) etat.hero=n-1;
@@ -342,12 +369,11 @@
   }
 
   function rendreJoueurs(){
-    var sieges = NOMS_SIEGES[compteMaTable()] || [];
-    var idx = indicesMaTable(), h='';
+    var h='';
     h+='<tr><th>Siège</th><th>Tapis</th><th>Équité ICM</th><th>À ma table</th><th>Rôle</th></tr>';
     var eq = icm(etat.stacks, payoutsNorm());
     for(var i=0;i<etat.n;i++){
-      var pos = etat.aMaTable[i] ? (sieges[idx.indexOf(i)]||('J'+(i+1))) : 'autre table';
+      var pos = etat.aMaTable[i] ? posDe(i) : 'autre table';
       h+='<tr>'+
         '<td>'+pos+
           (i===etat.hero?'<span class="tag hero">TOI</span>':'')+
@@ -384,6 +410,14 @@
         etat.aMaTable[i]=!etat.aMaTable[i]; tout(); };
     });
 
+    var info=document.getElementById('pivotInfo');
+    if(info){
+      info.innerHTML = etat.aMaTable[etat.hero]
+        ? 'Tu es en <b>'+posDe(etat.hero)+'</b>. Un clic à chaque nouvelle main : '+
+          'les tapis restent, les positions tournent.'
+        : 'Coche « à ma table » sur ton siège pour suivre ta position.';
+    }
+
     var horsTable = etat.n - compteMaTable();
     document.getElementById('noteTable').innerHTML = horsTable > 0
       ? 'ICM calculé sur les <b>'+etat.n+' tapis</b> du tournoi, blinds et antes sur les '+
@@ -394,8 +428,7 @@
   }
 
   function rendreBF(){
-    var sieges=NOMS_SIEGES[compteMaTable()]||[], idx=indicesMaTable();
-    function nom(i){ return etat.aMaTable[i] ? (sieges[idx.indexOf(i)]||('J'+(i+1))) : 'T2·'+(i+1); }
+    function nom(i){ return etat.aMaTable[i] ? posDe(i) : 'T2·'+(i+1); }
     var h='<tr><th></th>';
     for(var c=0;c<etat.n;c++) h+='<th>'+nom(c)+'</th>';
     h+='</tr>';
@@ -415,9 +448,8 @@
   function rendreSortie(){
     var s=seuils(etat.hero, etat.vilain);
     var bf=bubbleFactor(etat.hero, etat.vilain);
-    var sieges=NOMS_SIEGES[compteMaTable()]||[], idx=indicesMaTable();
-    var nH=etat.aMaTable[etat.hero]?(sieges[idx.indexOf(etat.hero)]||'toi'):'toi';
-    var nV=etat.aMaTable[etat.vilain]?(sieges[idx.indexOf(etat.vilain)]||'lui'):'lui';
+    var nH=etat.aMaTable[etat.hero]?posDe(etat.hero):'toi';
+    var nV=etat.aMaTable[etat.vilain]?posDe(etat.vilain):'lui';
     var out=document.getElementById('sortie');
 
     if(!etat.aMaTable[etat.hero] || !etat.aMaTable[etat.vilain]){
@@ -493,6 +525,11 @@
   function tout(){ rendreConfig(); rendreJoueurs(); calculer(); }
 
   tout();
+  document.getElementById('pivot').onclick=function(){
+    var t=compteMaTable();
+    if(t>1) etat.decalage=(etat.decalage+1)%t;   // le bouton avance d'un siège
+    rendreJoueurs(); calculer();                  // relabels + recalcul, sans toucher aux tapis
+  };
   document.getElementById('pied').innerHTML =
     'Modèle Malmuth-Harville. Le seuil ICM est exact (trois évaluations : je me couche / '+
     'je paie et je perds / je paie et je gagne) — vérifié contre trois solves HRC à moins '+
