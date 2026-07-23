@@ -258,7 +258,8 @@
     var idx=indicesMaTable(), sg=NOMS_SIEGES[idx.length]||[], n=sg.length;
     if(!n) return 'J'+(i+1);
     var rang=idx.indexOf(i);
-    return sg[((rang - etat.decalage) % n + n) % n] || ('J'+(i+1));
+    // le bouton avance -> chaque joueur avance dans le cycle BTN->SB->BB->CO
+    return sg[((rang + etat.decalage) % n + n) % n] || ('J'+(i+1));
   }
   // Index du joueur qui porte un label donné (pour poster SB / BB au bon siège).
   function joueurEn(label){
