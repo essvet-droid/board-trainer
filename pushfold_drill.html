@@ -595,6 +595,9 @@
       var mixNote = mixDescription(s,d);
       html+='<div class="verdict '+vcls+'">'+vtxt+
             '<div class="expl">GTO : <b>'+escapeHtml(bestLabel)+'</b> ('+fmtEv(d.ev[bi])+' bb). '+mixNote+'</div></div>';
+      // Bouton d'avance HAUT : juste sous la correction, avant le comparatif et la
+      // grille — permet d'enchaîner sans scroller. Le bouton du bas reste en place.
+      html+='<button class="next" id="nextBtnTop">Main suivante →</button>';
       html+=twinBlock(s, cur.hand);
       html+=renderGrid(s, cur.hand);
       html+='<button class="next" id="nextBtn">Main suivante →</button>';
@@ -605,6 +608,7 @@
 
     if(cur.answered){
       document.getElementById('nextBtn').onclick=newQuestion;
+      var _nbt=document.getElementById('nextBtnTop'); if(_nbt) _nbt.onclick=newQuestion;
     } else {
       var nodes=board.querySelectorAll('.act');
       for(var k=0;k<nodes.length;k++){
