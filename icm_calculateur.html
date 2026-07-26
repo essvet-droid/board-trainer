@@ -154,7 +154,7 @@
   var etat = {
     preset:'don6', n:4, payouts:[33.34,33.33,33.33],
     stacks:[10,10,10,10], aMaTable:[true,true,true,true],
-    hero:3, vilain:1, largeur:100,
+    hero:3, vilain:1, largeur:45,   // défaut sain : 100 % (any-two) gonflait la range de call
     sb:0.5, bb:1, ante:0,
     decalage:0   // rotation du bouton : les tapis restent, les positions tournent
   };
@@ -484,7 +484,12 @@
     var iL = LARGEURS.indexOf(etat.largeur);
     if(iL<0) iL = LARGEURS.length-1;
     var h='<div style="margin-top:14px">';
-    h+='<label>Range de push supposée en face</label><div class="seg" style="margin:5px 0 9px">';
+    h+='<label>Range de push supposée en face</label>';
+    h+='<div class="note" style="margin:3px 0 6px">Ton <b>hypothèse</b> sur le vilain : les '+etat.largeur+
+       ' % de mains les plus fortes qu\'il jamme (pas un label GTO). <b>100 % = any-two</b> '+
+       '(short stack extrême, rare) ; un jam positionnel réaliste = <b>20 à 45 %</b>. '+
+       'Plus tu supposes large, plus la grille te fait payer large.</div>';
+    h+='<div class="seg" style="margin:5px 0 9px">';
     for(var i=0;i<LARGEURS.length;i++){
       h+='<button class="'+(LARGEURS[i]===etat.largeur?'on':'')+'" data-l="'+LARGEURS[i]+'">'+
          LARGEURS[i]+' %</button>';
