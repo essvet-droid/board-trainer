@@ -389,6 +389,12 @@ function syncChips(){
   });
   document.querySelectorAll("#ranks .rk").forEach(b=>b.setAttribute("aria-pressed",F.hi.has(b.dataset.v)));
 }
+// clic filtre : 1er clic (tout coché) = ISOLE cette valeur ; ensuite additif ; jamais vide
+function isolateOrToggle(cur,keys,v){
+  if(cur.size===keys.length)return new Set([v]);      // tout coché → isole
+  const s=new Set(cur);s.has(v)?s.delete(v):s.add(v);  // sinon additif
+  return s.size?s:new Set(keys);                        // vidé → revient à tout
+}
 function wireFilters(){
   document.querySelectorAll("#filters .fgroup[data-dim]").forEach(g=>{
     const dim=g.dataset.dim;
@@ -396,15 +402,13 @@ function wireFilters(){
     if(all)all.addEventListener("click",()=>{F[dim]=new Set(dim==="hi"?RANKS:AX[dim].keys);syncChips();hit=null;apply();});
     if(dim==="hi")return;
     g.querySelectorAll(".chip").forEach(c=>c.addEventListener("click",()=>{
-      const v=c.dataset.v;F[dim].has(v)?F[dim].delete(v):F[dim].add(v);
-      if(!F[dim].size)F[dim]=new Set(AX[dim].keys);   // jamais vide
+      F[dim]=isolateOrToggle(F[dim],AX[dim].keys,c.dataset.v);
       syncChips();hit=null;apply();}));
   });
   const rk=document.getElementById("ranks");
   rk.innerHTML=RANKS.map(r=>`<button class="rk" data-v="${r}">${r}</button>`).join("");
   rk.querySelectorAll(".rk").forEach(b=>b.addEventListener("click",()=>{
-    const v=b.dataset.v;F.hi.has(v)?F.hi.delete(v):F.hi.add(v);
-    if(!F.hi.size)F.hi=new Set(RANKS);syncChips();hit=null;apply();}));
+    F.hi=isolateOrToggle(F.hi,RANKS,b.dataset.v);syncChips();hit=null;apply();}));
 }
 
 // ── recherche ──
