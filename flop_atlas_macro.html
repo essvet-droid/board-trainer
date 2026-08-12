@@ -715,6 +715,22 @@ function renderSizeBtns(){
 function dPool(){const ks=Object.keys(FAM);return dFamF?ks.filter(b=>FAM[b]==dFamF):ks;}
 const _SU=["s","h","d","c"];
 const _rnd=arr=>arr[Math.random()*arr.length|0];
+// Multiplicité réelle d'un board canonique (nb de flops parmi les 22100 qu'il représente)
+// → tirage pondéré par occurrence : monotone/trips ~6× plus rares qu'un rainbow.
+function boardWeight(b){
+  const nr=new Set([b[0],b[2],b[4]]).size, ns=new Set([b[1],b[3],b[5]]).size;
+  if(nr===1)return 4;      // trips (AAA)
+  if(nr===2)return 12;     // pairé (two-tone ou rainbow)
+  if(ns===1)return 4;      // dépareillé monotone
+  if(ns===2)return 12;     // dépareillé two-tone
+  return 24;               // dépareillé rainbow
+}
+function wPick(pool){
+  let tot=0;for(const b of pool)tot+=boardWeight(b);
+  let x=Math.random()*tot;
+  for(const b of pool){x-=boardWeight(b);if(x<=0)return b;}
+  return pool[pool.length-1];
+}
 function dealCombo(board,cls){
   // tire un combo AU HASARD parmi les combos valides de la classe (uniforme = distribution
   // naturelle des combos) → fait varier la signature de couleur (nut FD vs poubelle).
@@ -729,7 +745,7 @@ function dealCombo(board,cls){
 }
 function dNext(){const p=dPool();if(!p.length)return;
   let b,cls=null,combo=null,tries=0;
-  do{ b=p[Math.random()*p.length|0];
+  do{ b=wPick(p);
     if(dMode==="main"){
       const M=MICRO_IP[b]||{},ks=Object.keys(M).filter(k=>M[k][0]>0);
       if(ks.length){const tot=ks.reduce((s,k)=>s+M[k][0],0);let x=Math.random()*tot;cls=ks[0];
