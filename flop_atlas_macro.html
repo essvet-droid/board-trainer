@@ -165,12 +165,13 @@ footer{color:var(--muted);font-size:11.5px;margin-top:26px;border-top:1px solid 
 .modebar{display:inline-flex;gap:0;background:var(--surface2);border:1px solid var(--line);border-radius:11px;padding:3px;margin:2px 0 18px}
 .modebar button{font:700 14px/1 var(--font);color:var(--ink2);background:none;border:0;padding:9px 20px;border-radius:8px;cursor:pointer}
 .modebar button[aria-pressed="true"]{background:var(--ink);color:var(--surface)}
+#drillview{max-width:1180px;margin:0 auto}
 .drillcard{max-width:660px;margin:0 auto 16px}
 .drilltop{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px}
 .drilltop .drilllab{font:600 13px var(--font);color:var(--muted)}
 #dfam{font:600 13px var(--font);padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink)}
 .dnextbtn{margin-left:auto;font:700 13px var(--font);padding:9px 17px;border:1px solid var(--accent);border-radius:8px;background:var(--accent);color:#fff;cursor:pointer}
-.dflop{display:flex;gap:8px;justify-content:center;margin:12px 0 20px}
+.dflop{display:flex;justify-content:center;margin:8px 0 22px;font:800 34px/1 var(--mono);letter-spacing:3px}
 .dstep{margin-bottom:16px}
 .dsteplab{font:700 12px var(--font);color:var(--muted);letter-spacing:.05em;text-transform:uppercase;margin:0 0 8px}
 .dbtns{display:flex;gap:8px}
@@ -197,7 +198,18 @@ footer{color:var(--muted);font-size:11.5px;margin-top:26px;border-top:1px solid 
 .dn{text-align:center;color:var(--muted);font:600 12px var(--mono)}
 .dpc{text-align:center;font:700 13px var(--mono);color:var(--muted)}
 .dpc.hi{color:var(--good)}.dpc.md{color:var(--accent-ink)}.dpc.lo{color:var(--bad)}
-@media(max-width:520px){.drillcard{max-width:100%}.dbtns button{font-size:13px;padding:13px 4px}}
+@media(min-width:900px){
+  #drillview{display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,380px);gap:20px;align-items:start}
+  .drillcard{max-width:none;margin:0}
+  #drillview>.drillcard:last-child{position:sticky;top:14px}
+}
+@media(max-width:560px){
+  .drillcard{max-width:100%}
+  .dflop{font-size:28px;letter-spacing:2px}
+  .dbtns button{font-size:14px;padding:16px 4px}
+  .dgto{font-size:12px}
+  .drow{grid-template-columns:24px 1fr 26px 46px 46px;gap:6px;font-size:12.5px}
+}
 </style>
 
 <div class="wrap">
