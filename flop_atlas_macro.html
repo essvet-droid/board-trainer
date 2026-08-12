@@ -206,11 +206,8 @@ footer{color:var(--muted);font-size:11.5px;margin-top:26px;border-top:1px solid 
 .cmc.warn{background:rgba(185,126,34,.12);color:var(--accent-ink);border-color:var(--line2)}
 .cmglob{margin-top:10px;font:600 12.5px var(--font);color:var(--ink2)}
 .cmglob b{color:var(--ink)}
-@media(min-width:900px){
-  #drillview{display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,380px);gap:20px;align-items:start}
-  .drillcard{max-width:none;margin:0}
-  #drillview>.drillcard:last-child{position:sticky;top:14px}
-}
+.cmspacer{grid-column:1}
+.cmtop{grid-column:2/5;text-align:center;align-self:end;padding-bottom:2px;font:700 11px var(--font);color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
 @media(max-width:560px){
   .drillcard{max-width:100%}
   .dbtns button{font-size:14px;padding:16px 4px}
@@ -351,7 +348,7 @@ footer{color:var(--muted);font-size:11.5px;margin-top:26px;border-top:1px solid 
     <div class="card drillcard">
       <p class="h2">Ta lecture du sizing — matrice de confusion</p>
       <div id="ddash"></div>
-      <p class="mhint" style="margin-top:10px">Lignes = ce que fait le GTO · colonnes = ta réponse · <b>diagonale = juste</b>. Une case hors diagonale forte = un biais systématique (ex. « gros → petit » = tu sous-mises).</p>
+      <p class="mhint" style="margin-top:10px">Chaque <b>ligne</b> = ce que voulait le GTO ; lis vers la droite le % de <b>tes</b> réponses. <b>Diagonale = juste</b> ; case rouge hors diagonale = biais (ex. ligne « Gros » × colonne « Petit » = tu sous-mises).</p>
     </div>
   </div>
 
@@ -749,7 +746,7 @@ function reveal(){
       <div class="distlg"><span><span class="ln ip"></span> IP</span><span><span class="ln oop"></span> OOP</span><span class="disthint">le « nez » à gauche = les nuts</span></div>`;
   }
   document.getElementById("dcorr").innerHTML=
-    `<div class="dverdict"><span style="color:${V[q1][1]}">${V[q1][0]} Ta réponse : <b>${SIZE_LAB[dPick.size]}</b> → GTO <b>${SIZE_LAB[g.dom]}</b></span></div>${ctx}`;
+    `<div class="dverdict"><span style="color:${V[q1][1]}">${V[q1][0]} GTO voulait <b>${SIZE_LAB[g.dom]}</b> · toi <b>${SIZE_LAB[dPick.size]}</b></span></div>${ctx}`;
   document.getElementById("dcorr").hidden=false;
   renderConfusion();
 }
@@ -758,7 +755,7 @@ function renderConfusion(){
   const lab={check:"Check",small:"Petit",big:"Gros"};
   const rowN=g=>ACTS.reduce((s,a)=>s+cm[g][a],0);
   const total=ACTS.reduce((s,g)=>s+rowN(g),0),diag=ACTS.reduce((s,g)=>s+cm[g][g],0);
-  let h=`<div class="cmx"><div class="cmh corner">GTO ↓ · toi →</div><div class="cmh">Check</div><div class="cmh">Petit</div><div class="cmh">Gros</div>`;
+  let h=`<div class="cmx"><div class="cmspacer"></div><div class="cmtop">Ta réponse →</div><div class="cmh corner">GTO ↓</div><div class="cmh">Check</div><div class="cmh">Petit</div><div class="cmh">Gros</div>`;
   for(const gg of ACTS){const n=rowN(gg);
     h+=`<div class="cmrl">${lab[gg]}<small>n ${n||"–"}</small></div>`;
     for(const a of ACTS){const p=n?100*cm[gg][a]/n:null;let cls="cmc";
