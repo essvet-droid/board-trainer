@@ -208,11 +208,14 @@ footer{color:var(--muted);font-size:11.5px;margin-top:26px;border-top:1px solid 
 .cmglob b{color:var(--ink)}
 .cmspacer{grid-column:1}
 .cmtop{grid-column:2/5;text-align:center;align-self:end;padding-bottom:2px;font:700 11px var(--font);color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+.cmx.gsimple{grid-template-columns:92px repeat(2,1fr)}
+.cmx.gsimple .cmtop{grid-column:2/4}
 @media(max-width:560px){
   .drillcard{max-width:100%}
   .dbtns button{font-size:14px;padding:16px 4px}
   .dgto{font-size:12px}
   .cmx{grid-template-columns:74px repeat(3,1fr);gap:4px}
+  .cmx.gsimple{grid-template-columns:74px repeat(2,1fr)}
   .cmc{min-height:44px;font-size:16px}
 }
 </style>
@@ -329,9 +332,13 @@ footer{color:var(--muted);font-size:11.5px;margin-top:26px;border-top:1px solid 
         </select>
         <button class="dnextbtn" id="dnext">Suivant →</button>
       </div>
-      <div class="mtoggle" id="dmode" role="group" aria-label="Type de drill" style="margin-bottom:14px">
+      <div class="mtoggle" id="dmode" role="group" aria-label="Type de drill" style="margin-bottom:10px">
         <button data-v="main" aria-pressed="true">🎯 Ta main</button>
         <button data-v="board" aria-pressed="false">🔥 Échauffement board</button>
+      </div>
+      <div class="mtoggle" id="dgran" role="group" aria-label="Granularité" style="margin-bottom:14px">
+        <button data-v="simple" aria-pressed="true">Bet / Check</button>
+        <button data-v="full" aria-pressed="false">Check · 1/3 · 2/3</button>
       </div>
       <div class="dflop" id="dflop"></div>
       <div class="dhandwrap" id="dhandwrap"><span class="dhandlab">ta main</span><div class="dhand" id="dhand"></div></div>
@@ -664,27 +671,32 @@ document.getElementById("blist").addEventListener("click",e=>{
   const row=e.target.closest(".brow");if(!row||row.classList.contains("head")||!row.id.startsWith("row-"))return;
   openMicro(row.id.slice(4));});
 
-// ═══ MODE DRILL (board-level : Q1 sizing · Q2 fréquence · accuracy/contraste par famille) ═══
-const SIZE_LAB={check:"Check",small:"Bet 1/3",big:"Bet 2/3"};
-const BAND_LAB={high:"Haute (80%+)",mid:"Mid (60-80%)",low:"Basse (<60%)"};
-const SZR={check:0,small:1,big:2}, FQR={low:0,mid:1,high:2};
+// ═══ MODE DRILL (niveau main / board · granularité Simple bet-check ou Complet check-1/3-2/3) ═══
+const SIZE_LAB={check:"Check",small:"Bet 1/3",big:"Bet 2/3",bet:"Bet"};
+let dBoard=null,dCls=null,dCombo=null,dMode="main",dGran="simple",dPhase=0,dPick={},dFamF=0;
+const ACTS_FULL=["check","small","big"], ACTS_SIMPLE=["check","bet"];
+function actsFor(){return dGran==="simple"?ACTS_SIMPLE:ACTS_FULL;}
 function gtoAns(){
-  let pct;
+  let raw,cbetV;
   if(dMode==="main"){
     const d=(MICRO_IP[dBoard]||{})[dCls]||[0,0,0];
-    pct={check:Math.max(0,100-d[1]-d[2]),small:d[1],big:d[2]};
+    raw={check:Math.max(0,100-d[1]-d[2]),small:d[1],big:d[2]};
   }else{
     const r=BROW[dBoard],cbet=r[1],gros=r[1]*r[9]/100;
-    pct={check:100-cbet,small:cbet-gros,big:gros};
-    var cbetV=cbet;
+    raw={check:100-cbet,small:cbet-gros,big:gros};cbetV=cbet;
   }
-  const dom=ACTS.reduce((a,b)=>pct[b]>pct[a]?b:a);
-  return {pct,dom,domPct:pct[dom],cbet:typeof cbetV!=="undefined"?cbetV:null};
+  const pct=dGran==="simple"?{check:raw.check,bet:raw.small+raw.big}:raw;
+  const A=actsFor(),dom=A.reduce((a,b)=>pct[b]>pct[a]?b:a);
+  return {pct,raw,dom,domPct:pct[dom],cbet:typeof cbetV!=="undefined"?cbetV:null};
 }
-let dBoard=null,dCls=null,dCombo=null,dMode="main",dPhase=0,dPick={},dFamF=0;
-const ACTS=["check","small","big"];
-function mkCM(){const o={};ACTS.forEach(g=>o[g]={check:0,small:0,big:0});return o;}
-const CM={main:mkCM(),board:mkCM()};   // CM[mode][gtoDom][taRéponse]
+function mkCM(A){const o={};A.forEach(g=>{o[g]={};A.forEach(a=>o[g][a]=0);});return o;}
+const CM={"main:simple":mkCM(ACTS_SIMPLE),"main:full":mkCM(ACTS_FULL),
+          "board:simple":mkCM(ACTS_SIMPLE),"board:full":mkCM(ACTS_FULL)};  // CM[mode:gran][gtoDom][taRéponse]
+function cmKey(){return dMode+":"+dGran;}
+function renderSizeBtns(){
+  const A=actsFor();
+  document.getElementById("dsize").innerHTML=A.map(a=>`<button data-v="${a}">${SIZE_LAB[a]}</button>`).join("");
+}
 function dPool(){const ks=Object.keys(FAM);return dFamF?ks.filter(b=>FAM[b]==dFamF):ks;}
 const _SU=["s","h","d","c"];
 function dealCombo(board,cls){
@@ -709,8 +721,8 @@ function dNext(){const p=dPool();if(!p.length)return;
   document.getElementById("dflop").innerHTML=flopSvg(dBoard);
   const hw=document.getElementById("dhandwrap");
   if(dMode==="main"&&combo){hw.hidden=false;document.getElementById("dhand").innerHTML=flopSvg(combo);}else hw.hidden=true;
-  document.getElementById("dsteplab").textContent=dMode==="main"?"Ton action avec cette main ?":"Sizing dominant de la range ?";
-  [...document.getElementById("dsize").children].forEach(x=>x.className="");
+  document.getElementById("dsteplab").textContent=dMode==="main"?"Ton action avec cette main ?":(dGran==="simple"?"Action dominante de la range ?":"Sizing dominant de la range ?");
+  renderSizeBtns();
   document.getElementById("dcorr").hidden=true;
 }
 function lockBtns(id,pick,good){
@@ -723,9 +735,11 @@ function reveal(){
   const g=gtoAns(),fam=FAM[dBoard],M=FAM_META[fam],r=BROW[dBoard];
   const q1=dPick.size===g.dom?"ok":(g.pct[dPick.size]>=g.domPct-10?"near":"bad");
   lockBtns("dsize",dPick.size,g.dom);
-  CM[dMode][g.dom][dPick.size]++;
+  CM[cmKey()][g.dom][dPick.size]++;
   const V={ok:["✓","var(--good)"],near:["≈","var(--accent-ink)"],bad:["✗","var(--bad)"]};
-  const brk=`Check ${g.pct.check.toFixed(0)}% · 1/3 ${g.pct.small.toFixed(0)}% · 2/3 ${g.pct.big.toFixed(0)}%`;
+  const brk=dGran==="simple"
+    ?`Check ${g.pct.check.toFixed(0)}% · Bet ${g.pct.bet.toFixed(0)}% <span style="opacity:.7">(1/3 ${g.raw.small.toFixed(0)}% · 2/3 ${g.raw.big.toFixed(0)}%)</span>`
+    :`Check ${g.raw.check.toFixed(0)}% · 1/3 ${g.raw.small.toFixed(0)}% · 2/3 ${g.raw.big.toFixed(0)}%`;
   const famTag=`<div class="dfam"><span class="dfamtag" style="background:${M.color}">${M.emoji} ${M.name}</span></div>`;
   let ctx;
   if(dMode==="main"){
@@ -743,14 +757,15 @@ function reveal(){
   renderConfusion();
 }
 function renderConfusion(){
-  const cm=CM[dMode],unit=dMode==="main"?"mains":"boards";
-  const lab={check:"Check",small:"Petit",big:"Gros"};
-  const rowN=g=>ACTS.reduce((s,a)=>s+cm[g][a],0);
-  const total=ACTS.reduce((s,g)=>s+rowN(g),0),diag=ACTS.reduce((s,g)=>s+cm[g][g],0);
-  let h=`<div class="cmx"><div class="cmspacer"></div><div class="cmtop">Ta réponse →</div><div class="cmh corner">GTO ↓</div><div class="cmh">Check</div><div class="cmh">Petit</div><div class="cmh">Gros</div>`;
-  for(const gg of ACTS){const n=rowN(gg);
+  const A=actsFor(),cm=CM[cmKey()],unit=dMode==="main"?"mains":"boards";
+  const lab={check:"Check",small:"Petit",big:"Gros",bet:"Bet"};
+  const rowN=g=>A.reduce((s,a)=>s+cm[g][a],0);
+  const total=A.reduce((s,g)=>s+rowN(g),0),diag=A.reduce((s,g)=>s+cm[g][g],0);
+  let h=`<div class="cmx${dGran==="simple"?" gsimple":""}"><div class="cmspacer"></div><div class="cmtop">Ta réponse →</div><div class="cmh corner">GTO ↓</div>`;
+  for(const a of A)h+=`<div class="cmh">${lab[a]}</div>`;
+  for(const gg of A){const n=rowN(gg);
     h+=`<div class="cmrl">${lab[gg]}<small>n ${n||"–"}</small></div>`;
-    for(const a of ACTS){const p=n?100*cm[gg][a]/n:null;let cls="cmc";
+    for(const a of A){const p=n?100*cm[gg][a]/n:null;let cls="cmc";
       if(gg===a)cls+=" diag";else if(p!=null&&p>=25)cls+=" bias";else if(p!=null&&p>=12)cls+=" warn";
       h+=`<div class="${cls}">${p==null?"–":p.toFixed(0)+"%"}</div>`;}}
   h+=`</div><div class="cmglob">réussite globale <b>${total?Math.round(100*diag/total):"–"}%</b> · ${total} ${unit}</div>`;
@@ -763,6 +778,10 @@ document.getElementById("dsize").addEventListener("click",e=>{
   reveal();});
 document.getElementById("dmode").addEventListener("click",e=>{
   const b=e.target.closest("button");if(!b)return;dMode=b.dataset.v;
+  [...e.currentTarget.children].forEach(x=>x.setAttribute("aria-pressed",x===b));
+  renderConfusion();dNext();});
+document.getElementById("dgran").addEventListener("click",e=>{
+  const b=e.target.closest("button");if(!b)return;dGran=b.dataset.v;
   [...e.currentTarget.children].forEach(x=>x.setAttribute("aria-pressed",x===b));
   renderConfusion();dNext();});
 document.getElementById("dfam").addEventListener("change",e=>{dFamF=+e.target.value;dNext();});
