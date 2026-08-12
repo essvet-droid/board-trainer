@@ -171,7 +171,12 @@ footer{color:var(--muted);font-size:11.5px;margin-top:26px;border-top:1px solid 
 .drilltop .drilllab{font:600 13px var(--font);color:var(--muted)}
 #dfam{font:600 13px var(--font);padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink)}
 .dnextbtn{margin-left:auto;font:700 13px var(--font);padding:9px 17px;border:1px solid var(--accent);border-radius:8px;background:var(--accent);color:#fff;cursor:pointer}
-.dflop{display:flex;justify-content:center;gap:9px;margin:8px 0 22px}
+.dflop{display:flex;justify-content:center;gap:9px;margin:8px 0 14px}
+.dhandwrap{display:flex;align-items:center;justify-content:center;gap:12px;margin:0 0 20px}
+.dhandlab{font:700 11px var(--font);color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.dhand{display:flex;gap:7px}
+.mcell.hl{outline:3px solid var(--accent);outline-offset:-2px;z-index:2;position:relative;font-weight:800}
+.dgrid{margin-top:12px}
 .dstep{margin-bottom:16px}
 .dsteplab{font:700 12px var(--font);color:var(--muted);letter-spacing:.05em;text-transform:uppercase;margin:0 0 8px}
 .dbtns{display:flex;gap:8px}
@@ -325,11 +330,16 @@ footer{color:var(--muted);font-size:11.5px;margin-top:26px;border-top:1px solid 
           <option value="6">F6 · Low</option>
           <option value="7">F7 · Monotone</option>
         </select>
-        <button class="dnextbtn" id="dnext">Board suivant →</button>
+        <button class="dnextbtn" id="dnext">Suivant →</button>
+      </div>
+      <div class="mtoggle" id="dmode" role="group" aria-label="Type de drill" style="margin-bottom:14px">
+        <button data-v="main" aria-pressed="true">🎯 Ta main</button>
+        <button data-v="board" aria-pressed="false">🔥 Échauffement board</button>
       </div>
       <div class="dflop" id="dflop"></div>
+      <div class="dhandwrap" id="dhandwrap"><span class="dhandlab">ta main</span><div class="dhand" id="dhand"></div></div>
       <div class="dstep">
-        <p class="dsteplab">Sizing de c-bet — check, 1/3 ou 2/3 ?</p>
+        <p class="dsteplab" id="dsteplab">Ton action avec cette main ?</p>
         <div class="dbtns" id="dsize">
           <button data-v="check">Check</button>
           <button data-v="small">Bet 1/3</button>
@@ -522,7 +532,7 @@ function cardSvg(code){
     <text x="30" y="76" text-anchor="middle" style="font-family:Arial,sans-serif;font-weight:700;font-size:48px;fill:rgba(255,255,255,.30)">${sym}</text>
   </svg>`;
 }
-function flopSvg(b){let o="";for(let i=0;i<6;i+=2)o+=cardSvg(b.slice(i,i+2));return o;}
+function flopSvg(b){let o="";for(let i=0;i+2<=b.length;i+=2)o+=cardSvg(b.slice(i,i+2));return o;}
 function tagTxt(r){return AX.cx.lab[r[6]];}
 function renderList(){
   const sub=filtered().slice();
@@ -619,15 +629,15 @@ document.getElementById("foot").innerHTML=
 const GR="AKQJT98765432".split("");
 function classAt(i,j){return i===j?GR[i]+GR[i]:i<j?GR[i]+GR[j]+"s":GR[j]+GR[i]+"o";}
 let curBoard=null,microNode="ip";
-function renderGrid(board,node){
+function renderGrid(board,node,hl){
   const M=(node==="oop"?MICRO_OOP:MICRO_IP)[board]||{};
   let h="";
   for(let i=0;i<13;i++)for(let j=0;j<13;j++){
-    const cl=classAt(i,j),d=M[cl];
-    if(!d){h+=`<div class="mcell out">${cl}</div>`;continue;}
+    const cl=classAt(i,j),d=M[cl],mk=cl===hl?" hl":"";
+    if(!d){h+=`<div class="mcell out${mk}">${cl}</div>`;continue;}
     const sm=d[1],bg=d[2],chk=Math.max(0,100-sm-bg),s2=chk+sm;
     const bgc=`linear-gradient(to top,var(--cch) 0 ${chk}%,var(--csm) ${chk}% ${s2}%,var(--cbg) ${s2}% 100%)`;
-    h+=`<div class="mcell" style="background:${bgc}" title="${cl} — gros ${bg}% · petit ${sm}% · check ${chk}%"><span>${cl}</span></div>`;
+    h+=`<div class="mcell${mk}" style="background:${bgc}" title="${cl} — gros ${bg}% · petit ${sm}% · check ${chk}%"><span>${cl}</span></div>`;
   }
   return h;
 }
@@ -661,22 +671,48 @@ document.getElementById("blist").addEventListener("click",e=>{
 const SIZE_LAB={check:"Check",small:"Bet 1/3",big:"Bet 2/3"};
 const BAND_LAB={high:"Haute (80%+)",mid:"Mid (60-80%)",low:"Basse (<60%)"};
 const SZR={check:0,small:1,big:2}, FQR={low:0,mid:1,high:2};
-function gtoAns(board){
-  const r=BROW[board],cbet=r[1],gs=r[9];
-  const gros=cbet*gs/100,petit=cbet-gros,check=100-cbet;
-  const pct={check,small:petit,big:gros};
-  const dom=["check","small","big"].reduce((a,b)=>pct[b]>pct[a]?b:a);
-  const band=cbet>=80?"high":cbet>=60?"mid":"low";
-  return {cbet,pct,dom,domPct:pct[dom],band};
+function gtoAns(){
+  let pct;
+  if(dMode==="main"){
+    const d=(MICRO_IP[dBoard]||{})[dCls]||[0,0,0];
+    pct={check:Math.max(0,100-d[1]-d[2]),small:d[1],big:d[2]};
+  }else{
+    const r=BROW[dBoard],cbet=r[1],gros=r[1]*r[9]/100;
+    pct={check:100-cbet,small:cbet-gros,big:gros};
+    var cbetV=cbet;
+  }
+  const dom=ACTS.reduce((a,b)=>pct[b]>pct[a]?b:a);
+  return {pct,dom,domPct:pct[dom],cbet:typeof cbetV!=="undefined"?cbetV:null};
 }
-let dBoard=null,dPhase=0,dPick={},dFamF=0;
+let dBoard=null,dCls=null,dCombo=null,dMode="main",dPhase=0,dPick={},dFamF=0;
 const ACTS=["check","small","big"];
-const CM={}; ACTS.forEach(g=>CM[g]={check:0,small:0,big:0});   // CM[gtoDom][taRéponse]
+function mkCM(){const o={};ACTS.forEach(g=>o[g]={check:0,small:0,big:0});return o;}
+const CM={main:mkCM(),board:mkCM()};   // CM[mode][gtoDom][taRéponse]
 function dPool(){const ks=Object.keys(FAM);return dFamF?ks.filter(b=>FAM[b]==dFamF):ks;}
-function dNext(){const p=dPool();if(!p.length)return;let b;
-  do{b=p[Math.random()*p.length|0];}while(p.length>1&&b===dBoard);
-  dBoard=b;dPhase=1;dPick={};
+const _SU=["s","h","d","c"];
+function dealCombo(board,cls){
+  const used=new Set([board.slice(0,2),board.slice(2,4),board.slice(4,6)]);
+  if(cls.length===2){const r=cls[0],av=_SU.filter(s=>!used.has(r+s));return av.length>=2?r+av[0]+r+av[1]:null;}
+  const r1=cls[0],r2=cls[1];
+  if(cls[2]==="s"){const av=_SU.filter(s=>!used.has(r1+s)&&!used.has(r2+s));return av.length?r1+av[0]+r2+av[0]:null;}
+  for(const a of _SU)for(const b of _SU)if(a!==b&&!used.has(r1+a)&&!used.has(r2+b))return r1+a+r2+b;
+  return null;
+}
+function dNext(){const p=dPool();if(!p.length)return;
+  let b,cls=null,combo=null,tries=0;
+  do{ b=p[Math.random()*p.length|0];
+    if(dMode==="main"){
+      const M=MICRO_IP[b]||{},ks=Object.keys(M).filter(k=>M[k][0]>0);
+      if(ks.length){const tot=ks.reduce((s,k)=>s+M[k][0],0);let x=Math.random()*tot;cls=ks[0];
+        for(const k of ks){x-=M[k][0];if(x<=0){cls=k;break;}}
+        combo=dealCombo(b,cls);}
+    }
+  }while(dMode==="main"&&!combo&&++tries<25);
+  dBoard=b;dCls=cls;dCombo=combo;dPhase=1;dPick={};
   document.getElementById("dflop").innerHTML=flopSvg(dBoard);
+  const hw=document.getElementById("dhandwrap");
+  if(dMode==="main"&&combo){hw.hidden=false;document.getElementById("dhand").innerHTML=flopSvg(combo);}else hw.hidden=true;
+  document.getElementById("dsteplab").textContent=dMode==="main"?"Ton action avec cette main ?":"Sizing dominant de la range ?";
   [...document.getElementById("dsize").children].forEach(x=>x.className="");
   document.getElementById("dcorr").hidden=true;
 }
@@ -687,53 +723,48 @@ function lockBtns(id,pick,good){
     if(v===pick&&v!==good)x.classList.add("badpick");});
 }
 function reveal(){
-  const g=gtoAns(dBoard),fam=FAM[dBoard],M=FAM_META[fam],r=BROW[dBoard];
+  const g=gtoAns(),fam=FAM[dBoard],M=FAM_META[fam],r=BROW[dBoard];
   const q1=dPick.size===g.dom?"ok":(g.pct[dPick.size]>=g.domPct-10?"near":"bad");
   lockBtns("dsize",dPick.size,g.dom);
-  CM[g.dom][dPick.size]++;
+  CM[dMode][g.dom][dPick.size]++;
+  const V={ok:["✓","var(--good)"],near:["≈","var(--accent-ink)"],bad:["✗","var(--bad)"]};
+  const brk=`Check ${g.pct.check.toFixed(0)}% · 1/3 ${g.pct.small.toFixed(0)}% · 2/3 ${g.pct.big.toFixed(0)}%`;
   const szDiff=SZR[g.dom]-SZR[M.acvSize];
   const shiftMsg=szDiff===0
-    ?`<b style="color:var(--good)">✓ Le 25bb confirme l'entraînement</b> ici.`
-    :`<b style="color:var(--bad)">Glissement 25bb : ${szDiff<0?"plus PETIT":"plus GROS"}</b> que ton entraînement deep.`;
-  const V={ok:["✓","var(--good)"],near:["≈","var(--accent-ink)"],bad:["✗","var(--bad)"]};
-  const gto=`Check ${g.pct.check.toFixed(0)}% · 1/3 ${g.pct.small.toFixed(0)}% · 2/3 ${g.pct.big.toFixed(0)}%`;
+    ?`<b style="color:var(--good)">✓ Le 25bb confirme l'entraînement</b> sur cette famille.`
+    :`<b style="color:var(--bad)">Glissement 25bb : ${szDiff<0?"plus PETIT":"plus GROS"}</b> que le deep.`;
+  const famTag=`<div class="dfam"><span class="dfamtag" style="background:${M.color}">${M.emoji} ${M.name}</span></div>`;
+  const contrast=`<div class="dcontrast">
+     <div>🎓 Acevedo (deep, famille) : <b>${SIZE_LAB[M.acvSize]}</b> <span style="color:var(--muted)">(${M.acvRx})</span></div>
+     <div>🎯 GTO 25bb : <b>${SIZE_LAB[g.dom]}</b> ${dMode==="main"?"(ta main)":"(board)"}</div>
+     <div class="dshift">${shiftMsg}</div></div>`;
+  let ctx;
+  if(dMode==="main"){
+    ctx=`<div class="dgto">Ta main <b>${dCls}</b> : ${brk}</div>${famTag}${contrast}
+      <div class="mgrid dgrid">${renderGrid(dBoard,"ip",dCls)}</div>
+      <div class="mlegend"><span><i style="background:var(--cbg)"></i>Gros</span><span><i style="background:var(--csm)"></i>Petit</span><span><i style="background:var(--cch)"></i>Check</span><span class="disthint">ta main = case surlignée</span></div>`;
+  }else{
+    ctx=`<div class="dgto">GTO 25bb : ${brk} · c-bet ${g.cbet.toFixed(0)}%</div>${famTag}${contrast}
+      <div class="ddist">${distSVG(invCdf(r[7]),invCdf(r[8]))}</div>
+      <div class="distlg"><span><span class="ln ip"></span> IP</span><span><span class="ln oop"></span> OOP</span><span class="disthint">le « nez » à gauche = les nuts</span></div>`;
+  }
   document.getElementById("dcorr").innerHTML=
-    `<div class="dverdict">
-       <span style="color:${V[q1][1]}">${V[q1][0]} Ta réponse : <b>${SIZE_LAB[dPick.size]}</b> → GTO <b>${SIZE_LAB[g.dom]}</b></span>
-     </div>
-     <div class="dgto">GTO 25bb : ${gto} · c-bet ${g.cbet.toFixed(0)}%</div>
-     <div class="dfam"><span class="dfamtag" style="background:${M.color}">${M.emoji} ${M.name}</span></div>
-     <div class="dcontrast">
-       <div>🎓 Entraînement (Acevedo, deep) : <b>${SIZE_LAB[M.acvSize]}</b> <span style="color:var(--muted)">(${M.acvRx})</span></div>
-       <div>🎯 GTO 25bb réel : <b>${SIZE_LAB[g.dom]}</b></div>
-       <div class="dshift">${shiftMsg}</div>
-     </div>
-     <div class="ddist">${distSVG(invCdf(r[7]),invCdf(r[8]))}</div>
-     <div class="distlg"><span><span class="ln ip"></span> IP (BTN)</span>
-       <span><span class="ln oop"></span> OOP (BB)</span>
-       <span class="disthint">le « nez » à gauche = les nuts</span></div>`;
+    `<div class="dverdict"><span style="color:${V[q1][1]}">${V[q1][0]} Ta réponse : <b>${SIZE_LAB[dPick.size]}</b> → GTO <b>${SIZE_LAB[g.dom]}</b></span></div>${ctx}`;
   document.getElementById("dcorr").hidden=false;
   renderConfusion();
 }
 function renderConfusion(){
+  const cm=CM[dMode],unit=dMode==="main"?"mains":"boards";
   const lab={check:"Check",small:"Petit",big:"Gros"};
-  const rowN=g=>ACTS.reduce((s,a)=>s+CM[g][a],0);
-  const total=ACTS.reduce((s,g)=>s+rowN(g),0);
-  const diag=ACTS.reduce((s,g)=>s+CM[g][g],0);
-  let h=`<div class="cmx">
-    <div class="cmh corner">GTO ↓ · toi →</div>
-    <div class="cmh">Check</div><div class="cmh">Petit</div><div class="cmh">Gros</div>`;
-  for(const gg of ACTS){
-    const n=rowN(gg);
+  const rowN=g=>ACTS.reduce((s,a)=>s+cm[g][a],0);
+  const total=ACTS.reduce((s,g)=>s+rowN(g),0),diag=ACTS.reduce((s,g)=>s+cm[g][g],0);
+  let h=`<div class="cmx"><div class="cmh corner">GTO ↓ · toi →</div><div class="cmh">Check</div><div class="cmh">Petit</div><div class="cmh">Gros</div>`;
+  for(const gg of ACTS){const n=rowN(gg);
     h+=`<div class="cmrl">${lab[gg]}<small>n ${n||"–"}</small></div>`;
-    for(const a of ACTS){
-      const p=n?100*CM[gg][a]/n:null;
-      let cls="cmc";
-      if(gg===a)cls+=" diag"; else if(p!=null&&p>=25)cls+=" bias"; else if(p!=null&&p>=12)cls+=" warn";
-      h+=`<div class="${cls}">${p==null?"–":p.toFixed(0)+"%"}</div>`;
-    }
-  }
-  h+=`</div><div class="cmglob">réussite globale <b>${total?Math.round(100*diag/total):"–"}%</b> · ${total} boards</div>`;
+    for(const a of ACTS){const p=n?100*cm[gg][a]/n:null;let cls="cmc";
+      if(gg===a)cls+=" diag";else if(p!=null&&p>=25)cls+=" bias";else if(p!=null&&p>=12)cls+=" warn";
+      h+=`<div class="${cls}">${p==null?"–":p.toFixed(0)+"%"}</div>`;}}
+  h+=`</div><div class="cmglob">réussite globale <b>${total?Math.round(100*diag/total):"–"}%</b> · ${total} ${unit}</div>`;
   document.getElementById("ddash").innerHTML=h;
 }
 document.getElementById("dsize").addEventListener("click",e=>{
@@ -741,6 +772,10 @@ document.getElementById("dsize").addEventListener("click",e=>{
   dPick.size=b.dataset.v;dPhase=2;
   [...e.currentTarget.children].forEach(x=>x.classList.toggle("sel",x===b));
   reveal();});
+document.getElementById("dmode").addEventListener("click",e=>{
+  const b=e.target.closest("button");if(!b)return;dMode=b.dataset.v;
+  [...e.currentTarget.children].forEach(x=>x.setAttribute("aria-pressed",x===b));
+  renderConfusion();dNext();});
 document.getElementById("dfam").addEventListener("change",e=>{dFamF=+e.target.value;dNext();});
 document.getElementById("dnext").addEventListener("click",dNext);
 document.getElementById("modebar").addEventListener("click",e=>{
