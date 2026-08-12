@@ -194,9 +194,6 @@ footer{color:var(--muted);font-size:11.5px;margin-top:26px;border-top:1px solid 
 .dgto{font:600 13px var(--mono);color:var(--ink2);margin-bottom:12px}
 .dfam{margin-bottom:10px}
 .dfamtag{display:inline-block;color:#fff;font:700 12.5px var(--font);padding:4px 11px;border-radius:20px}
-.dcontrast{background:var(--surface2);border:1px solid var(--line);border-radius:10px;padding:12px 14px;font:600 13px/1.55 var(--font);color:var(--ink2)}
-.dcontrast b{color:var(--ink)}
-.dshift{margin-top:7px;padding-top:7px;border-top:1px dashed var(--line2);font-size:13.5px}
 .ddist{margin-top:14px}
 .cmx{display:grid;grid-template-columns:92px repeat(3,1fr);gap:5px}
 .cmh{text-align:center;font:600 12px var(--font);color:var(--ink2);align-self:end;padding-bottom:3px}
@@ -729,22 +726,14 @@ function reveal(){
   CM[dMode][g.dom][dPick.size]++;
   const V={ok:["✓","var(--good)"],near:["≈","var(--accent-ink)"],bad:["✗","var(--bad)"]};
   const brk=`Check ${g.pct.check.toFixed(0)}% · 1/3 ${g.pct.small.toFixed(0)}% · 2/3 ${g.pct.big.toFixed(0)}%`;
-  const szDiff=SZR[g.dom]-SZR[M.acvSize];
-  const shiftMsg=szDiff===0
-    ?`<b style="color:var(--good)">✓ Le 25bb confirme l'entraînement</b> sur cette famille.`
-    :`<b style="color:var(--bad)">Glissement 25bb : ${szDiff<0?"plus PETIT":"plus GROS"}</b> que le deep.`;
   const famTag=`<div class="dfam"><span class="dfamtag" style="background:${M.color}">${M.emoji} ${M.name}</span></div>`;
-  const contrast=`<div class="dcontrast">
-     <div>🎓 Acevedo (deep, famille) : <b>${SIZE_LAB[M.acvSize]}</b> <span style="color:var(--muted)">(${M.acvRx})</span></div>
-     <div>🎯 GTO 25bb : <b>${SIZE_LAB[g.dom]}</b> ${dMode==="main"?"(ta main)":"(board)"}</div>
-     <div class="dshift">${shiftMsg}</div></div>`;
   let ctx;
   if(dMode==="main"){
-    ctx=`<div class="dgto">Ta main <b>${dCls}</b> : ${brk}</div>${famTag}${contrast}
+    ctx=`<div class="dgto">Ta main <b>${dCls}</b> : ${brk}</div>${famTag}
       <div class="mgrid dgrid">${renderGrid(dBoard,"ip",dCls)}</div>
       <div class="mlegend"><span><i style="background:var(--cbg)"></i>Gros</span><span><i style="background:var(--csm)"></i>Petit</span><span><i style="background:var(--cch)"></i>Check</span><span class="disthint">ta main = case surlignée</span></div>`;
   }else{
-    ctx=`<div class="dgto">GTO 25bb : ${brk} · c-bet ${g.cbet.toFixed(0)}%</div>${famTag}${contrast}
+    ctx=`<div class="dgto">GTO 25bb : ${brk} · c-bet ${g.cbet.toFixed(0)}%</div>${famTag}
       <div class="ddist">${distSVG(invCdf(r[7]),invCdf(r[8]))}</div>
       <div class="distlg"><span><span class="ln ip"></span> IP</span><span><span class="ln oop"></span> OOP</span><span class="disthint">le « nez » à gauche = les nuts</span></div>`;
   }
