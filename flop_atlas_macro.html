@@ -137,9 +137,10 @@ footer{color:var(--muted);font-size:11.5px;margin-top:26px;border-top:1px solid 
 .mask{position:fixed;inset:0;background:rgba(20,16,10,.62);display:none;z-index:20;
   align-items:center;justify-content:center;padding:14px}
 .mask.on{display:flex}
-.modal{background:var(--surface);border:1px solid var(--line2);border-radius:14px;
+.modal{background:var(--surface);color:var(--ink);border:1px solid var(--line2);border-radius:14px;
   max-width:520px;width:100%;max-height:92vh;overflow:auto;padding:16px;
   box-shadow:0 18px 60px rgba(0,0,0,.4)}
+.mhead .mb{color:var(--ink)}
 .mhead{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
 .mhead .mb{font:800 20px/1 var(--mono);letter-spacing:1px}
 .mhead .ms{font:600 12px/1 var(--mono);color:var(--ink2)}
@@ -270,6 +271,19 @@ footer{color:var(--muted);font-size:11.5px;margin-top:26px;border-top:1px solid 
       <span><i style="background:var(--cch)"></i>Check</span>
     </div>
     <div class="mhint">Chaque case = une main, remplie de bas (check) en haut (gros) selon la fréquence GTO+, combo-pondérée. Grisé = hors range.</div>
+    <div class="mdistwrap" style="margin-top:16px;border-top:1px solid var(--line);padding-top:12px">
+      <div class="disthead" style="margin-bottom:4px">
+        <p class="h2" style="margin:0;font-size:13px">Distribution d'équité — ce board</p>
+        <div class="distadv">
+          <span class="adv">Range adv IP <b id="mRa">–</b></span>
+          <span class="adv">Nut adv IP <b id="mNa">–</b></span>
+        </div>
+      </div>
+      <div id="mdist" class="distsvg"></div>
+      <div class="distlg"><span><span class="ln ip"></span> IP (BTN)</span>
+        <span><span class="ln oop"></span> OOP (BB)</span>
+        <span class="disthint">le « nez » à gauche = les nuts</span></div>
+    </div>
   </div>
 </div>
 <div class="tt" id="tt"></div>
@@ -518,6 +532,11 @@ function openMicro(board){
   document.getElementById("mboard").innerHTML=cardHtml(board);
   const r=BROW[board];
   document.getElementById("msum").textContent=r?`c-bet ${r[1].toFixed(0)}% · gros ${r[9].toFixed(0)}% · donk ${r[2].toFixed(0)}%`:"";
+  if(r){const IP=r[7],OOP=r[8],ra=meanEq(IP)-meanEq(OOP),na=nutShare(IP)-nutShare(OOP),col=v=>v>=0?"#c98a2e":"#2e847c";
+    const mra=document.getElementById("mRa"),mna=document.getElementById("mNa");
+    mra.textContent=(ra>=0?"+":"")+ra.toFixed(1);mra.style.color=col(ra);
+    mna.textContent=(na>=0?"+":"")+na.toFixed(1);mna.style.color=col(na);
+    document.getElementById("mdist").innerHTML=distSVG(invCdf(IP),invCdf(OOP));}
   drawMicro();
   document.getElementById("mask").classList.add("on");
 }
