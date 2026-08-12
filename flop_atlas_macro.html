@@ -171,7 +171,7 @@ footer{color:var(--muted);font-size:11.5px;margin-top:26px;border-top:1px solid 
 .drilltop .drilllab{font:600 13px var(--font);color:var(--muted)}
 #dfam{font:600 13px var(--font);padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink)}
 .dnextbtn{margin-left:auto;font:700 13px var(--font);padding:9px 17px;border:1px solid var(--accent);border-radius:8px;background:var(--accent);color:#fff;cursor:pointer}
-.dflop{display:flex;justify-content:center;margin:8px 0 22px;font:800 34px/1 var(--mono);letter-spacing:3px}
+.dflop{display:flex;justify-content:center;gap:9px;margin:8px 0 22px}
 .dstep{margin-bottom:16px}
 .dsteplab{font:700 12px var(--font);color:var(--muted);letter-spacing:.05em;text-transform:uppercase;margin:0 0 8px}
 .dbtns{display:flex;gap:8px}
@@ -205,7 +205,6 @@ footer{color:var(--muted);font-size:11.5px;margin-top:26px;border-top:1px solid 
 }
 @media(max-width:560px){
   .drillcard{max-width:100%}
-  .dflop{font-size:28px;letter-spacing:2px}
   .dbtns button{font-size:14px;padding:16px 4px}
   .dgto{font-size:12px}
   .drow{grid-template-columns:24px 1fr 26px 46px 46px;gap:6px;font-size:12.5px}
@@ -517,6 +516,17 @@ function renderHeatmap(){
 // ── liste ──
 const SUIT={s:["♠","suit-b"],c:["♣","suit-b"],h:["♥","suit-r"],d:["♦","suit-r"]};
 function cardHtml(b){let o="";for(let i=0;i<6;i+=2){const[g,cl]=SUIT[b[i+1]];o+=`${b[i]}<span class="${cl}">${g}</span> `;}return o;}
+// cartes SVG (style partagé des autres outils : 4-color deck, rang blanc + symbole translucide)
+const CARD_COL={h:"#C0392B",d:"#1A6FA8",c:"#1E8449",s:"#1a1a1a"},CARD_SYM={h:"♥",d:"♦",c:"♣",s:"♠"};
+function cardSvg(code){
+  const rank=code[0]==="T"?"10":code[0],col=CARD_COL[code[1]]||"#333",sym=CARD_SYM[code[1]]||"?";
+  return `<svg width="60" height="84" viewBox="0 0 60 84" style="display:inline-block;vertical-align:middle;border-radius:7px" xmlns="http://www.w3.org/2000/svg">
+    <rect width="60" height="84" rx="7" fill="${col}"/>
+    <text x="30" y="26" text-anchor="middle" dominant-baseline="middle" style="font-family:var(--font);font-weight:800;font-size:32px;fill:#fff">${rank}</text>
+    <text x="30" y="76" text-anchor="middle" style="font-family:Arial,sans-serif;font-weight:700;font-size:48px;fill:rgba(255,255,255,.30)">${sym}</text>
+  </svg>`;
+}
+function flopSvg(b){let o="";for(let i=0;i<6;i+=2)o+=cardSvg(b.slice(i,i+2));return o;}
 function tagTxt(r){return AX.cx.lab[r[6]];}
 function renderList(){
   const sub=filtered().slice();
@@ -669,7 +679,7 @@ function dPool(){const ks=Object.keys(FAM);return dFamF?ks.filter(b=>FAM[b]==dFa
 function dNext(){const p=dPool();if(!p.length)return;let b;
   do{b=p[Math.random()*p.length|0];}while(p.length>1&&b===dBoard);
   dBoard=b;dPhase=1;dPick={};
-  document.getElementById("dflop").innerHTML=cardHtml(dBoard);
+  document.getElementById("dflop").innerHTML=flopSvg(dBoard);
   [...document.getElementById("dsize").children].forEach(x=>x.className="");
   [...document.getElementById("dfreq").children].forEach(x=>x.className="");
   document.getElementById("dstep2").hidden=true;
