@@ -190,14 +190,17 @@ footer{color:var(--muted);font-size:11.5px;margin-top:26px;border-top:1px solid 
 .dcontrast b{color:var(--ink)}
 .dshift{margin-top:7px;padding-top:7px;border-top:1px dashed var(--line2);font-size:13.5px}
 .ddist{margin-top:14px}
-.dash{display:flex;flex-direction:column;gap:2px}
-.drow{display:grid;grid-template-columns:26px 1fr 34px 54px 54px;align-items:center;gap:8px;padding:6px 4px;font:600 13px var(--font)}
-.drow.head{color:var(--muted);font-size:11px;letter-spacing:.03em;text-transform:uppercase;border-bottom:1px solid var(--line)}
-.dtag{width:22px;height:22px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;color:#fff}
-.dname{color:var(--ink)}
-.dn{text-align:center;color:var(--muted);font:600 12px var(--mono)}
-.dpc{text-align:center;font:700 13px var(--mono);color:var(--muted)}
-.dpc.hi{color:var(--good)}.dpc.md{color:var(--accent-ink)}.dpc.lo{color:var(--bad)}
+.cmx{display:grid;grid-template-columns:92px repeat(3,1fr);gap:5px}
+.cmh{text-align:center;font:600 12px var(--font);color:var(--ink2);align-self:end;padding-bottom:3px}
+.cmh.corner{text-align:left;font-size:10.5px;color:var(--muted);line-height:1.3}
+.cmrl{display:flex;flex-direction:column;justify-content:center;font:600 13px var(--font);color:var(--ink)}
+.cmrl small{font:400 10.5px var(--mono);color:var(--muted)}
+.cmc{display:flex;align-items:center;justify-content:center;min-height:50px;border-radius:8px;font:700 18px var(--mono);background:var(--surface2);color:var(--muted);border:1px solid var(--line)}
+.cmc.diag{background:rgba(76,122,63,.14);color:var(--good);border-color:var(--good)}
+.cmc.bias{background:rgba(180,72,61,.13);color:var(--bad);border-color:var(--bad)}
+.cmc.warn{background:rgba(185,126,34,.12);color:var(--accent-ink);border-color:var(--line2)}
+.cmglob{margin-top:10px;font:600 12.5px var(--font);color:var(--ink2)}
+.cmglob b{color:var(--ink)}
 @media(min-width:900px){
   #drillview{display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,380px);gap:20px;align-items:start}
   .drillcard{max-width:none;margin:0}
@@ -207,7 +210,8 @@ footer{color:var(--muted);font-size:11.5px;margin-top:26px;border-top:1px solid 
   .drillcard{max-width:100%}
   .dbtns button{font-size:14px;padding:16px 4px}
   .dgto{font-size:12px}
-  .drow{grid-template-columns:24px 1fr 26px 46px 46px;gap:6px;font-size:12.5px}
+  .cmx{grid-template-columns:74px repeat(3,1fr);gap:4px}
+  .cmc{min-height:44px;font-size:16px}
 }
 </style>
 
@@ -325,27 +329,19 @@ footer{color:var(--muted);font-size:11.5px;margin-top:26px;border-top:1px solid 
       </div>
       <div class="dflop" id="dflop"></div>
       <div class="dstep">
-        <p class="dsteplab">1 · Sizing de c-bet</p>
+        <p class="dsteplab">Sizing de c-bet — check, 1/3 ou 2/3 ?</p>
         <div class="dbtns" id="dsize">
           <button data-v="check">Check</button>
           <button data-v="small">Bet 1/3</button>
           <button data-v="big">Bet 2/3</button>
         </div>
       </div>
-      <div class="dstep" id="dstep2" hidden>
-        <p class="dsteplab">2 · Fréquence de c-bet</p>
-        <div class="dbtns" id="dfreq">
-          <button data-v="high">Haute (80%+)</button>
-          <button data-v="mid">Mid (60-80%)</button>
-          <button data-v="low">Basse (&lt;60%)</button>
-        </div>
-      </div>
       <div class="dcorr" id="dcorr" hidden></div>
     </div>
     <div class="card drillcard">
-      <p class="h2">Accuracy par famille</p>
-      <div class="dash" id="ddash"></div>
-      <p class="mhint" style="margin-top:10px">Size = ton sizing vs le GTO dominant · Fréq = ta bande vs le c-bet% réel. Réponse mixte (≥ dominant − 10 pts, ou bande voisine) = ½ point.</p>
+      <p class="h2">Ta lecture du sizing — matrice de confusion</p>
+      <div id="ddash"></div>
+      <p class="mhint" style="margin-top:10px">Lignes = ce que fait le GTO · colonnes = ta réponse · <b>diagonale = juste</b>. Une case hors diagonale forte = un biais systématique (ex. « gros → petit » = tu sous-mises).</p>
     </div>
   </div>
 
@@ -674,15 +670,14 @@ function gtoAns(board){
   return {cbet,pct,dom,domPct:pct[dom],band};
 }
 let dBoard=null,dPhase=0,dPick={},dFamF=0;
-const dStats={}; for(let f=1;f<=7;f++)dStats[f]={n:0,q1:0,q2:0};
+const ACTS=["check","small","big"];
+const CM={}; ACTS.forEach(g=>CM[g]={check:0,small:0,big:0});   // CM[gtoDom][taRéponse]
 function dPool(){const ks=Object.keys(FAM);return dFamF?ks.filter(b=>FAM[b]==dFamF):ks;}
 function dNext(){const p=dPool();if(!p.length)return;let b;
   do{b=p[Math.random()*p.length|0];}while(p.length>1&&b===dBoard);
   dBoard=b;dPhase=1;dPick={};
   document.getElementById("dflop").innerHTML=flopSvg(dBoard);
   [...document.getElementById("dsize").children].forEach(x=>x.className="");
-  [...document.getElementById("dfreq").children].forEach(x=>x.className="");
-  document.getElementById("dstep2").hidden=true;
   document.getElementById("dcorr").hidden=true;
 }
 function lockBtns(id,pick,good){
@@ -693,31 +688,24 @@ function lockBtns(id,pick,good){
 }
 function reveal(){
   const g=gtoAns(dBoard),fam=FAM[dBoard],M=FAM_META[fam],r=BROW[dBoard];
-  let q1=dPick.size===g.dom?"ok":(g.pct[dPick.size]>=g.domPct-10?"near":"bad");
-  let q2=dPick.freq===g.band?"ok":(Math.abs(FQR[dPick.freq]-FQR[g.band])===1?"near":"bad");
+  const q1=dPick.size===g.dom?"ok":(g.pct[dPick.size]>=g.domPct-10?"near":"bad");
   lockBtns("dsize",dPick.size,g.dom);
-  lockBtns("dfreq",dPick.freq,g.band);
-  const sc={ok:1,near:.5,bad:0};
-  dStats[fam].n++;dStats[fam].q1+=sc[q1];dStats[fam].q2+=sc[q2];
-  const szDiff=SZR[g.dom]-SZR[M.acvSize],fqDiff=FQR[g.band]-FQR[M.acvFreq];
-  let shift=[];
-  if(szDiff<0)shift.push("sizing plus PETIT");else if(szDiff>0)shift.push("sizing plus GROS");
-  if(fqDiff<0)shift.push("moins fréquent");else if(fqDiff>0)shift.push("plus fréquent");
-  const shiftMsg=shift.length
-    ?`<b style="color:var(--bad)">Glissement 25bb : ${shift.join(" · ")}</b> vs l'entraînement deep.`
-    :`<b style="color:var(--good)">✓ Le 25bb confirme l'entraînement</b> sur cette famille.`;
+  CM[g.dom][dPick.size]++;
+  const szDiff=SZR[g.dom]-SZR[M.acvSize];
+  const shiftMsg=szDiff===0
+    ?`<b style="color:var(--good)">✓ Le 25bb confirme l'entraînement</b> ici.`
+    :`<b style="color:var(--bad)">Glissement 25bb : ${szDiff<0?"plus PETIT":"plus GROS"}</b> que ton entraînement deep.`;
   const V={ok:["✓","var(--good)"],near:["≈","var(--accent-ink)"],bad:["✗","var(--bad)"]};
   const gto=`Check ${g.pct.check.toFixed(0)}% · 1/3 ${g.pct.small.toFixed(0)}% · 2/3 ${g.pct.big.toFixed(0)}%`;
   document.getElementById("dcorr").innerHTML=
     `<div class="dverdict">
-       <span style="color:${V[q1][1]}">${V[q1][0]} Sizing : <b>${SIZE_LAB[dPick.size]}</b> → GTO <b>${SIZE_LAB[g.dom]}</b></span>
-       <span style="color:${V[q2][1]}">${V[q2][0]} Fréquence : <b>${BAND_LAB[dPick.freq]}</b> → GTO <b>${BAND_LAB[g.band]}</b></span>
+       <span style="color:${V[q1][1]}">${V[q1][0]} Ta réponse : <b>${SIZE_LAB[dPick.size]}</b> → GTO <b>${SIZE_LAB[g.dom]}</b></span>
      </div>
      <div class="dgto">GTO 25bb : ${gto} · c-bet ${g.cbet.toFixed(0)}%</div>
      <div class="dfam"><span class="dfamtag" style="background:${M.color}">${M.emoji} ${M.name}</span></div>
      <div class="dcontrast">
-       <div>🎓 Entraînement (Acevedo, deep) : <b>${M.acvRx}</b></div>
-       <div>🎯 GTO 25bb réel : <b>${SIZE_LAB[g.dom]} · ${BAND_LAB[g.band]}</b></div>
+       <div>🎓 Entraînement (Acevedo, deep) : <b>${SIZE_LAB[M.acvSize]}</b> <span style="color:var(--muted)">(${M.acvRx})</span></div>
+       <div>🎯 GTO 25bb réel : <b>${SIZE_LAB[g.dom]}</b></div>
        <div class="dshift">${shiftMsg}</div>
      </div>
      <div class="ddist">${distSVG(invCdf(r[7]),invCdf(r[8]))}</div>
@@ -725,28 +713,32 @@ function reveal(){
        <span><span class="ln oop"></span> OOP (BB)</span>
        <span class="disthint">le « nez » à gauche = les nuts</span></div>`;
   document.getElementById("dcorr").hidden=false;
-  renderDash();
+  renderConfusion();
 }
-function renderDash(){
-  const cls=v=>v==null?"":v>=80?"hi":v>=55?"md":"lo";
-  let h=`<div class="drow head"><span></span><span class="dname">Famille</span><span class="dn">n</span><span class="dpc">Size</span><span class="dpc">Fréq</span></div>`;
-  for(let f=1;f<=7;f++){const s=dStats[f],M=FAM_META[f];
-    const q1=s.n?100*s.q1/s.n:null,q2=s.n?100*s.q2/s.n:null;
-    h+=`<div class="drow"><span class="dtag" style="background:${M.color}">${M.emoji}</span>
-      <span class="dname">${M.name}</span><span class="dn">${s.n||"–"}</span>
-      <span class="dpc ${cls(q1)}">${q1==null?"–":q1.toFixed(0)+"%"}</span>
-      <span class="dpc ${cls(q2)}">${q2==null?"–":q2.toFixed(0)+"%"}</span></div>`;
+function renderConfusion(){
+  const lab={check:"Check",small:"Petit",big:"Gros"};
+  const rowN=g=>ACTS.reduce((s,a)=>s+CM[g][a],0);
+  const total=ACTS.reduce((s,g)=>s+rowN(g),0);
+  const diag=ACTS.reduce((s,g)=>s+CM[g][g],0);
+  let h=`<div class="cmx">
+    <div class="cmh corner">GTO ↓ · toi →</div>
+    <div class="cmh">Check</div><div class="cmh">Petit</div><div class="cmh">Gros</div>`;
+  for(const gg of ACTS){
+    const n=rowN(gg);
+    h+=`<div class="cmrl">${lab[gg]}<small>n ${n||"–"}</small></div>`;
+    for(const a of ACTS){
+      const p=n?100*CM[gg][a]/n:null;
+      let cls="cmc";
+      if(gg===a)cls+=" diag"; else if(p!=null&&p>=25)cls+=" bias"; else if(p!=null&&p>=12)cls+=" warn";
+      h+=`<div class="${cls}">${p==null?"–":p.toFixed(0)+"%"}</div>`;
+    }
   }
+  h+=`</div><div class="cmglob">réussite globale <b>${total?Math.round(100*diag/total):"–"}%</b> · ${total} boards</div>`;
   document.getElementById("ddash").innerHTML=h;
 }
 document.getElementById("dsize").addEventListener("click",e=>{
   const b=e.target.closest("button");if(!b||dPhase!==1)return;
   dPick.size=b.dataset.v;dPhase=2;
-  [...e.currentTarget.children].forEach(x=>x.classList.toggle("sel",x===b));
-  document.getElementById("dstep2").hidden=false;});
-document.getElementById("dfreq").addEventListener("click",e=>{
-  const b=e.target.closest("button");if(!b||dPhase!==2)return;
-  dPick.freq=b.dataset.v;dPhase=3;
   [...e.currentTarget.children].forEach(x=>x.classList.toggle("sel",x===b));
   reveal();});
 document.getElementById("dfam").addEventListener("change",e=>{dFamF=+e.target.value;dNext();});
@@ -756,7 +748,7 @@ document.getElementById("modebar").addEventListener("click",e=>{
   [...e.currentTarget.children].forEach(x=>x.setAttribute("aria-pressed",x===b));
   document.getElementById("studyview").hidden=(m!=="study");
   document.getElementById("drillview").hidden=(m!=="drill");
-  if(m==="drill"&&!dBoard){renderDash();dNext();}});
+  if(m==="drill"&&!dBoard){renderConfusion();dNext();}});
 
 wireFilters();syncChips();apply();
 </script>
