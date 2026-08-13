@@ -197,6 +197,8 @@ footer{color:var(--muted);font-size:11.5px;margin-top:26px;border-top:1px solid 
 .dfam{margin-bottom:10px}
 .dfamtag{display:inline-block;color:#fff;font:700 12.5px var(--font);padding:4px 11px;border-radius:20px}
 .ddist{margin-top:14px}
+.cmtitle{font:700 12px var(--font);color:var(--ink2);margin:16px 0 8px}
+.cmtitle.first{margin-top:0}
 .cmx{display:grid;grid-template-columns:92px repeat(3,1fr);gap:5px}
 .cmh{text-align:center;font:600 12px var(--font);color:var(--ink2);align-self:end;padding-bottom:3px}
 .cmh.corner{text-align:left;font-size:10.5px;color:var(--muted);line-height:1.3}
@@ -348,16 +350,15 @@ footer{color:var(--muted);font-size:11.5px;margin-top:26px;border-top:1px solid 
         <p class="dsteplab" id="dsteplab">Ton action avec cette main ?</p>
         <div class="dbtns" id="dsize">
           <button data-v="check">Check</button>
-          <button data-v="small">Bet 1/3</button>
-          <button data-v="big">Bet 2/3</button>
+          <button data-v="bet">Bet</button>
         </div>
       </div>
       <div class="dcorr" id="dcorr" hidden></div>
     </div>
     <div class="card drillcard">
-      <p class="h2">Ta lecture du sizing — matrice de confusion</p>
+      <p class="h2">Tes décisions — matrices de confusion</p>
       <div id="ddash"></div>
-      <p class="mhint" style="margin-top:10px">Chaque <b>ligne</b> = ce que voulait le GTO ; lis vers la droite le % de <b>tes</b> réponses. <b>Diagonale = juste</b> ; case rouge hors diagonale = biais (ex. ligne « Gros » × colonne « Petit » = tu sous-mises).</p>
+      <p class="mhint" style="margin-top:10px">Deux décisions séparées : <b>miser ou checker</b> (fréquence = range advantage), puis <b>1/3 ou 2/3</b> quand tu mises (sizing = nut advantage). Chaque <b>ligne</b> = ce que voulait le GTO ; lis à droite le % de <b>tes</b> réponses. <b>Diagonale = juste</b> ; case rouge hors diagonale = biais (ex. ligne « 2/3 » × colonne « 1/3 » = tu sous-mises).</p>
     </div>
   </div>
 
@@ -683,10 +684,7 @@ document.getElementById("blist").addEventListener("click",e=>{
   openMicro(row.id.slice(4));});
 
 // ═══ MODE DRILL (niveau main / board · granularité Simple bet-check ou Complet check-1/3-2/3) ═══
-const SIZE_LAB={check:"Check",small:"Bet 1/3",big:"Bet 2/3",bet:"Bet"};
-let dBoard=null,dCls=null,dCombo=null,dMode="main",dGran="simple",dPhase=0,dPick={},dFamF=0;
-const ACTS_FULL=["check","small","big"], ACTS_SIMPLE=["check","bet"];
-function actsFor(){return dGran==="simple"?ACTS_SIMPLE:ACTS_FULL;}
+let dBoard=null,dCls=null,dCombo=null,dMode="main",dGran="simple",dPhase=0,dPick={top:null,size:null},dFamF=0;
 function gtoAns(){
   let raw,cbetV,specific=false,clsAvg=null;
   if(dMode==="main"){
@@ -700,17 +698,22 @@ function gtoAns(){
     const r=BROW[dBoard],cbet=r[1],gros=r[1]*r[9]/100;
     raw={check:100-cbet,small:cbet-gros,big:gros};cbetV=cbet;
   }
-  const pct=dGran==="simple"?{check:raw.check,bet:raw.small+raw.big}:raw;
-  const A=actsFor(),dom=A.reduce((a,b)=>pct[b]>pct[a]?b:a);
-  return {pct,raw,dom,domPct:pct[dom],cbet:typeof cbetV!=="undefined"?cbetV:null,specific,clsAvg};
+  const top={check:raw.check,bet:raw.small+raw.big};
+  const topDom=top.bet>top.check?"bet":"check";
+  const sizeDom=raw.big>raw.small?"big":"small";
+  return {raw,top,topDom,sizeDom,cbet:typeof cbetV!=="undefined"?cbetV:null,specific,clsAvg};
 }
-function mkCM(A){const o={};A.forEach(g=>{o[g]={};A.forEach(a=>o[g][a]=0);});return o;}
-const CM={"main:simple":mkCM(ACTS_SIMPLE),"main:full":mkCM(ACTS_FULL),
-          "board:simple":mkCM(ACTS_SIMPLE),"board:full":mkCM(ACTS_FULL)};  // CM[mode:gran][gtoDom][taRéponse]
-function cmKey(){return dMode+":"+dGran;}
-function renderSizeBtns(){
-  const A=actsFor();
-  document.getElementById("dsize").innerHTML=A.map(a=>`<button data-v="${a}">${SIZE_LAB[a]}</button>`).join("");
+function mk2(keys){const o={};keys.forEach(g=>{o[g]={};keys.forEach(a=>o[g][a]=0);});return o;}
+// Deux matrices SÉPARÉES par mode (main/board) : la décision top (check/bet) et le sizing (1/3·2/3).
+const CM_TOP={main:mk2(["check","bet"]),board:mk2(["check","bet"])};
+const CM_SIZE={main:mk2(["small","big"]),board:mk2(["small","big"])};
+function showPhase1(){
+  document.getElementById("dsteplab").textContent=dMode==="main"?"Ta main : miser ou checker ?":"La range : miser ou checker ?";
+  document.getElementById("dsize").innerHTML=`<button data-v="check">Check</button><button data-v="bet">Bet</button>`;
+}
+function showPhase2(){
+  document.getElementById("dsteplab").textContent="Quelle taille ?";
+  document.getElementById("dsize").innerHTML=`<button data-v="small">Bet 1/3</button><button data-v="big">Bet 2/3</button>`;
 }
 function dPool(){const ks=Object.keys(FAM);return dFamF?ks.filter(b=>FAM[b]==dFamF):ks;}
 const _SU=["s","h","d","c"];
@@ -753,12 +756,11 @@ function dNext(){const p=dPool();if(!p.length)return;
         combo=dealCombo(b,cls);}
     }
   }while(dMode==="main"&&!combo&&++tries<25);
-  dBoard=b;dCls=cls;dCombo=combo;dPhase=1;dPick={};
+  dBoard=b;dCls=cls;dCombo=combo;dPhase=1;dPick={top:null,size:null};
   document.getElementById("dflop").innerHTML=flopSvg(dBoard);
   const hw=document.getElementById("dhandwrap");
   if(dMode==="main"&&combo){hw.hidden=false;document.getElementById("dhand").innerHTML=flopSvg(combo);}else hw.hidden=true;
-  document.getElementById("dsteplab").textContent=dMode==="main"?"Ton action avec cette main ?":(dGran==="simple"?"Action dominante de la range ?":"Sizing dominant de la range ?");
-  renderSizeBtns();
+  showPhase1();
   document.getElementById("dcorr").hidden=true;
 }
 function lockBtns(id,pick,good){
@@ -769,13 +771,22 @@ function lockBtns(id,pick,good){
 }
 function reveal(){
   const g=gtoAns(),fam=FAM[dBoard],M=FAM_META[fam],r=BROW[dBoard];
-  const q1=dPick.size===g.dom?"ok":(g.pct[dPick.size]>=g.domPct-10?"near":"bad");
-  lockBtns("dsize",dPick.size,g.dom);
-  CM[cmKey()][g.dom][dPick.size]++;
+  const bet=dPick.top==="bet";
+  // Phase 1 : miser ou checker (fréquence). Bande « ≈ » si l'autre option est à <10 pts.
+  const qTop=dPick.top===g.topDom?"ok":(g.top[dPick.top]>=g.top[g.topDom]-10?"near":"bad");
+  // Phase 2 : sizing (seulement si tu as misé). Noté indépendamment de qTop.
+  const qSize=(bet&&dPick.size)?(dPick.size===g.sizeDom?"ok":(g.raw[dPick.size]>=g.raw[g.sizeDom]-10?"near":"bad")):null;
+  CM_TOP[dMode][g.topDom][dPick.top]++;
+  if(bet&&dPick.size)CM_SIZE[dMode][g.sizeDom][dPick.size]++;
+  // Les boutons affichés sont ceux de la dernière phase jouée.
+  if(bet&&dPick.size)lockBtns("dsize",dPick.size,g.sizeDom);
+  else lockBtns("dsize",dPick.top,g.topDom);
   const V={ok:["✓","var(--good)"],near:["≈","var(--accent-ink)"],bad:["✗","var(--bad)"]};
-  const brk=dGran==="simple"
-    ?`Check ${g.pct.check.toFixed(0)}% · Bet ${g.pct.bet.toFixed(0)}% <span style="opacity:.7">(1/3 ${g.raw.small.toFixed(0)}% · 2/3 ${g.raw.big.toFixed(0)}%)</span>`
-    :`Check ${g.raw.check.toFixed(0)}% · 1/3 ${g.raw.small.toFixed(0)}% · 2/3 ${g.raw.big.toFixed(0)}%`;
+  const line=(q,txt)=>`<div style="color:${V[q][1]}">${V[q][0]} ${txt}</div>`;
+  const topLab={check:"Checker",bet:"Miser"},szLab={small:"1/3",big:"2/3"};
+  let verdict=line(qTop,`${topLab[dPick.top]} · GTO bet ${g.top.bet.toFixed(0)}% / check ${g.top.check.toFixed(0)}%`);
+  if(qSize)verdict+=line(qSize,`Bet ${szLab[dPick.size]} · GTO ${szLab[g.sizeDom]} (1/3 ${g.raw.small.toFixed(0)}% / 2/3 ${g.raw.big.toFixed(0)}%)`);
+  const brk=`Check ${g.raw.check.toFixed(0)}% · 1/3 ${g.raw.small.toFixed(0)}% · 2/3 ${g.raw.big.toFixed(0)}%`;
   const famTag=`<div class="dfam"><span class="dfamtag" style="background:${M.color}">${M.emoji} ${M.name}</span></div>`;
   const diverge=g.specific&&g.clsAvg&&(Math.abs(g.raw.small-g.clsAvg.small)>=10||Math.abs(g.raw.big-g.clsAvg.big)>=10);
   const sigNote=diverge?`<div class="dsignote">⚠ Ce combo précis diverge de sa classe (interaction couleur) — moyenne <b>${dCls}</b> : Check ${g.clsAvg.check.toFixed(0)}% · 1/3 ${g.clsAvg.small.toFixed(0)}% · 2/3 ${g.clsAvg.big.toFixed(0)}%.</div>`:"";
@@ -789,31 +800,41 @@ function reveal(){
       <div class="ddist">${distSVG(invCdf(r[7]),invCdf(r[8]))}</div>
       <div class="distlg"><span><span class="ln ip"></span> IP</span><span><span class="ln oop"></span> OOP</span><span class="disthint">le « nez » à gauche = les nuts</span></div>`;
   }
-  document.getElementById("dcorr").innerHTML=
-    `<div class="dverdict"><span style="color:${V[q1][1]}">${V[q1][0]} GTO voulait <b>${SIZE_LAB[g.dom]}</b> · toi <b>${SIZE_LAB[dPick.size]}</b></span></div>${ctx}`;
+  document.getElementById("dcorr").innerHTML=`<div class="dverdict">${verdict}</div>${ctx}`;
   document.getElementById("dcorr").hidden=false;
   renderConfusion();
 }
-function renderConfusion(){
-  const A=actsFor(),cm=CM[cmKey()],unit=dMode==="main"?"mains":"boards";
-  const lab={check:"Check",small:"Petit",big:"Gros",bet:"Bet"};
-  const rowN=g=>A.reduce((s,a)=>s+cm[g][a],0);
-  const total=A.reduce((s,g)=>s+rowN(g),0),diag=A.reduce((s,g)=>s+cm[g][g],0);
-  let h=`<div class="cmx${dGran==="simple"?" gsimple":""}"><div class="cmspacer"></div><div class="cmtop">Ta réponse →</div><div class="cmh corner">GTO ↓</div>`;
-  for(const a of A)h+=`<div class="cmh">${lab[a]}</div>`;
-  for(const gg of A){const n=rowN(gg);
+function cmTable(cm,keys,lab,title,first,unit){
+  const rowN=g=>keys.reduce((s,a)=>s+cm[g][a],0);
+  const total=keys.reduce((s,g)=>s+rowN(g),0),diag=keys.reduce((s,g)=>s+cm[g][g],0);
+  let h=`<div class="cmtitle${first?" first":""}">${title}</div><div class="cmx gsimple"><div class="cmspacer"></div><div class="cmtop">Ta réponse →</div><div class="cmh corner">GTO ↓</div>`;
+  for(const a of keys)h+=`<div class="cmh">${lab[a]}</div>`;
+  for(const gg of keys){const n=rowN(gg);
     h+=`<div class="cmrl">${lab[gg]}<small>n ${n||"–"}</small></div>`;
-    for(const a of A){const p=n?100*cm[gg][a]/n:null;let cls="cmc";
+    for(const a of keys){const p=n?100*cm[gg][a]/n:null;let cls="cmc";
       if(gg===a)cls+=" diag";else if(p!=null&&p>=25)cls+=" bias";else if(p!=null&&p>=12)cls+=" warn";
       h+=`<div class="${cls}">${p==null?"–":p.toFixed(0)+"%"}</div>`;}}
-  h+=`</div><div class="cmglob">réussite globale <b>${total?Math.round(100*diag/total):"–"}%</b> · ${total} ${unit}</div>`;
+  h+=`</div><div class="cmglob">réussite <b>${total?Math.round(100*diag/total):"–"}%</b> · ${total} ${unit}</div>`;
+  return h;
+}
+function renderConfusion(){
+  const unit=dMode==="main"?"mains":"boards";
+  let h=cmTable(CM_TOP[dMode],["check","bet"],{check:"Check",bet:"Bet"},"Miser ou checker",true,unit);
+  if(dGran==="full")h+=cmTable(CM_SIZE[dMode],["small","big"],{small:"1/3",big:"2/3"},"Taille (quand tu mises)",false,"mises");
   document.getElementById("ddash").innerHTML=h;
 }
 document.getElementById("dsize").addEventListener("click",e=>{
-  const b=e.target.closest("button");if(!b||dPhase!==1)return;
-  dPick.size=b.dataset.v;dPhase=2;
-  [...e.currentTarget.children].forEach(x=>x.classList.toggle("sel",x===b));
-  reveal();});
+  const b=e.target.closest("button");if(!b)return;const v=b.dataset.v;
+  if(dPhase===1){
+    dPick.top=v;
+    if(v==="bet"&&dGran==="full"){dPhase=2;showPhase2();return;}   // enchaîne la taille
+    [...e.currentTarget.children].forEach(x=>x.classList.toggle("sel",x===b));
+    dPhase=0;reveal();
+  }else if(dPhase===2){
+    dPick.size=v;dPhase=0;
+    [...e.currentTarget.children].forEach(x=>x.classList.toggle("sel",x===b));
+    reveal();
+  }});
 document.getElementById("dmode").addEventListener("click",e=>{
   const b=e.target.closest("button");if(!b)return;dMode=b.dataset.v;
   [...e.currentTarget.children].forEach(x=>x.setAttribute("aria-pressed",x===b));
