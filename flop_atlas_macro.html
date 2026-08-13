@@ -736,6 +736,7 @@ function mk2(keys){const o={};keys.forEach(g=>{o[g]={};keys.forEach(a=>o[g][a]=0
 // Deux matrices SÉPARÉES par mode (main/board) : la décision top (check/bet) et le sizing (1/3·2/3).
 const CM_TOP={main:mk2(["check","bet"]),board:mk2(["check","bet"])};
 const CM_SIZE={main:mk2(["small","big"]),board:mk2(["small","big"])};
+const CM_ACT=mk2(["check","small","big"]);   // échauffement board : choix unique Check/1/3/2/3 (matrice 3×3)
 function showPhase1(){
   document.getElementById("dsteplab").textContent=dMode==="main"?"Ta main : miser ou checker ?":"La range : miser ou checker ?";
   document.getElementById("dsize").innerHTML=`<button data-v="check">Check</button><button data-v="bet">Bet</button>`;
@@ -743,6 +744,10 @@ function showPhase1(){
 function showPhase2(){
   document.getElementById("dsteplab").textContent="Quelle taille ?";
   document.getElementById("dsize").innerHTML=`<button data-v="small">Bet 1/3</button><button data-v="big">Bet 2/3</button>`;
+}
+function showPhase3(){                                     // échauffement board : une seule question à 3 boutons
+  document.getElementById("dsteplab").textContent="La range : check, 1/3 ou 2/3 ?";
+  document.getElementById("dsize").innerHTML=`<button data-v="check">Check</button><button data-v="small">Bet 1/3</button><button data-v="big">Bet 2/3</button>`;
 }
 function dPool(){const ks=Object.keys(FAM);return dFamF?ks.filter(b=>FAM[b]==dFamF):ks;}
 const _SU=["s","h","d","c"];
@@ -800,11 +805,11 @@ function dNext(){const p=dPool();if(!p.length)return;
       if(dMode==="main"){const r=pickClassCombo(b);if(r){cls=r[0];combo=r[1];}}
     }while(dMode==="main"&&!combo&&++tries<25);
   }
-  dBoard=b;dCls=cls;dCombo=combo;dPhase=1;dPick={top:null,size:null};
+  dBoard=b;dCls=cls;dCombo=combo;dPick={top:null,size:null,act:null};
   document.getElementById("dflop").innerHTML=flopSvg(dBoard);
   const hw=document.getElementById("dhandwrap");
   if(dMode==="main"&&combo){hw.hidden=false;document.getElementById("dhand").innerHTML=flopSvg(combo);}else hw.hidden=true;
-  showPhase1();
+  if(dMode==="board"){dPhase=3;showPhase3();}else{dPhase=1;showPhase1();}
   document.getElementById("dcorr").hidden=true;
 }
 function lockBtns(id,pick,good){
@@ -815,21 +820,34 @@ function lockBtns(id,pick,good){
 }
 function reveal(){
   const g=gtoAns(),fam=FAM[dBoard],M=FAM_META[fam],r=BROW[dBoard];
-  const bet=dPick.top==="bet";
-  // Phase 1 : miser ou checker (fréquence). Bande « ≈ » si l'autre option est à <10 pts.
-  const qTop=dPick.top===g.topDom?"ok":(g.top[dPick.top]>=g.top[g.topDom]-10?"near":"bad");
-  // Phase 2 : sizing (seulement si tu as misé). Noté indépendamment de qTop.
-  const qSize=(bet&&dPick.size)?(dPick.size===g.sizeDom?"ok":(g.raw[dPick.size]>=g.raw[g.sizeDom]-10?"near":"bad")):null;
-  CM_TOP[dMode][g.topDom][dPick.top]++;
-  if(bet&&dPick.size)CM_SIZE[dMode][g.sizeDom][dPick.size]++;
-  // Les boutons affichés sont ceux de la dernière phase jouée.
-  if(bet&&dPick.size)lockBtns("dsize",dPick.size,g.sizeDom);
-  else lockBtns("dsize",dPick.top,g.topDom);
   const V={ok:["✓","var(--good)"],near:["≈","var(--accent-ink)"],bad:["✗","var(--bad)"]};
   const line=(q,txt)=>`<div style="color:${V[q][1]}">${V[q][0]} ${txt}</div>`;
-  const topLab={check:"Checker",bet:"Miser"},szLab={small:"1/3",big:"2/3"};
-  let verdict=line(qTop,`${topLab[dPick.top]} · GTO bet ${g.top.bet.toFixed(0)}% / check ${g.top.check.toFixed(0)}%`);
-  if(qSize)verdict+=line(qSize,`Bet ${szLab[dPick.size]} · GTO ${szLab[g.sizeDom]} (1/3 ${g.raw.small.toFixed(0)}% / 2/3 ${g.raw.big.toFixed(0)}%)`);
+  const szLab={small:"1/3",big:"2/3"},topLab={check:"Checker",bet:"Miser"};
+  let verdict;
+  if(dMode==="board"){
+    // Échauffement board : choix unique Check/1/3/2/3, noté à l'action la plus fréquente (argmax).
+    const acts=["check","small","big"];
+    const actDom=acts.reduce((m,a)=>g.raw[a]>g.raw[m]?a:m,"check");
+    const pick=dPick.act;
+    const q=pick===actDom?"ok":(g.raw[pick]>=g.raw[actDom]-10?"near":"bad");   // bande ≈ si <10 pts de l'argmax
+    CM_ACT[actDom][pick]++;
+    lockBtns("dsize",pick,actDom);
+    const aLab={check:"Check",small:"Bet 1/3",big:"Bet 2/3"};
+    verdict=line(q,`${aLab[pick]} · GTO Check ${g.raw.check.toFixed(0)}% / 1/3 ${g.raw.small.toFixed(0)}% / 2/3 ${g.raw.big.toFixed(0)}%`);
+  }else{
+    const bet=dPick.top==="bet";
+    // Phase 1 : miser ou checker (fréquence). Bande « ≈ » si l'autre option est à <10 pts.
+    const qTop=dPick.top===g.topDom?"ok":(g.top[dPick.top]>=g.top[g.topDom]-10?"near":"bad");
+    // Phase 2 : sizing (seulement si tu as misé). Noté indépendamment de qTop.
+    const qSize=(bet&&dPick.size)?(dPick.size===g.sizeDom?"ok":(g.raw[dPick.size]>=g.raw[g.sizeDom]-10?"near":"bad")):null;
+    CM_TOP[dMode][g.topDom][dPick.top]++;
+    if(bet&&dPick.size)CM_SIZE[dMode][g.sizeDom][dPick.size]++;
+    // Les boutons affichés sont ceux de la dernière phase jouée.
+    if(bet&&dPick.size)lockBtns("dsize",dPick.size,g.sizeDom);
+    else lockBtns("dsize",dPick.top,g.topDom);
+    verdict=line(qTop,`${topLab[dPick.top]} · GTO bet ${g.top.bet.toFixed(0)}% / check ${g.top.check.toFixed(0)}%`);
+    if(qSize)verdict+=line(qSize,`Bet ${szLab[dPick.size]} · GTO ${szLab[g.sizeDom]} (1/3 ${g.raw.small.toFixed(0)}% / 2/3 ${g.raw.big.toFixed(0)}%)`);
+  }
   const brk=`Check ${g.raw.check.toFixed(0)}% · 1/3 ${g.raw.small.toFixed(0)}% · 2/3 ${g.raw.big.toFixed(0)}%`;
   const famTag=`<div class="dfam"><span class="dfamtag" style="background:${M.color}">${M.emoji} ${M.name}</span></div>`;
   const diverge=g.specific&&g.clsAvg&&(Math.abs(g.raw.small-g.clsAvg.small)>=10||Math.abs(g.raw.big-g.clsAvg.big)>=10);
@@ -851,7 +869,8 @@ function reveal(){
 function cmTable(cm,keys,lab,title,first,unit){
   const rowN=g=>keys.reduce((s,a)=>s+cm[g][a],0);
   const total=keys.reduce((s,g)=>s+rowN(g),0),diag=keys.reduce((s,g)=>s+cm[g][g],0);
-  let h=`<div class="cmtitle${first?" first":""}">${title}</div><div class="cmx gsimple"><div class="cmspacer"></div><div class="cmtop">Ta réponse →</div><div class="cmh corner">GTO ↓</div>`;
+  const gcls=keys.length===2?" gsimple":"";   // 2 clés = grille 2 col ; 3 clés (échauffement) = grille 3 col (base .cmx)
+  let h=`<div class="cmtitle${first?" first":""}">${title}</div><div class="cmx${gcls}"><div class="cmspacer"></div><div class="cmtop">Ta réponse →</div><div class="cmh corner">GTO ↓</div>`;
   for(const a of keys)h+=`<div class="cmh">${lab[a]}</div>`;
   for(const gg of keys){const n=rowN(gg);
     h+=`<div class="cmrl">${lab[gg]}<small>n ${n||"–"}</small></div>`;
@@ -862,14 +881,21 @@ function cmTable(cm,keys,lab,title,first,unit){
   return h;
 }
 function renderConfusion(){
-  const unit=dMode==="main"?"mains":"boards";
-  let h=cmTable(CM_TOP[dMode],["check","bet"],{check:"Check",bet:"Bet"},"Miser ou checker",true,unit);
+  if(dMode==="board"){   // échauffement : une seule matrice 3×3 Check/1/3/2/3
+    document.getElementById("ddash").innerHTML=cmTable(CM_ACT,["check","small","big"],{check:"Check",small:"1/3",big:"2/3"},"Check · 1/3 · 2/3",true,"boards");
+    return;
+  }
+  let h=cmTable(CM_TOP[dMode],["check","bet"],{check:"Check",bet:"Bet"},"Miser ou checker",true,"mains");
   if(dGran==="full")h+=cmTable(CM_SIZE[dMode],["small","big"],{small:"1/3",big:"2/3"},"Taille (quand tu mises)",false,"mises");
   document.getElementById("ddash").innerHTML=h;
 }
 document.getElementById("dsize").addEventListener("click",e=>{
   const b=e.target.closest("button");if(!b)return;const v=b.dataset.v;
-  if(dPhase===1){
+  if(dPhase===3){                                                   // échauffement board : choix unique 3-way
+    dPick.act=v;dPhase=0;
+    [...e.currentTarget.children].forEach(x=>x.classList.toggle("sel",x===b));
+    reveal();
+  }else if(dPhase===1){
     dPick.top=v;
     if(v==="bet"&&dGran==="full"){dPhase=2;showPhase2();return;}   // enchaîne la taille
     [...e.currentTarget.children].forEach(x=>x.classList.toggle("sel",x===b));
@@ -883,6 +909,7 @@ document.getElementById("dmode").addEventListener("click",e=>{
   const b=e.target.closest("button");if(!b)return;dMode=b.dataset.v;
   [...e.currentTarget.children].forEach(x=>x.setAttribute("aria-pressed",x===b));
   const main=dMode==="main";document.getElementById("dlockrow").hidden=!main;   // verrous = mode « Ta main » seulement
+  document.getElementById("dgran").hidden=!main;                                 // granularité = « Ta main » seulement (échauffement = choix 3-way fixe)
   if(!main){dLock=null;[...document.getElementById("dlock").children].forEach(x=>x.setAttribute("aria-pressed","false"));}
   renderConfusion();dNext();});
 document.getElementById("dlock").addEventListener("click",e=>{
