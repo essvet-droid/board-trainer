@@ -344,6 +344,14 @@ footer{color:var(--muted);font-size:11.5px;margin-top:26px;border-top:1px solid 
         <button data-v="simple" aria-pressed="true">Bet / Check</button>
         <button data-v="full" aria-pressed="false">Check · 1/3 · 2/3</button>
       </div>
+      <div id="dlockrow" style="display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+        <span class="drilllab">Figer&nbsp;:</span>
+        <div class="mtoggle" id="dlock" role="group" aria-label="Figer main ou board">
+          <button data-v="board" aria-pressed="false">🔒 Board</button>
+          <button data-v="hand" aria-pressed="false">🔒 Main</button>
+        </div>
+        <span class="mhint" id="dlockhint">tester plusieurs mains sur 1 board, ou 1 main sur plusieurs boards</span>
+      </div>
       <div class="dflop" id="dflop"></div>
       <div class="dhandwrap" id="dhandwrap"><span class="dhandlab">ta main</span><div class="dhand" id="dhand"></div></div>
       <div class="dstep">
@@ -684,7 +692,7 @@ document.getElementById("blist").addEventListener("click",e=>{
   openMicro(row.id.slice(4));});
 
 // ═══ MODE DRILL (niveau main / board · granularité Simple bet-check ou Complet check-1/3-2/3) ═══
-let dBoard=null,dCls=null,dCombo=null,dMode="main",dGran="simple",dPhase=0,dPick={top:null,size:null},dFamF=0;
+let dBoard=null,dCls=null,dCombo=null,dMode="main",dGran="simple",dPhase=0,dPick={top:null,size:null},dFamF=0,dLock=null;
 function gtoAns(){
   let raw,cbetV,specific=false,clsAvg=null;
   if(dMode==="main"){
@@ -746,16 +754,31 @@ function dealCombo(board,cls){
   const pairs=[];for(const a of _SU)for(const b of _SU)if(a!==b&&!used.has(r1+a)&&!used.has(r2+b))pairs.push(r1+a+r2+b);
   return pairs.length?_rnd(pairs):null;
 }
+// tire une classe ∝ occurrence des combos, puis un combo légal, sur un board donné
+function pickClassCombo(b){
+  const M=MICRO_IP[b]||{},ks=Object.keys(M).filter(k=>M[k][0]>0);
+  if(!ks.length)return null;
+  for(let t=0;t<40;t++){const tot=ks.reduce((s,k)=>s+M[k][0],0);let x=Math.random()*tot,cls=ks[0];
+    for(const k of ks){x-=M[k][0];if(x<=0){cls=k;break;}}
+    const c=dealCombo(b,cls);if(c)return[cls,c];}
+  return null;
+}
 function dNext(){const p=dPool();if(!p.length)return;
-  let b,cls=null,combo=null,tries=0;
-  do{ b=wPick(p);
-    if(dMode==="main"){
-      const M=MICRO_IP[b]||{},ks=Object.keys(M).filter(k=>M[k][0]>0);
-      if(ks.length){const tot=ks.reduce((s,k)=>s+M[k][0],0);let x=Math.random()*tot;cls=ks[0];
-        for(const k of ks){x-=M[k][0];if(x<=0){cls=k;break;}}
-        combo=dealCombo(b,cls);}
-    }
-  }while(dMode==="main"&&!combo&&++tries<25);
+  let b=null,cls=null,combo=null;
+  // Verrous (mode « Ta main » seulement) : figer le board OU la main (classe).
+  if(dMode==="main"&&dLock==="board"&&dBoard&&MICRO_IP[dBoard]){
+    const r=pickClassCombo(dBoard);if(r){b=dBoard;cls=r[0];combo=r[1];}          // même flop, nouvelle main
+  }else if(dMode==="main"&&dLock==="hand"&&dCls){
+    const pool=p.filter(x=>((MICRO_IP[x]||{})[dCls]||[0])[0]>0);                   // boards où la classe est jouable
+    for(let t=0;t<40&&!combo&&pool.length;t++){const bb=wPick(pool),c=dealCombo(bb,dCls);if(c){b=bb;cls=dCls;combo=c;}}
+  }
+  // Tirage libre : défaut, ou repli si un verrou n'a rien pu produire.
+  if(!b||(dMode==="main"&&!combo)){
+    b=null;cls=null;combo=null;let tries=0;
+    do{ b=wPick(p);
+      if(dMode==="main"){const r=pickClassCombo(b);if(r){cls=r[0];combo=r[1];}}
+    }while(dMode==="main"&&!combo&&++tries<25);
+  }
   dBoard=b;dCls=cls;dCombo=combo;dPhase=1;dPick={top:null,size:null};
   document.getElementById("dflop").innerHTML=flopSvg(dBoard);
   const hw=document.getElementById("dhandwrap");
@@ -838,7 +861,13 @@ document.getElementById("dsize").addEventListener("click",e=>{
 document.getElementById("dmode").addEventListener("click",e=>{
   const b=e.target.closest("button");if(!b)return;dMode=b.dataset.v;
   [...e.currentTarget.children].forEach(x=>x.setAttribute("aria-pressed",x===b));
+  const main=dMode==="main";document.getElementById("dlockrow").hidden=!main;   // verrous = mode « Ta main » seulement
+  if(!main){dLock=null;[...document.getElementById("dlock").children].forEach(x=>x.setAttribute("aria-pressed","false"));}
   renderConfusion();dNext();});
+document.getElementById("dlock").addEventListener("click",e=>{
+  const b=e.target.closest("button");if(!b)return;
+  dLock=(dLock===b.dataset.v)?null:b.dataset.v;                                   // toggle, exclusif ; agit au prochain « Suivant »
+  [...e.currentTarget.children].forEach(x=>x.setAttribute("aria-pressed",x.dataset.v===dLock));});
 document.getElementById("dgran").addEventListener("click",e=>{
   const b=e.target.closest("button");if(!b)return;dGran=b.dataset.v;
   [...e.currentTarget.children].forEach(x=>x.setAttribute("aria-pressed",x===b));
