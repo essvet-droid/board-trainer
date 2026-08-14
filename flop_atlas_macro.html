@@ -366,10 +366,6 @@ footer{color:var(--muted);font-size:11.5px;margin-top:26px;border-top:1px solid 
         <button data-v="main" aria-pressed="true">🎯 Ta main</button>
         <button data-v="board" aria-pressed="false">🔥 Échauffement board</button>
       </div>
-      <div class="mtoggle" id="dgran" role="group" aria-label="Granularité" style="margin-bottom:14px">
-        <button data-v="simple" aria-pressed="true">Bet / Check</button>
-        <button data-v="full" aria-pressed="false">Check · 1/3 · 2/3</button>
-      </div>
       <div id="dlockrow" style="display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap">
         <span class="drilllab">Figer&nbsp;:</span>
         <div class="mtoggle" id="dlock" role="group" aria-label="Figer main ou board">
@@ -381,10 +377,11 @@ footer{color:var(--muted);font-size:11.5px;margin-top:26px;border-top:1px solid 
       <div class="dflop" id="dflop"></div>
       <div class="dhandwrap" id="dhandwrap"><span class="dhandlab">ta main</span><div class="dhand" id="dhand"></div></div>
       <div class="dstep">
-        <p class="dsteplab" id="dsteplab">Ton action avec cette main ?</p>
+        <p class="dsteplab" id="dsteplab">Ta main : check, 1/3 ou 2/3 ?</p>
         <div class="dbtns" id="dsize">
           <button data-v="check">Check</button>
-          <button data-v="bet">Bet</button>
+          <button data-v="small">Bet 1/3</button>
+          <button data-v="big">Bet 2/3</button>
         </div>
       </div>
       <div class="dcorr" id="dcorr" hidden></div>
@@ -745,7 +742,7 @@ document.getElementById("blist").addEventListener("click",e=>{
   openMicro(row.id.slice(4));});
 
 // ═══ MODE DRILL (niveau main / board · granularité Simple bet-check ou Complet check-1/3-2/3) ═══
-let dBoard=null,dCls=null,dCombo=null,dMode="main",dGran="simple",dPhase=0,dPick={top:null,size:null},dFamF=0,dLock=null;
+let dBoard=null,dCls=null,dCombo=null,dMode="main",dPhase=0,dPick={top:null,size:null,act:null},dFamF=0,dLock=null;
 function gtoAns(){
   let raw,cbetV,specific=false,clsAvg=null;
   if(dMode==="main"){
@@ -769,16 +766,8 @@ function mk2(keys){const o={};keys.forEach(g=>{o[g]={};keys.forEach(a=>o[g][a]=0
 const CM_TOP={main:mk2(["check","bet"]),board:mk2(["check","bet"])};
 const CM_SIZE={main:mk2(["small","big"]),board:mk2(["small","big"])};
 const CM_ACT=mk2(["check","small","big"]);   // échauffement board : choix unique Check/1/3/2/3 (matrice 3×3)
-function showPhase1(){
-  document.getElementById("dsteplab").textContent=dMode==="main"?"Ta main : miser ou checker ?":"La range : miser ou checker ?";
-  document.getElementById("dsize").innerHTML=`<button data-v="check">Check</button><button data-v="bet">Bet</button>`;
-}
-function showPhase2(){
-  document.getElementById("dsteplab").textContent="Quelle taille ?";
-  document.getElementById("dsize").innerHTML=`<button data-v="small">Bet 1/3</button><button data-v="big">Bet 2/3</button>`;
-}
-function showPhase3(){                                     // échauffement board : une seule question à 3 boutons
-  document.getElementById("dsteplab").textContent="La range : check, 1/3 ou 2/3 ?";
+function showPhase3(){                                     // choix unique à 3 boutons — main ET board (fin du flux 2 temps)
+  document.getElementById("dsteplab").textContent=dMode==="main"?"Ta main : check, 1/3 ou 2/3 ?":"La range : check, 1/3 ou 2/3 ?";
   document.getElementById("dsize").innerHTML=`<button data-v="check">Check</button><button data-v="small">Bet 1/3</button><button data-v="big">Bet 2/3</button>`;
 }
 function dPool(){const ks=Object.keys(FAM);return dFamF?ks.filter(b=>FAM[b]==dFamF):ks;}
@@ -841,7 +830,7 @@ function dNext(){const p=dPool();if(!p.length)return;
   document.getElementById("dflop").innerHTML=flopSvg(dBoard);
   const hw=document.getElementById("dhandwrap");
   if(dMode==="main"&&combo){hw.hidden=false;document.getElementById("dhand").innerHTML=flopSvg(combo);}else hw.hidden=true;
-  if(dMode==="board"){dPhase=3;showPhase3();}else{dPhase=1;showPhase1();}
+  dPhase=3;showPhase3();
   document.getElementById("dcorr").hidden=true;
 }
 function lockBtns(id,pick,good){
@@ -877,15 +866,15 @@ function reveal(){
     verdict=line(q,`${aLab[pick]} · GTO Check ${g.raw.check.toFixed(0)}% / 1/3 ${g.raw.small.toFixed(0)}% / 2/3 ${g.raw.big.toFixed(0)}%`);
   }else{
     const bet=dPick.top==="bet";
-    // Phase 1 : miser ou checker (fréquence). Bande « ≈ » si l'autre option est à <10 pts.
+    // 1 seul clic, note en 2 lignes. Décision 1 : miser ou checker (le bouton l'encode : toute mise = bet).
+    // Comparée au bet-TOTAL (33+66) — c'est le « au fond, check ou bet ? ». Bande « ≈ » si <10 pts.
     const qTop=dPick.top===g.topDom?"ok":(g.top[dPick.top]>=g.top[g.topDom]-10?"near":"bad");
-    // Phase 2 : sizing (seulement si tu as misé). Noté indépendamment de qTop.
+    // Décision 2 : la taille (seulement si tu as misé), notée indépendamment de qTop → pas de faux ✗.
     const qSize=(bet&&dPick.size)?(dPick.size===g.sizeDom?"ok":(g.raw[dPick.size]>=g.raw[g.sizeDom]-10?"near":"bad")):null;
     CM_TOP[dMode][g.topDom][dPick.top]++;
     if(bet&&dPick.size)CM_SIZE[dMode][g.sizeDom][dPick.size]++;
-    // Les boutons affichés sont ceux de la dernière phase jouée.
-    if(bet&&dPick.size)lockBtns("dsize",dPick.size,g.sizeDom);
-    else lockBtns("dsize",dPick.top,g.topDom);
+    // bouton idéal = ce que GTO fait le plus (sa taille préférée s'il mise, sinon check) ; cohérent avec la note en 2 lignes
+    lockBtns("dsize",dPick.act,g.topDom==="bet"?g.sizeDom:"check");
     verdict=line(qTop,`${topLab[dPick.top]} · GTO bet ${g.top.bet.toFixed(0)}% / check ${g.top.check.toFixed(0)}%`);
     if(qSize)verdict+=line(qSize,`Bet ${szLab[dPick.size]} · GTO ${szLab[g.sizeDom]} (1/3 ${g.raw.small.toFixed(0)}% / 2/3 ${g.raw.big.toFixed(0)}%)`);
   }
@@ -929,40 +918,28 @@ function renderConfusion(){
     return;
   }
   let h=cmTable(CM_TOP[dMode],["check","bet"],{check:"Check",bet:"Bet"},"Miser ou checker",true,"mains");
-  if(dGran==="full")h+=cmTable(CM_SIZE[dMode],["small","big"],{small:"1/3",big:"2/3"},"Taille (quand tu mises)",false,"mises");
+  h+=cmTable(CM_SIZE[dMode],["small","big"],{small:"1/3",big:"2/3"},"Taille (quand tu mises)",false,"mises");
   document.getElementById("ddash").innerHTML=h;
 }
 document.getElementById("dsize").addEventListener("click",e=>{
   const b=e.target.closest("button");if(!b)return;const v=b.dataset.v;
-  if(dPhase===3){                                                   // échauffement board : choix unique 3-way
-    dPick.act=v;dPhase=0;
-    [...e.currentTarget.children].forEach(x=>x.classList.toggle("sel",x===b));
-    reveal();
-  }else if(dPhase===1){
-    dPick.top=v;
-    if(v==="bet"&&dGran==="full"){dPhase=2;showPhase2();return;}   // enchaîne la taille
-    [...e.currentTarget.children].forEach(x=>x.classList.toggle("sel",x===b));
-    dPhase=0;reveal();
-  }else if(dPhase===2){
-    dPick.size=v;dPhase=0;
-    [...e.currentTarget.children].forEach(x=>x.classList.toggle("sel",x===b));
-    reveal();
-  }});
+  if(dPhase!==3)return;                                             // choix unique 3-way (main ET board)
+  dPhase=0;
+  [...e.currentTarget.children].forEach(x=>x.classList.toggle("sel",x===b));
+  dPick.act=v;                                                      // valeur brute du bouton (check/small/big)
+  if(dMode==="main"){dPick.top=(v==="check")?"check":"bet";dPick.size=(v==="check")?null:v;}  // le bouton encode déjà miser/checker
+  reveal();
+});
 document.getElementById("dmode").addEventListener("click",e=>{
   const b=e.target.closest("button");if(!b)return;dMode=b.dataset.v;
   [...e.currentTarget.children].forEach(x=>x.setAttribute("aria-pressed",x===b));
   const main=dMode==="main";document.getElementById("dlockrow").hidden=!main;   // verrous = mode « Ta main » seulement
-  document.getElementById("dgran").hidden=!main;                                 // granularité = « Ta main » seulement (échauffement = choix 3-way fixe)
   if(!main){dLock=null;[...document.getElementById("dlock").children].forEach(x=>x.setAttribute("aria-pressed","false"));}
   renderConfusion();dNext();});
 document.getElementById("dlock").addEventListener("click",e=>{
   const b=e.target.closest("button");if(!b)return;
   dLock=(dLock===b.dataset.v)?null:b.dataset.v;                                   // toggle, exclusif ; agit au prochain « Suivant »
   [...e.currentTarget.children].forEach(x=>x.setAttribute("aria-pressed",x.dataset.v===dLock));});
-document.getElementById("dgran").addEventListener("click",e=>{
-  const b=e.target.closest("button");if(!b)return;dGran=b.dataset.v;
-  [...e.currentTarget.children].forEach(x=>x.setAttribute("aria-pressed",x===b));
-  renderConfusion();dNext();});
 document.getElementById("dfam").addEventListener("change",e=>{dFamF=+e.target.value;dNext();});
 document.getElementById("dnext").addEventListener("click",dNext);
 document.getElementById("modebar").addEventListener("click",e=>{
