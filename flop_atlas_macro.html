@@ -219,12 +219,12 @@ footer{color:var(--muted);font-size:11.5px;margin-top:26px;border-top:1px solid 
 .eqrulerrow{display:flex;align-items:center;gap:8px;margin:9px 0 0}
 .eqrulerrow .lb{width:26px;font:700 11px/1 var(--font);color:var(--ink2)}
 .eqruler{position:relative;flex:1;height:9px;border-radius:5px;border:1px solid var(--line2);
-  background:linear-gradient(to right,var(--eqT) 0 33%,var(--eqW) 33% 50%,var(--eqG) 50% 75%,var(--eqS) 75% 100%)}
-.eqtick{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--ink);transform:translateX(-1px);border-radius:1px}
-.eqtick::after{content:"";position:absolute;top:-6px;left:-3px;border:4px solid transparent;border-top:5px solid var(--ink)}
+  background:linear-gradient(to right,var(--eqS) 0 25%,var(--eqG) 25% 50%,var(--eqW) 50% 67%,var(--eqT) 67% 100%)}
+.eqtick{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ink);transform:translateX(-1px);border-radius:1px}
+.eqtick::after{content:"";position:absolute;bottom:-7px;left:-3px;border:4px solid transparent;border-top:5px solid var(--ink)}
 .eqscale{margin:2px 0 0;font:700 10px/1 var(--font);color:var(--muted)}
 .eqscale .sp{flex:1}
-.eqcap{font:600 11px/1.5 var(--font);color:var(--muted);margin:4px 0 0 34px}
+.eqcap{font:600 11px/1.5 var(--font);color:var(--muted);margin:6px 0 0 34px}
 .cmtitle{font:700 12px var(--font);color:var(--ink2);margin:16px 0 8px}
 .cmtitle.first{margin-top:0}
 .cmx{display:grid;grid-template-columns:92px repeat(3,1fr);gap:5px}
@@ -871,22 +871,28 @@ function handEq(){
   return typeof cm==="number"?cm:null;
 }
 function eqBucket(e){return e>=75?["Strong","var(--eqS)"]:e>=50?["Good","var(--eqG)"]:e>=33?["Weak","var(--eqW)"]:["Trash","var(--eqT)"];}
-// règle d'équité 0-100 sous la barre IP + tick à l'équité EXACTE de la main (zones colorées = buckets Acevedo)
+// règle d'équité au-dessus des barres IP/BB — Strong à GAUCHE (aligné aux barres) → tick=100−eq ;
+// zones colorées = buckets Acevedo. Le tick pointe vers le bas (la barre IP juste dessous).
 function eqRuler(eq){
   if(eq==null)return"";
-  const[nm,col]=eqBucket(eq);
   return `<div class="eqrulerrow"><span class="lb">éq.</span>
-    <div class="eqruler"><span class="eqtick" style="left:${eq}%"></span></div></div>
-    <div class="eqrulerrow eqscale"><span class="lb"></span><span>0</span><span class="sp"></span><span>100</span></div>
-    <div class="eqcap">Ta main : <b style="color:${col}">${eq}%</b> d'équité → <b style="color:${col}">${nm}</b></div>`;
+    <div class="eqruler"><span class="eqtick" style="left:${100-eq}%"></span></div></div>
+    <div class="eqrulerrow eqscale"><span class="lb"></span><span>100</span><span class="sp"></span><span>0</span></div>`;
+}
+// libellé de la main (sous les barres) : équité exacte + bucket
+function eqCap(eq){
+  if(eq==null)return"";
+  const[nm,col]=eqBucket(eq);
+  return `<div class="eqcap">Ta main : <b style="color:${col}">${eq}%</b> d'équité → <b style="color:${col}">${nm}</b></div>`;
 }
 // panneau EQB (2e axe du sizing) pour la correction du drill — même donnée/rendu que l'overlay
 function drillEqb(r,eq){
   const eIP=r[10]||[0,0,0,0],eOOP=r[11]||[0,0,0,0];
   return `<div class="deqb">
     <div class="eqbleg"><span><i style="background:var(--eqS)"></i>Strong</span><span><i style="background:var(--eqG)"></i>Good</span><span><i style="background:var(--eqW)"></i>Weak</span><span><i style="background:var(--eqT)"></i>Trash</span></div>
-    ${eqbBars(eIP,eOOP)}
     ${eqRuler(eq)}
+    ${eqbBars(eIP,eOOP)}
+    ${eqCap(eq)}
     <div class="mhint">2ᵉ axe du sizing : BB <b>${eOOP[1]}%</b> de call (Good) vs <b>${eOOP[0]}%</b> de raise (Strong) → + de calls = pousse au <b>gros</b>, + de raises = pousse au <b>petit</b> (Acevedo Ch.12).</div>
   </div>`;
 }
