@@ -63,6 +63,8 @@ h1{font-size:clamp(19px,3.2vw,25px);line-height:1.1;letter-spacing:-.01em;margin
   display:flex;align-items:center;justify-content:center}
 .rk[aria-pressed="true"]{background:var(--ink);color:var(--surface);border-color:var(--ink)}
 .rk[aria-pressed="false"]{opacity:.5}
+/* rang rendu impossible par l'ordre r1≥r2≥r3 (contrainte des 3 sélecteurs) → grisé + non cliquable */
+.rk:disabled{opacity:.16;cursor:not-allowed;background:var(--surface2);border-color:var(--line);color:var(--muted)}
 .search{display:flex;gap:6px;margin-top:2px}
 .search input{flex:1;font:600 14px/1 var(--mono);padding:9px 11px;border-radius:8px;
   border:1px solid var(--line2);background:var(--surface2);color:var(--ink)}
@@ -209,10 +211,13 @@ footer{color:var(--muted);font-size:11.5px;margin-top:26px;border-top:1px solid 
 .fmore>summary::before{content:"▸ ";color:var(--muted)}
 .fmore[open]>summary::before{content:"▾ "}
 .fmore .fgroup{margin-top:8px}
-/* bouton « Étudier ce flop » dans la correction du drill */
+/* boutons d'étude dans la correction du drill (« Étudier ce flop » précis + « Flops similaires » AHML) */
+.dstudyrow{display:flex;gap:8px;flex-wrap:wrap;margin:2px 0 12px}
 .dstudy{display:inline-flex;align-items:center;gap:6px;font:700 12.5px/1 var(--font);color:var(--accent);
-  background:var(--surface2);border:1px solid var(--accent);border-radius:8px;padding:8px 13px;cursor:pointer;margin:2px 0 12px}
+  background:var(--surface2);border:1px solid var(--accent);border-radius:8px;padding:8px 13px;cursor:pointer;margin:0}
 .dstudy:hover{background:var(--accent);color:#fff}
+.dstudy.dsim{color:var(--ink2);border-color:var(--line2)}
+.dstudy.dsim:hover{background:var(--ink);color:var(--surface);border-color:var(--ink)}
 /* ── mode Étude/Drill + drill board-level ── */
 [hidden]{display:none!important}
 .modebar{display:inline-flex;gap:0;background:var(--surface2);border:1px solid var(--line);border-radius:11px;padding:3px;margin:2px 0 18px}
@@ -549,6 +554,8 @@ const AHML_T={A:"A",K:"H",Q:"H",J:"H",T:"H","9":"M","8":"M","7":"M","6":"M","5":
 const AHML_TITLE="A=As · H=KQJT · M=9876 · L=5432 (Acevedo)";
 function ahml(b){const o="23456789TJQKA";
   return [b.slice(0,2),b.slice(2,4),b.slice(4,6)].sort((x,y)=>o.indexOf(y[0])-o.indexOf(x[0])).map(c=>AHML_T[c[0]]).join("");}
+// bandes de rang AHML → jeux de rangs pour les 3 sélecteurs (mêmes bandes qu'Acevedo p.528)
+const AHML_BAND={A:["A"],H:["K","Q","J","T"],M:["9","8","7","6"],L:["5","4","3","2"]};
 const BROW={}; for(const r of B)BROW[r[0]]=r;           // board -> ligne (résumé)
 const RANKS="AKQJT98765432".split("");
 const DIM={co:4,pa:5,cx:6};
@@ -724,13 +731,28 @@ function apply(){renderVerdict();renderDist();renderHeatmap();renderList();if(st
 
 // ── filtres (chips) ──
 const isRankDim=d=>d==="hi"||d==="mid"||d==="low";
+// rangs ATTEIGNABLES par sélecteur, vu l'ordre r1≥r2≥r3 : un rang est possible dans un sélecteur
+// s'il existe ≥1 board réel où les 2 AUTRES cartes tombent dans leurs sélections courantes.
+// (données réelles → paires KQ2/QQ2 correctement gérées, pas juste une borne stricte)
+function rankReach(){
+  const en={hi:new Set(),mid:new Set(),low:new Set()};
+  for(const r of B){const h=r[3],m=r[12],l=r[13];
+    if(F.mid.has(m)&&F.low.has(l))en.hi.add(h);
+    if(F.hi.has(h)&&F.low.has(l))en.mid.add(m);
+    if(F.hi.has(h)&&F.mid.has(m))en.low.add(l);}
+  return en;
+}
 function syncChips(){
   document.querySelectorAll("#filters .fgroup[data-dim]").forEach(g=>{
     const dim=g.dataset.dim;
     if(isRankDim(dim))return;
     g.querySelectorAll(".chip").forEach(c=>c.setAttribute("aria-pressed",F[dim].has(c.dataset.v)));
   });
-  for(const[id,dim]of RANKDIMS)document.querySelectorAll("#"+id+" .rk").forEach(b=>b.setAttribute("aria-pressed",F[dim].has(b.dataset.v)));
+  const reach=rankReach();
+  for(const[id,dim]of RANKDIMS)document.querySelectorAll("#"+id+" .rk").forEach(b=>{
+    b.setAttribute("aria-pressed",F[dim].has(b.dataset.v));
+    b.disabled=!reach[dim].has(b.dataset.v);   // rang impossible (ordre du flop) → grisé + non cliquable
+  });
 }
 // clic filtre : 1er clic (tout coché) = ISOLE cette valeur ; ensuite additif ; jamais vide
 function isolateOrToggle(cur,keys,v){
@@ -1082,6 +1104,20 @@ function drillEqb(r,eq){
     <div class="mhint">2ᵉ axe du sizing : BB <b>${eOOP[1]}%</b> de call (Good) vs <b>${eOOP[0]}%</b> de raise (Strong) → + de calls = pousse au <b>gros</b>, + de raises = pousse au <b>petit</b> (Acevedo Ch.12).</div>
   </div>`;
 }
+// « Flops similaires » : bascule Drill → Étude (vue board) filtrée sur la MÊME forme AHML que le
+// board drillé (1ʳᵉ lettre → 1ʳᵉ carte…), couleur/connectivité/famille rouvertes → l'utilisateur affine.
+function studySimilar(board){
+  const code=ahml(board);
+  F.hi=new Set(AHML_BAND[code[0]]);F.mid=new Set(AHML_BAND[code[1]]);F.low=new Set(AHML_BAND[code[2]]);
+  F.co=new Set(AX.co.keys);F.pa=new Set(AX.pa.keys);F.cx=new Set(AX.cx.keys);F.fam=new Set([1,2,3,4,5,6,7]);
+  const sf=document.getElementById("sfam");if(sf)sf.value="0";hit=null;closeMicro();
+  document.querySelectorAll("#modebar button").forEach(x=>x.setAttribute("aria-pressed",x.dataset.m==="study"));
+  document.getElementById("studyview").hidden=false;document.getElementById("drillview").hidden=true;
+  studyMode="board";
+  document.querySelectorAll("#studymode button").forEach(x=>x.setAttribute("aria-pressed",x.dataset.v==="board"));
+  document.getElementById("boardResults").hidden=false;document.getElementById("mainResults").hidden=true;
+  syncChips();apply();window.scrollTo(0,0);
+}
 function reveal(){
   const g=gtoAns(),fam=FAM[dBoard],M=FAM_META[fam],r=BROW[dBoard];
   const V={ok:["✓","var(--good)"],near:["≈","var(--accent-ink)"],bad:["✗","var(--bad)"]};
@@ -1128,9 +1164,10 @@ function reveal(){
       <div class="distlg"><span><span class="ln ip"></span> IP</span><span><span class="ln oop"></span> OOP</span><span class="disthint">le « nez » à gauche = les nuts</span></div>
       ${drillEqb(r)}`;
   }
-  // bouton d'étude : ouvre l'overlay micro du flop EXACT drillé (main mode → case de la main surlignée)
+  // boutons d'étude : flop EXACT (overlay micro, main surlignée en mode main) + flops SIMILAIRES (forme AHML)
   const studyBtn=`<button type="button" class="dstudy" onclick="openMicro('${dBoard}'${dMode==="main"?",'"+dCls+"'":""})">🔍 Étudier ce flop</button>`;
-  document.getElementById("dcorr").innerHTML=`<div class="dverdict">${verdict}</div>${studyBtn}${ctx}`;
+  const simBtn=`<button type="button" class="dstudy dsim" onclick="studySimilar('${dBoard}')">🔎 Flops similaires (${ahml(dBoard)})</button>`;
+  document.getElementById("dcorr").innerHTML=`<div class="dverdict">${verdict}</div><div class="dstudyrow">${studyBtn}${simBtn}</div>${ctx}`;
   document.getElementById("dcorr").hidden=false;
   renderConfusion();
 }
