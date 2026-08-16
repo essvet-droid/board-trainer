@@ -65,6 +65,12 @@ h1{font-size:clamp(19px,3.2vw,25px);line-height:1.1;letter-spacing:-.01em;margin
 .rk[aria-pressed="false"]{opacity:.5}
 /* rang rendu impossible par l'ordre r1≥r2≥r3 (contrainte des 3 sélecteurs) → grisé + non cliquable */
 .rk:disabled{opacity:.16;cursor:not-allowed;background:var(--surface2);border-color:var(--line);color:var(--muted)}
+/* filtre EQB à seuil (métrique + curseur ≥ X %) */
+.eqbrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.eqbsel{font:600 12px/1 var(--font);color:var(--ink);background:var(--surface);border:1px solid var(--line2);border-radius:7px;padding:6px 7px;flex:1;min-width:130px}
+.eqbge{font:700 13px/1 var(--mono);color:var(--muted)}
+.eqbslider{flex:1;min-width:90px;accent-color:var(--accent)}
+.eqbval{font:700 12px/1 var(--mono);color:var(--accent-ink);min-width:34px;text-align:right}
 .search{display:flex;gap:6px;margin-top:2px}
 .search input{flex:1;font:600 14px/1 var(--mono);padding:9px 11px;border-radius:8px;
   border:1px solid var(--line2);background:var(--surface2);color:var(--ink)}
@@ -358,6 +364,19 @@ footer{color:var(--muted);font-size:11.5px;margin-top:26px;border-top:1px solid 
           <div class="fgroup" data-dim="low"><p class="flab">3ᵉ carte <a data-all>tout</a></p>
             <div class="ranks" id="ranks3"></div></div>
         </details></div>
+
+      <div class="fgroup eqbf"><p class="flab">EQB — seuil</p>
+        <div class="eqbrow">
+          <select id="eqbmetric" class="eqbsel">
+            <option value="ips">Strong IP (nut adv)</option>
+            <option value="igd">Good IP</option>
+            <option value="bps">Strong BB</option>
+            <option value="bgd">Good BB (polarisation)</option>
+          </select>
+          <span class="eqbge">≥</span>
+          <input type="range" id="eqbmin" class="eqbslider" min="0" max="100" step="5" value="0">
+          <span class="eqbval" id="eqbval">0 %</span>
+        </div></div>
     </div>
 
     <!-- ── Résultats ──────────────────────────────────── -->
@@ -573,6 +592,9 @@ const RANKDIMS=[["ranks","hi"],["ranks2","mid"],["ranks3","low"]];
 // pré-calcule les rangs 2ᵉ (index 12) et 3ᵉ (index 13) triés fort→faible depuis le board (0 donnée BDD)
 for(const r of B){const s=[r[0][0],r[0][2],r[0][4]].sort((a,b)=>RANKS.indexOf(a)-RANKS.indexOf(b));r[12]=s[1];r[13]=s[2];}
 let metric="cbet",axis="co",sortKey="cbet",hit=null;
+// filtre EQB à seuil : garde les boards où (bucket du joueur choisi) ≥ eqbMin ; eqbArr=10(IP)/11(BB), eqbPos=0(Strong)/1(Good)
+const EQBM={ips:[10,0],igd:[10,1],bps:[11,0],bgd:[11,1]},EQZ=[0,0,0,0];
+let eqbArr=10,eqbPos=0,eqbMin=0;   // défaut Strong IP, seuil 0 = inactif
 
 // ── index de recherche (rangs triés + motif de couleurs) ──
 function canonKey(board){
@@ -584,7 +606,7 @@ function canonKey(board){
 }
 const IDX={}; for(const r of B)IDX[canonKey(r[0])]=r;
 
-function passes(r){return F.co.has(r[4])&&F.pa.has(r[5])&&F.cx.has(r[6])&&F.hi.has(r[3])&&F.mid.has(r[12])&&F.low.has(r[13])&&F.fam.has(FAM[r[0]])}
+function passes(r){return F.co.has(r[4])&&F.pa.has(r[5])&&F.cx.has(r[6])&&F.hi.has(r[3])&&F.mid.has(r[12])&&F.low.has(r[13])&&F.fam.has(FAM[r[0]])&&(r[eqbArr]||EQZ)[eqbPos]>=eqbMin}
 function filtered(){return B.filter(passes)}
 const mi=()=>metric==="cbet"?1:2;
 
@@ -764,6 +786,10 @@ function isolateOrToggle(cur,keys,v){
 function resetFilters(){
   F.co=new Set(AX.co.keys);F.pa=new Set(AX.pa.keys);F.cx=new Set(AX.cx.keys);
   F.hi=new Set(RANKS);F.mid=new Set(RANKS);F.low=new Set(RANKS);F.fam=new Set([1,2,3,4,5,6,7]);
+  eqbArr=10;eqbPos=0;eqbMin=0;                                          // filtre EQB remis à zéro (inactif)
+  const em=document.getElementById("eqbmetric");if(em)em.value="ips";
+  const es=document.getElementById("eqbmin");if(es)es.value=0;
+  const ev=document.getElementById("eqbval");if(ev)ev.textContent="0 %";
   const sf=document.getElementById("sfam");if(sf)sf.value="0";
   const qm=document.getElementById("qmsg");if(qm)qm.textContent="";
   hit=null;syncChips();apply();
@@ -803,6 +829,8 @@ function doSearch(){
   // ouvre les filtres pour que le board soit visible, puis le surligne
   F.co=new Set([r[4]]);F.pa=new Set([r[5]]);F.cx=new Set([r[6]]);F.hi=new Set([r[3]]);
   F.mid=new Set(RANKS);F.low=new Set(RANKS);   // 2ᵉ/3ᵉ carte pleins → ne cache pas le board cherché
+  eqbMin=0;const es=document.getElementById("eqbmin");if(es)es.value=0;
+  const ev=document.getElementById("eqbval");if(ev)ev.textContent="0 %";   // seuil EQB neutralisé → ne cache pas le board
   hit=r[0];syncChips();apply();
   msg.innerHTML=`<b style="color:var(--accent-ink)">${r[0]}</b> → c-bet <b>${r[1].toFixed(0)}%</b> · gros <b>${r[9].toFixed(0)}%</b> · donk ${r[2].toFixed(0)}% · <span style="opacity:.8">${AX.co.lab[r[4]]}·${AX.pa.lab[r[5]]}·${AX.cx.lab[r[6]]}</span>`;
 }
@@ -815,6 +843,10 @@ function seg(id,cb){document.getElementById(id).addEventListener("click",e=>{
   [...e.currentTarget.children].forEach(x=>x.setAttribute("aria-pressed",x===b));cb(b.dataset.v);});}
 seg("metric",v=>{metric=v;renderHeatmap();});
 seg("axis",v=>{axis=v;renderHeatmap();});
+document.getElementById("eqbmetric").addEventListener("change",e=>{
+  const m=EQBM[e.target.value];eqbArr=m[0];eqbPos=m[1];hit=null;apply();});
+document.getElementById("eqbmin").addEventListener("input",e=>{
+  eqbMin=+e.target.value;document.getElementById("eqbval").textContent=eqbMin+" %";hit=null;apply();});
 document.querySelectorAll(".listhead .sort b").forEach(b=>b.addEventListener("click",()=>{sortKey=b.dataset.s;renderList();}));
 
 document.getElementById("foot").innerHTML=
