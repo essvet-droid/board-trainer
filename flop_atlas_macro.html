@@ -255,6 +255,19 @@ footer{color:var(--muted);font-size:11.5px;margin-top:26px;border-top:1px solid 
 .dgto{font:600 13px var(--mono);color:var(--ink2);margin-bottom:12px}
 .dsignote{margin:-4px 0 12px;padding:9px 12px;border-radius:9px;background:rgba(185,126,34,.10);border:1px solid var(--line2);font:600 12.5px/1.5 var(--font);color:var(--accent-ink)}
 .dsignote b{color:var(--ink)}
+/* tableau « détail par combo (signature couleur) » de la correction « Ta main » */
+.sigwrap{margin:2px 0 12px}
+.sighdr{font:700 11px var(--font);color:var(--muted);letter-spacing:.05em;text-transform:uppercase;margin:0 0 6px}
+.sigtab{width:100%;border-collapse:collapse;font:600 12.5px var(--font)}
+.sigtab th{font:700 10.5px var(--font);color:var(--muted);text-transform:uppercase;letter-spacing:.03em;text-align:right;padding:3px 6px;border-bottom:1px solid var(--line)}
+.sigtab th:first-child{text-align:left}
+.sigtab td{padding:5px 6px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+.sigtab td:first-child{text-align:left;font:600 13px var(--mono);color:var(--ink)}
+.sigtab tr.sigd td{background:rgba(76,122,63,.10)}
+.sigtab tr.sigd td:first-child{box-shadow:2px 0 0 var(--good) inset}
+.sign{color:var(--muted);font-size:11px}
+.eqpill{display:inline-block;min-width:34px;text-align:center;padding:1px 5px;border-radius:5px;color:#111;font-weight:800;font-size:11.5px}
+.sigapx{color:var(--muted);font-weight:700;cursor:help}
 .dfam{margin-bottom:10px}
 .dfamtag{display:inline-block;color:#fff;font:700 12.5px var(--font);padding:4px 11px;border-radius:20px}
 .ddist{margin-top:14px}
@@ -1185,6 +1198,43 @@ function studySimilar(board){
   document.getElementById("boardResults").hidden=false;document.getElementById("mainResults").hidden=true;
   syncChips();apply();window.scrollTo(0,0);
 }
+// rendu texte d'une main de N cartes (cardHtml est câblé pour 3 cartes ; ici longueur libre)
+function comboHtml(c){let o="";for(let i=0;i+2<=c.length;i+=2){const[g,cl]=SUIT[c[i+1]];o+=`${c[i]}<span class="${cl}">${g}</span> `;}return o;}
+// tous les combos LÉGAUX d'une classe sur un board (hors combos board-bloqués)
+function classCombos(b,cls){
+  const used=new Set([b.slice(0,2),b.slice(2,4),b.slice(4,6)]),out=[];
+  if(cls.length===2){const r=cls[0],av=_SU.filter(s=>!used.has(r+s));
+    for(let i=0;i<av.length;i++)for(let j=i+1;j<av.length;j++)out.push(r+av[i]+r+av[j]);}
+  else{const r1=cls[0],r2=cls[1];
+    if(cls[2]==="s"){for(const s of _SU)if(!used.has(r1+s)&&!used.has(r2+s))out.push(r1+s+r2+s);}
+    else for(const a of _SU)for(const c of _SU)if(a!==c&&!used.has(r1+a)&&!used.has(r2+c))out.push(r1+a+r2+c);}
+  return out;
+}
+// « Détail par combo (signature couleur) » : reconstruit sizing+équité par signature depuis
+// la moyenne de classe + les overrides sparses (MICRO_IP_SIG sizing, MICRO_IP_EQ équité). 0 re-solve.
+function sigTable(b,cls,dealt){
+  const mean=(MICRO_IP[b]||{})[cls];if(!mean)return"";
+  const dealtSig=dealt?sigKey(dealt,b):null,groups={};
+  for(const co of classCombos(b,cls)){const k=sigKey(co,b);
+    if(!groups[k]){
+      const sz=((MICRO_IP_SIG[b]||{})[cls]||{})[k],eqo=((MICRO_IP_EQ[b]||{})[cls]||{})[k];
+      groups[k]={combos:[],petit:sz?sz[0]:mean[1],gros:sz?sz[1]:mean[2],
+                 eq:(typeof eqo==="number")?eqo:(mean.length>3?mean[3]:null),exactEq:(typeof eqo==="number")};}
+    groups[k].combos.push(co);}
+  const rows=Object.keys(groups).map(k=>({k,...groups[k],isD:k===dealtSig}));
+  rows.sort((x,y)=>(y.eq==null?-1:y.eq)-(x.eq==null?-1:x.eq));   // équité ↓ (fort en haut)
+  let h=`<div class="sigwrap"><div class="sighdr">Détail par combo (signature couleur) — ★ ta main</div>`
+    +`<table class="sigtab"><thead><tr><th>Combos</th><th>Check</th><th>1/3</th><th>2/3</th><th>Équité</th></tr></thead><tbody>`;
+  for(const r of rows){
+    const chk=Math.max(0,100-r.petit-r.gros);
+    const rep=(r.isD&&dealt)?dealt:r.combos[0],cnt=r.combos.length>1?` <span class="sign">×${r.combos.length}</span>`:"";
+    const eqm=r.eq==null?"":(r.exactEq?"":`<span class="sigapx" title="≈ moyenne de classe (signature dans le même bucket)">≈</span>`);
+    const bk=r.eq==null?["","transparent"]:eqBucket(r.eq),eqc=r.eq==null?"–":`${eqm}${r.eq}%`;
+    h+=`<tr class="${r.isD?"sigd":""}"><td>${r.isD?"★ ":""}${comboHtml(rep)}${cnt}</td>`
+      +`<td>${chk.toFixed(0)}%</td><td>${r.petit.toFixed(0)}%</td><td>${r.gros.toFixed(0)}%</td>`
+      +`<td><span class="eqpill" style="background:${bk[1]}">${eqc}</span></td></tr>`;}
+  return h+`</tbody></table></div>`;
+}
 function reveal(){
   const g=gtoAns(),fam=FAM[dBoard],M=FAM_META[fam],r=BROW[dBoard];
   const V={ok:["✓","var(--good)"],near:["≈","var(--accent-ink)"],bad:["✗","var(--bad)"]};
@@ -1207,11 +1257,9 @@ function reveal(){
   }
   const brk=`Check ${g.raw.check.toFixed(0)}% · 1/3 ${g.raw.small.toFixed(0)}% · 2/3 ${g.raw.big.toFixed(0)}%`;
   const famTag=`<div class="dfam"><span class="dfamtag" style="background:${M.color}">${M.emoji} ${M.name}</span><span class="dahmltag" title="${AHML_TITLE}">${ahml(dBoard)}</span></div>`;
-  const diverge=g.specific&&g.clsAvg&&(Math.abs(g.raw.small-g.clsAvg.small)>=10||Math.abs(g.raw.big-g.clsAvg.big)>=10);
-  const sigNote=diverge?`<div class="dsignote">⚠ Ce combo précis diverge de sa classe (interaction couleur) — moyenne <b>${dCls}</b> : Check ${g.clsAvg.check.toFixed(0)}% · 1/3 ${g.clsAvg.small.toFixed(0)}% · 2/3 ${g.clsAvg.big.toFixed(0)}%.</div>`:"";
   let ctx;
   if(dMode==="main"){
-    ctx=`<div class="dgto">Ta main <b>${dCls}</b> : ${brk}</div>${sigNote}${famTag}
+    ctx=`<div class="dgto">Ta main <b>${dCls}</b> : ${brk}</div>${sigTable(dBoard,dCls,dCombo)}${famTag}
       <div class="mtoggle" id="dcolor" role="group" aria-label="Coloration de la grille" style="margin:8px 0 6px">
         <button data-v="size" aria-pressed="${matColor==='size'}">Sizing</button>
         <button data-v="eq" aria-pressed="${matColor==='eq'}">Équité</button></div>
