@@ -268,6 +268,9 @@ footer{color:var(--muted);font-size:11.5px;margin-top:26px;border-top:1px solid 
 .sign{color:var(--muted);font-size:11px}
 .eqpill{display:inline-block;min-width:34px;text-align:center;padding:1px 5px;border-radius:5px;color:#111;font-weight:800;font-size:11.5px}
 .sigapx{color:var(--muted);font-weight:700;cursor:help}
+.msigwrap{margin:12px 0 4px}
+.msighint{font:600 12px var(--font);color:var(--muted);padding:6px 0}
+#mgrid .mcell:not(.out){cursor:pointer}
 .dfam{margin-bottom:10px}
 .dfamtag{display:inline-block;color:#fff;font:700 12.5px var(--font);padding:4px 11px;border-radius:20px}
 .ddist{margin-top:14px}
@@ -546,7 +549,8 @@ footer{color:var(--muted);font-size:11.5px;margin-top:26px;border-top:1px solid 
       <span class="eqrampbar"></span>
       <span class="eqramplab"><b>0 %</b> faible</span><span class="eqramplab" style="margin-left:auto">forte <b>100 %</b></span>
     </div>
-    <div class="mhint">Chaque case = une main, remplie de bas (check) en haut (gros) selon la fréquence GTO+, combo-pondérée. Grisé = hors range.</div>
+    <div class="mhint">Chaque case = une main, remplie de bas (check) en haut (gros) selon la fréquence GTO+, combo-pondérée. Grisé = hors range. <b>Clique une case</b> pour son détail par combo.</div>
+    <div id="msig" class="msigwrap"></div>
     <div class="mdistwrap" style="margin-top:16px;border-top:1px solid var(--line);padding-top:12px">
       <div class="disthead" style="margin-bottom:4px">
         <p class="h2" style="margin:0;font-size:13px">Distribution d'équité — ce board</p>
@@ -883,14 +887,14 @@ function renderGrid(board,node,hl){
   let h="";
   for(let i=0;i<13;i++)for(let j=0;j<13;j++){
     const cl=classAt(i,j),d=M[cl],mk=cl===hl?" hl":"";
-    if(!d){h+=`<div class="mcell out${mk}">${cl}</div>`;continue;}
+    if(!d){h+=`<div class="mcell out${mk}" data-cls="${cl}">${cl}</div>`;continue;}
     const sm=d[1],bg=d[2],chk=Math.max(0,100-sm-bg),s2=chk+sm;
     const eq=d.length>3&&d[3]!=null?d[3]:null;   // équité par board×classe (foldée s95)
     const bgc=eqMode?eqColor(eq):`linear-gradient(to top,var(--cch) 0 ${chk}%,var(--csm) ${chk}% ${s2}%,var(--cbg) ${s2}% 100%)`;
     const eqt=eq!=null?` · éq ${eq}%`:"";
     const title=eqMode?`${cl} — équité ${eq!=null?eq+"%":"n/d"} · gros ${bg}% · petit ${sm}% · check ${chk}%`
                       :`${cl} — gros ${bg}% · petit ${sm}% · check ${chk}%${eqt}`;
-    h+=`<div class="mcell${mk}" style="background:${bgc}" title="${title}"><span>${cl}</span></div>`;
+    h+=`<div class="mcell${mk}" data-cls="${cl}" style="background:${bgc}" title="${title}"><span>${cl}</span></div>`;
   }
   return h;
 }
@@ -939,8 +943,15 @@ function openMicro(board,hl){
     document.getElementById("meqb").innerHTML=eqbBars(eIP,eOOP);
     document.getElementById("meqbhint").innerHTML=
       `Le 2ᵉ axe : plus la BB a de mains de <b>call</b> (Good ${eOOP[1]}%), plus l'IP <b>agrandit</b> ; plus elle a de mains de <b>raise</b> (Strong ${eOOP[0]}%), plus il <b>rétrécit</b> (Acevedo Ch.12).`;}
-  drawMicro();
+  drawMicro();renderMicroSig();
   document.getElementById("mask").classList.add("on");
+}
+// panneau « détail par combo » de l'overlay (1 board × 1 main sélectionnée) — signatures nettes (un seul board)
+function renderMicroSig(){
+  const el=document.getElementById("msig");if(!el)return;
+  if(!microHl){el.innerHTML=`<div class="msighint">Clique une case pour voir son détail par combo (couleurs).</div>`;return;}
+  if(microNode!=="ip"){el.innerHTML=`<div class="msighint">Détail par combo dispo côté <b>C-bet IP</b> (signatures embarquées IP).</div>`;return;}
+  el.innerHTML=sigTable(curBoard,microHl,null);
 }
 function closeMicro(){document.getElementById("mask").classList.remove("on");}
 document.getElementById("mclose").addEventListener("click",closeMicro);
@@ -948,7 +959,10 @@ document.getElementById("mask").addEventListener("click",e=>{if(e.target.id==="m
 document.addEventListener("keydown",e=>{if(e.key==="Escape")closeMicro();});
 document.getElementById("mnode").addEventListener("click",e=>{
   const b=e.target.closest("button");if(!b)return;
-  microNode=b.dataset.v;[...e.currentTarget.children].forEach(x=>x.setAttribute("aria-pressed",x===b));drawMicro();});
+  microNode=b.dataset.v;[...e.currentTarget.children].forEach(x=>x.setAttribute("aria-pressed",x===b));drawMicro();renderMicroSig();});
+document.getElementById("mgrid").addEventListener("click",e=>{   // sélection d'une main → détail par combo
+  const c=e.target.closest(".mcell");if(!c||c.classList.contains("out")||!c.dataset.cls)return;
+  microHl=(microHl===c.dataset.cls)?null:c.dataset.cls;drawMicro();renderMicroSig();});
 document.getElementById("mcolor").addEventListener("click",e=>{
   const b=e.target.closest("button");if(!b)return;setMatColor(b.dataset.v);});
 document.getElementById("dcorr").addEventListener("click",e=>{   // toggle Sizing/Équité de la grille de correction (délégué, survit aux re-rendus)
@@ -1223,7 +1237,7 @@ function sigTable(b,cls,dealt){
     groups[k].combos.push(co);}
   const rows=Object.keys(groups).map(k=>({k,...groups[k],isD:k===dealtSig}));
   rows.sort((x,y)=>(y.eq==null?-1:y.eq)-(x.eq==null?-1:x.eq));   // équité ↓ (fort en haut)
-  let h=`<div class="sigwrap"><div class="sighdr">Détail par combo (signature couleur) — ★ ta main</div>`
+  let h=`<div class="sigwrap"><div class="sighdr">Détail par combo (signature couleur)${dealt?" — ★ ta main":""}</div>`
     +`<table class="sigtab"><thead><tr><th>Combos</th><th>Check</th><th>1/3</th><th>2/3</th><th>Équité</th></tr></thead><tbody>`;
   for(const r of rows){
     const chk=Math.max(0,100-r.petit-r.gros);
