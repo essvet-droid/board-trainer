@@ -893,8 +893,7 @@ function setMatColor(v){
   ["mcolor","hmcolor","dcolor"].forEach(id=>{const g=document.getElementById(id);
     if(g)[...g.children].forEach(b=>b.setAttribute("aria-pressed",b.dataset.v===v));});
   if(document.getElementById("mask").classList.contains("on"))drawMicro();
-  const sv=document.getElementById("studyview");
-  if(sv&&!sv.hidden&&studyMode==="main")renderHandGrid();
+  if(!document.getElementById("mainResults").hidden)renderHandGrid();   // vue « Par main » (studyMode "hand") si visible
   renderDcorrGrid();
 }
 function renderDcorrGrid(){
@@ -1064,7 +1063,6 @@ function mk2(keys){const o={};keys.forEach(g=>{o[g]={};keys.forEach(a=>o[g][a]=0
 // Deux matrices SÉPARÉES par mode (main/board) : la décision top (check/bet) et le sizing (1/3·2/3).
 const CM_TOP={main:mk2(["check","bet"]),board:mk2(["check","bet"])};
 const CM_SIZE={main:mk2(["small","big"]),board:mk2(["small","big"])};
-const CM_ACT=mk2(["check","small","big"]);   // échauffement board : choix unique Check/1/3/2/3 (matrice 3×3)
 function showPhase3(){                                     // choix unique à 3 boutons — main ET board (fin du flux 2 temps)
   document.getElementById("dsteplab").textContent=dMode==="main"?"Ta main : check, 1/3 ou 2/3 ?":"La range : check, 1/3 ou 2/3 ?";
   document.getElementById("dsize").innerHTML=`<button data-v="check">Check</button><button data-v="small">Bet 1/3</button><button data-v="big">Bet 2/3</button>`;
@@ -1193,26 +1191,16 @@ function reveal(){
   const line=(q,txt)=>`<div style="color:${V[q][1]}">${V[q][0]} ${txt}</div>`;
   const szLab={small:"1/3",big:"2/3"},topLab={check:"Checker",bet:"Miser"};
   let verdict;
-  if(dMode==="board"){
-    // Échauffement board : choix unique Check/1/3/2/3, noté à l'action la plus fréquente (argmax).
-    const acts=["check","small","big"];
-    const actDom=acts.reduce((m,a)=>g.raw[a]>g.raw[m]?a:m,"check");
-    const pick=dPick.act;
-    const q=pick===actDom?"ok":(g.raw[pick]>=g.raw[actDom]-10?"near":"bad");   // bande ≈ si <10 pts de l'argmax
-    CM_ACT[actDom][pick]++;
-    lockBtns("dsize",pick,actDom);
-    const aLab={check:"Check",small:"Bet 1/3",big:"Bet 2/3"};
-    verdict=line(q,`${aLab[pick]} · GTO Check ${g.raw.check.toFixed(0)}% / 1/3 ${g.raw.small.toFixed(0)}% / 2/3 ${g.raw.big.toFixed(0)}%`);
-  }else{
+  {
+    // Notation UNIFIÉE (main ET board) : décision 1 = miser (33+66) vs checker, décision 2 = la taille.
+    // Additionner les bets évite qu'un board où GTO mise 62 % (réparti 30/32) ressorte « check ».
     const bet=dPick.top==="bet";
-    // 1 seul clic, note en 2 lignes. Décision 1 : miser ou checker (le bouton l'encode : toute mise = bet).
-    // Comparée au bet-TOTAL (33+66) — c'est le « au fond, check ou bet ? ». Bande « ≈ » si <10 pts.
-    const qTop=dPick.top===g.topDom?"ok":(g.top[dPick.top]>=g.top[g.topDom]-10?"near":"bad");
+    const qTop=dPick.top===g.topDom?"ok":(g.top[dPick.top]>=g.top[g.topDom]-10?"near":"bad");   // bande « ≈ » si <10 pts
     // Décision 2 : la taille (seulement si tu as misé), notée indépendamment de qTop → pas de faux ✗.
     const qSize=(bet&&dPick.size)?(dPick.size===g.sizeDom?"ok":(g.raw[dPick.size]>=g.raw[g.sizeDom]-10?"near":"bad")):null;
     CM_TOP[dMode][g.topDom][dPick.top]++;
     if(bet&&dPick.size)CM_SIZE[dMode][g.sizeDom][dPick.size]++;
-    // bouton idéal = ce que GTO fait le plus (sa taille préférée s'il mise, sinon check) ; cohérent avec la note en 2 lignes
+    // bouton idéal = ce que GTO fait le plus (sa taille préférée s'il mise, sinon check)
     lockBtns("dsize",dPick.act,g.topDom==="bet"?g.sizeDom:"check");
     verdict=line(qTop,`${topLab[dPick.top]} · GTO bet ${g.top.bet.toFixed(0)}% / check ${g.top.check.toFixed(0)}%`);
     if(qSize)verdict+=line(qSize,`Bet ${szLab[dPick.size]} · GTO ${szLab[g.sizeDom]} (1/3 ${g.raw.small.toFixed(0)}% / 2/3 ${g.raw.big.toFixed(0)}%)`);
@@ -1259,11 +1247,8 @@ function cmTable(cm,keys,lab,title,first,unit){
   return h;
 }
 function renderConfusion(){
-  if(dMode==="board"){   // échauffement : une seule matrice 3×3 Check/1/3/2/3
-    document.getElementById("ddash").innerHTML=cmTable(CM_ACT,["check","small","big"],{check:"Check",small:"1/3",big:"2/3"},"Check · 1/3 · 2/3",true,"boards");
-    return;
-  }
-  let h=cmTable(CM_TOP[dMode],["check","bet"],{check:"Check",bet:"Bet"},"Miser ou checker",true,"mains");
+  const unit=dMode==="board"?"boards":"mains";   // même 2 matrices (Miser/checker + Taille) pour les deux modes
+  let h=cmTable(CM_TOP[dMode],["check","bet"],{check:"Check",bet:"Bet"},"Miser ou checker",true,unit);
   h+=cmTable(CM_SIZE[dMode],["small","big"],{small:"1/3",big:"2/3"},"Taille (quand tu mises)",false,"mises");
   document.getElementById("ddash").innerHTML=h;
 }
@@ -1273,7 +1258,7 @@ document.getElementById("dsize").addEventListener("click",e=>{
   dPhase=0;
   [...e.currentTarget.children].forEach(x=>x.classList.toggle("sel",x===b));
   dPick.act=v;                                                      // valeur brute du bouton (check/small/big)
-  if(dMode==="main"){dPick.top=(v==="check")?"check":"bet";dPick.size=(v==="check")?null:v;}  // le bouton encode déjà miser/checker
+  dPick.top=(v==="check")?"check":"bet";dPick.size=(v==="check")?null:v;  // miser (1/3+2/3) vs checker + taille — main ET board
   reveal();
 });
 document.getElementById("dmode").addEventListener("click",e=>{
