@@ -830,11 +830,12 @@ function renderHandGrid(){
 // mini-histogramme d'équité de la main à travers les boards (pondéré par occurrence)
 function histSVG(H){const t=H.reduce((s,x)=>s+x,0);if(!t)return"";
   const W=520,Ht=118,L=28,R=8,T=8,Bt=18,iw=W-L-R,ih=Ht-T-Bt,bw=iw/NB,mx=Math.max(...H);
-  let bars="";for(let i=0;i<NB;i++){const hh=mx?H[i]/mx*ih:0;
-    bars+=`<rect x="${(L+i*bw+0.8).toFixed(1)}" y="${(T+ih-hh).toFixed(1)}" width="${(bw-1.6).toFixed(1)}" height="${hh.toFixed(1)}" fill="#d19a3a" rx="1"/>`;}
-  let ax="";for(const e of[0,25,50,75,100]){const x=L+e/100*iw;
+  // équité FORTE à gauche (cohérent avec la courbe de distribution et la règle EQB)
+  let bars="";for(let i=0;i<NB;i++){const hh=mx?H[i]/mx*ih:0,x=L+(NB-1-i)*bw;
+    bars+=`<rect x="${(x+0.8).toFixed(1)}" y="${(T+ih-hh).toFixed(1)}" width="${(bw-1.6).toFixed(1)}" height="${hh.toFixed(1)}" fill="#d19a3a" rx="1"/>`;}
+  let ax="";for(const e of[100,75,50,25,0]){const x=L+(100-e)/100*iw;
     ax+=`<line x1="${x}" y1="${T}" x2="${x}" y2="${T+ih}" stroke="var(--line2)" stroke-width="1"/><text x="${x}" y="${Ht-5}" text-anchor="middle" class="axt">${e}</text>`;}
-  return `<svg viewBox="0 0 ${W} ${Ht}" role="img" aria-label="Histogramme d'équité de la main à travers les boards"><style>.axt{font:600 10px var(--mono);fill:var(--muted)}</style>${ax}${bars}</svg>`;
+  return `<svg viewBox="0 0 ${W} ${Ht}" role="img" aria-label="Histogramme d'équité de la main (forte à gauche)"><style>.axt{font:600 10px var(--mono);fill:var(--muted)}</style>${ax}${bars}</svg>`;
 }
 function renderHandDetail(){
   const el=document.getElementById("hdetail");
@@ -843,13 +844,14 @@ function renderHandDetail(){
   if(!a){el.innerHTML=`<div class="hdhead"><b>${hCls}</b> — injouable sur la sélection.</div>`;return;}
   const nodeLab=hnode==="ip"?"C-bet IP (BTN)":"Donk OOP (BB)";
   let h=`<div class="hdhead"><b>${hCls}</b> · ${nodeLab} · pondéré par occurrence sur ${a.nB} board${a.nB>1?"s":""}</div>`;
+  // gros à GAUCHE (cohérent avec la légende et l'axe « fort à gauche »)
   const seg=(w,c)=>`<span style="width:${w}%;background:${c}">${w>=9?Math.round(w):""}</span>`;
-  h+=`<div class="hdsize"><div class="eqbar">${seg(a.check,"var(--cch)")}${seg(a.petit,"var(--csm)")}${seg(a.gros,"var(--cbg)")}</div>`
-    +`<div class="hint">check ${a.check.toFixed(0)}% · petit ${a.petit.toFixed(0)}% · gros ${a.gros.toFixed(0)}%</div></div>`;
+  h+=`<div class="hdsize"><div class="eqbar">${seg(a.gros,"var(--cbg)")}${seg(a.petit,"var(--csm)")}${seg(a.check,"var(--cch)")}</div>`
+    +`<div class="hint">gros ${a.gros.toFixed(0)}% · petit ${a.petit.toFixed(0)}% · check ${a.check.toFixed(0)}%</div></div>`;
   if(hnode==="ip"&&a.eqMean!=null){
     h+=`<div class="hdeq"><span class="k">Équité</span> moyenne <b>${a.eqMean.toFixed(0)}%</b> · min <b>${a.eqMin.toFixed(0)}%</b> · max <b>${a.eqMax.toFixed(0)}%</b></div>`
       +`<div class="hdhist">${histSVG(a.hist)}</div>`
-      +`<div class="hint">Équité de ${hCls} vs range de check BB, à travers les boards (X = équité %, hauteur = fréquence pondérée par occurrence).</div>`;
+      +`<div class="hint">Équité de ${hCls} vs range de check BB, à travers les boards (fort à gauche · hauteur = fréquence pondérée par occurrence).</div>`;
   }else if(hnode==="oop"){
     h+=`<div class="hint" style="margin-top:8px">Équité embarquée côté IP uniquement — bascule sur « C-bet IP » pour la voir.</div>`;
   }
