@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Synthèse flop 25 ↔ 50bb · Phi Atlas</title>
+<style>
+:root{
+  --bg:#0a0e17; --surface:#111827; --surface2:#1a2235; --border:#2a3a55;
+  --text:#e0e6f0; --dim:#6b7fa3; --accent:#00e5ff; --gold:#ffd740; --green:#00e676;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:radial-gradient(1200px 600px at 50% -10%, rgba(0,229,255,.06), transparent 60%), var(--bg);
+  color:var(--text); font-family:'Rajdhani','Segoe UI',sans-serif; line-height:1.55;
+  padding:28px 16px 70px; -webkit-tap-highlight-color:transparent;}
+.wrap{max-width:820px; margin:0 auto}
+.back{display:inline-block; font-size:.85rem; color:var(--dim); text-decoration:none; margin-bottom:18px}
+.back:hover{color:var(--accent)}
+h1{font-size:1.7rem; color:var(--gold); letter-spacing:.5px; margin:.2em 0 .5em; line-height:1.2}
+h2{font-size:1.28rem; color:var(--accent); margin:1.5em 0 .5em; padding-top:.4em; border-top:1px solid var(--border)}
+h3{font-size:1.06rem; color:var(--text); margin:1.1em 0 .4em}
+p{margin:.6em 0; color:var(--text)}
+em{color:var(--dim); font-style:normal}
+strong{color:#fff; font-weight:700}
+code{font-family:'Share Tech Mono',monospace; font-size:.85em; background:var(--surface2);
+  border:1px solid var(--border); border-radius:4px; padding:1px 5px; color:var(--green)}
+ul,ol{margin:.5em 0 .8em 1.3em} li{margin:.28em 0}
+hr{border:0; border-top:1px solid var(--border); margin:1.6em 0}
+blockquote{background:var(--surface); border-left:4px solid var(--gold); border-radius:0 10px 10px 0;
+  padding:12px 16px; margin:1em 0; color:var(--text)}
+.tw{overflow-x:auto; margin:1em 0}
+table{border-collapse:collapse; width:100%; font-size:.92rem}
+th,td{border:1px solid var(--border); padding:6px 10px; text-align:left; white-space:nowrap}
+th{background:var(--surface2); color:var(--accent); font-weight:700}
+tr:nth-child(even) td{background:rgba(255,255,255,.02)}
+td:first-child,th:first-child{white-space:normal}
+.foot{margin-top:36px; font-family:'Share Tech Mono',monospace; font-size:.65rem; color:var(--dim); letter-spacing:1px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<a class="back" href="flop_atlas.html">← Atlas du c-bet flop</a>
+<h1>Synthèse flop 25bb ↔ 50bb — comment le SIZING du c-bet change avec la profondeur</h1>
+<blockquote><strong>Objet.</strong> Mettre en évidence, chiffres à l&#x27;appui, ce qui change dans le <strong>sizing</strong> du c-bet quand on passe de 25bb à 50bb, à <strong>ranges identiques</strong> (profondeur PURE : seul le SPR change, ~4,5 → ~10). Sert aussi d&#x27;<strong>introduction</strong> à la page d&#x27;étude/drill 50bb (pendant du 25bb). <strong>Cadre.</strong> BTN vs BB, SRP, sizings 33 %/66 %. 1755 flops canoniques, parité complète 25/50bb. Métriques combo-pondérées, moyenne non pondérée par board, filtre de collision (BUG #55). Source chiffrée : <code>temp/synth_25_50_lenses.py</code> + les 7 comparaisons <code>temp/compare_&lt;Fx&gt;_25_50.md</code>.</blockquote>
+<hr>
+<h2>1. La loi phare — la profondeur INVERSE l&#x27;ordre du sizing</h2>
+<p>À <strong>25bb</strong>, le SPR est bas : tout est comprimé. Le gros suit le <strong>nut advantage</strong> — les boards <strong>hauts</strong> (A/K/broadway) misent le plus gros, les <strong>bas</strong> le moins. La part de gros tient dans une bande étroite (49-83 %).</p>
+<p>À <strong>50bb</strong>, le SPR grimpe : le sizing se <strong>déploie en éventail</strong> et le gros suit désormais le <strong>dynamisme</strong> — les boards <strong>bas / connectés / monotone</strong> montent à <strong>99 %</strong>, dépassant les hauts (A-high plafonne à 81 %). <strong>L&#x27;ordre s&#x27;inverse.</strong></p>
+<div class="tw"><table><thead><tr><th></th><th>25bb</th><th>50bb</th></tr></thead><tbody><tr><td><strong>Fréquence</strong> de c-bet</td><td>66,2 %</td><td>56,0 % (<strong>−10,2 pts</strong>)</td></tr><tr><td><strong>Part de gros</strong> parmi les mises</td><td>63,6 %</td><td>83,0 % (<strong>+19,4 pts</strong>)</td></tr></tbody></table></div>
+<p>Deux mouvements simultanés : <strong>on mise moins souvent, mais bien plus gros.</strong> Le petit sizing du 25bb était en grande partie un <strong>artefact de SPR bas</strong> (mise de commit / merge) ; en profondeur il cède la place au <strong>gros polarisé</strong> (charger les tirages, construire géométriquement pour les tapis).</p>
+<hr>
+<h2>2. Lentille FAMILLES (F1-F7) — la colonne vertébrale</h2>
+<p><em>(Le classement texture qu&#x27;utilise le drill. IP c-bet.)</em></p>
+<div class="tw"><table><thead><tr><th>famille</th><th>fréq 25→50 (Δ)</th><th><strong>gros 25→50 (Δ)</strong></th></tr></thead><tbody><tr><td><strong>F1 pairé</strong></td><td>73,8 → 69,2 (−4,5)</td><td>49,8 → 46,3 (<strong>−3,5</strong>)</td></tr><tr><td><strong>F2 A-high</strong></td><td>59,0 → 47,3 (−11,7)</td><td>74,7 → 81,3 (+6,6)</td></tr><tr><td><strong>F3 K/Q dry</strong></td><td>64,2 → 53,3 (−10,9)</td><td>69,7 → 87,9 (+18,2)</td></tr><tr><td><strong>F4 broadway conn</strong></td><td>66,6 → 55,3 (−11,4)</td><td>83,2 → 95,7 (+12,5)</td></tr><tr><td><strong>F5 mid</strong></td><td>70,9 → 59,0 (−11,9)</td><td>61,7 → 91,5 (+29,8)</td></tr><tr><td><strong>F6 low</strong></td><td>75,0 → 64,3 (−10,7)</td><td>55,8 → 99,1 (+43,2)</td></tr><tr><td><strong>F7 monotone</strong></td><td>57,7 → 45,0 (−12,6)</td><td>62,2 → 98,6 (+36,4)</td></tr></tbody></table></div>
+<p><strong>Lecture.</strong> Le gros MONTE partout <strong>sauf F1 pairé</strong> (qui reste plat), et il monte <strong>d&#x27;autant plus que le board est bas / dynamique</strong> : gradient net F4 +12 → F5 +30 → F6 +43. Attention : ce n&#x27;est PAS « les familles hautes érodent » — au niveau famille F2/F3 <strong>montent aussi</strong> (+7, +18). L&#x27;érosion qu&#x27;on observe parfois est locale à des sous-ensembles (le <em>wheel</em> de F2, le connecté rainbow de F3).</p>
+<p><strong>F1 pairé = l&#x27;exception sur les deux axes</strong> (fréquence ET taille plates) : le board « ennuyeux » que la profondeur ignore. Personne ne s&#x27;améliore → range-bet mixte petit/gros, à toute profondeur.</p>
+<hr>
+<h2>3. Lentille AHML — le driver « HAUTEUR des rangs »</h2>
+<p><em>(Code Acevedo p.528 : <strong>A</strong>=As · <strong>H</strong>=KQJT · <strong>M</strong>=9876 · <strong>L</strong>=5432. Isole la hauteur, indépendamment de la connectivité que mélange la taxonomie par famille.)</em></p>
+<h3>3a. Par carte haute — un gradient monotone et une inversion</h3>
+<div class="tw"><table><thead><tr><th>carte haute</th><th>gros 25</th><th>gros 50</th><th><strong>Δ gros</strong></th></tr></thead><tbody><tr><td><strong>A</strong> (As)</td><td>71,8 %</td><td>80,6 %</td><td><strong>+8,8</strong></td></tr><tr><td><strong>H</strong> (KQJT)</td><td>64,4 %</td><td>81,7 %</td><td><strong>+17,4</strong></td></tr><tr><td><strong>M</strong> (9876)</td><td>54,7 %</td><td>87,8 %</td><td><strong>+33,1</strong></td></tr><tr><td><strong>L</strong> (5432)</td><td>49,0 %</td><td>93,5 %</td><td><strong>+44,5</strong></td></tr></tbody></table></div>
+<p>C&#x27;est <strong>l&#x27;expression la plus pure de la loi phare</strong> : à 25bb l&#x27;ordre est <strong>A &gt; H &gt; M &gt; L</strong> (la hauteur = le gros, nut advantage) ; à 50bb il <strong>s&#x27;inverse</strong> (le bas rattrape et dépasse). Plus la carte haute est basse, plus le gros bondit en profondeur.</p>
+<h3>3b. Par nombre de cartes basses (L) — même signal, confirmé</h3>
+<div class="tw"><table><thead><tr><th>cartes L</th><th>Δ gros</th></tr></thead><tbody><tr><td>0</td><td>+13,6</td></tr><tr><td>1</td><td>+19,4</td></tr><tr><td>2</td><td>+25,6</td></tr><tr><td>3</td><td>+44,5</td></tr></tbody></table></div>
+<h3>3c. Présence d&#x27;un As — l&#x27;As FREINE le basculement</h3>
+<div class="tw"><table><thead><tr><th></th><th>Δ gros</th></tr></thead><tbody><tr><td><strong>avec As</strong></td><td>+8,8</td></tr><tr><td><strong>sans As</strong></td><td>+22,3</td></tr></tbody></table></div>
+<p>Un As au board = un verrou de nut advantage statique : même en profondeur, BTN garde un profil de <strong>petit range-bet</strong> (il n&#x27;a pas besoin de polariser, la BB ne peut pas grand-chose). L&#x27;As est le plus gros frein au basculement vers le gros.</p>
+<hr>
+<h2>4. Lentille COULEUR (abc) — le driver « FLUSH »</h2>
+<p><em>(rainbow / two-tone / mono. Orthogonal au rang : isole l&#x27;effet du tirage couleur.)</em></p>
+<div class="tw"><table><thead><tr><th>motif</th><th>gros 25</th><th>gros 50</th><th><strong>Δ gros</strong></th></tr></thead><tbody><tr><td><strong>rainbow</strong></td><td>59,0 %</td><td>70,3 %</td><td><strong>+11,2</strong></td></tr><tr><td><strong>two-tone</strong></td><td>66,1 %</td><td>84,3 %</td><td><strong>+18,3</strong></td></tr><tr><td><strong>monotone</strong></td><td>62,2 %</td><td>98,6 %</td><td><strong>+36,4</strong></td></tr></tbody></table></div>
+<p>Le flush <strong>pousse monotonement</strong> le gros en profondeur : rainbow &lt; two-tone &lt; mono, par paliers nets (~+14 pts à chaque cran à 50bb). Le tirage couleur soutient le gros polarisé — et le monotone, flush déjà « à moitié fait », le rend quasi obligatoire (98,6 %).</p>
+<hr>
+<h2>5. Le CROISEMENT — deux drivers indépendants qui s&#x27;empilent</h2>
+<p><strong>Δ part de gros (50−25), carte haute × couleur</strong> — la pièce maîtresse :</p>
+<div class="tw"><table><thead><tr><th>carte haute \ motif</th><th>rainbow</th><th>two-tone</th><th>monotone</th></tr></thead><tbody><tr><td><strong>A</strong> (As)</td><td><strong>−0,4</strong></td><td>+6,2</td><td>+30,3</td></tr><tr><td><strong>H</strong> (KQJT)</td><td>+4,2</td><td>+16,9</td><td>+38,5</td></tr><tr><td><strong>M</strong> (9876)</td><td>+31,2</td><td>+33,4</td><td>+35,3</td></tr><tr><td><strong>L</strong> (5432)</td><td>+50,7</td><td>+35,8</td><td>+65,7</td></tr></tbody></table></div>
+<p>Trois choses à retenir :</p>
+<ol><li><strong>A-high rainbow = l&#x27;ancre statique</strong> (−0,4) : le SEUL type de board où la profondeur ne change</li></ol>
+<p>   RIEN au sizing. Board le plus sec, le plus dominé — deep = comme à 25bb, petit range-bet.</p>
+<ol><li><strong>Deux chemins vers le gros, additifs</strong> : descendre en rang (colonne A→L) OU ajouter du flush</li></ol>
+<p>   (ligne rainbow→mono) pousse le gros. Ils <strong>s&#x27;empilent</strong> — au coin bas-droit (bas + mono) → <strong>+65</strong>.</p>
+<ol><li><strong>Substituables aux extrêmes</strong> : sur les boards <strong>hauts</strong>, c&#x27;est le <strong>flush</strong> qui déclenche le</li></ol>
+<p>   basculement (ligne A : −0,4 → +30 selon la couleur). Sur les boards <strong>bas</strong>, la <strong>hauteur</strong> suffit    (ligne M déjà +31 à +35 quelle que soit la couleur — le rang sature, le flush n&#x27;ajoute presque plus).</p>
+<blockquote><strong>Formulation compacte.</strong> Deep, le gros polarisé s&#x27;impose dès qu&#x27;il y a <strong>du jus</strong> — soit parce que le board est bas (ranges proches, BTN doit charger/protéger), soit parce qu&#x27;il y a un <strong>tirage couleur</strong>. Le seul board sans jus (A-high rainbow sec) reste au petit range-bet à toute profondeur.</blockquote>
+<hr>
+<h2>6. Nuances qualitatives (points d&#x27;étape par famille)</h2>
+<ul><li><strong>F5 mid</strong> : ce sont les <strong>T-high bas</strong> (T52, T54, T32) qui explosent — 54-60 % → <strong>94-100 %</strong> de</li></ul>
+<p>  gros deep (les plus dynamiques polarisent le plus dur).</p>
+<ul><li><strong>F4 broadway</strong> : monte moins (+12) car il partait déjà <strong>haut</strong> (83 % à 25bb, proche du plafond).</li><li><strong>F2 A-high</strong> : la famille monte (+7), mais son sous-ensemble <strong>wheel</strong> (A-5-x) est le seul qui</li></ul>
+<p>  érode — l&#x27;As bas donne à la BB des deux-paires/quintes qui contestent.</p>
+<ul><li><strong>F6 low</strong> : <strong>aucune</strong> érosion, même les boards « qui cèdent le moins » (987, 982) vont à <strong>100 %</strong>.</li><li><strong>F7 monotone</strong> : on c-bet <strong>moins souvent</strong> (45 %, la fréquence la plus basse — danger flush) mais</li></ul>
+<p>  <strong>gros à 98,6 %</strong> quand on mise. Et <strong>seule famille où le donk OOP SURVIT</strong> en profondeur :</p>
+<div class="tw"><table><thead><tr><th>motif</th><th>freq donk 25</th><th>freq donk 50</th></tr></thead><tbody><tr><td>rainbow</td><td>9,6 %</td><td>3,4 %</td></tr><tr><td>two-tone</td><td>12,4 %</td><td>4,1 %</td></tr><tr><td><strong>monotone</strong></td><td><strong>7,4 %</strong></td><td><strong>7,5 %</strong> (survit)</td></tr></tbody></table></div>
+<p>  Partout ailleurs le donk s&#x27;effondre deep ; sur monotone la BB garde des flushes/tirages qui veulent   donker → le donk tient.</p>
+<hr>
+<h2>7. Introduction pratique — lire le 50bb (vs le 25bb)</h2>
+<p><strong>Ce qui change quand tu joues plus profond (SPR ~10 au lieu de ~4,5) :</strong></p>
+<ol><li><strong>Tu c-bet MOINS souvent</strong> (~−10 pts). Tu checkes davantage tes mains moyennes/give-ups —</li></ol>
+<p>   surtout sur <strong>monotone</strong> (freq la plus basse). Le pairé est l&#x27;exception (reste haute freq).</p>
+<ol><li><strong>Quand tu mises, tu mises GROS</strong> — le petit range-bet du 25bb fond. Le gros polarisé sert à</li></ol>
+<p>   charger les tirages et construire pour les tapis.</p>
+<ol><li><strong>Le petit sizing ne survit que sans jus</strong> : boards <strong>hauts et secs</strong> (A/K-high rainbow), et</li></ol>
+<p>   <strong>pairés</strong>. C&#x27;est là que tu gardes le 1/3.</p>
+<ol><li><strong>Dès qu&#x27;il y a du jus, passe au gros</strong> : board <strong>bas</strong>, <strong>connecté</strong>, ou avec un **tirage</li></ol>
+<p>   couleur**. Plus le board est bas / plus il y a de flush, plus le gros est net (jusqu&#x27;à 99 %).</p>
+<ol><li><strong>Repère mental A→L</strong> : plus la carte haute descend, plus tu polarises gros en profondeur.</li></ol>
+<p>   L&#x27;<strong>As freine</strong> (garde un profil petit) ; le <strong>monotone force</strong> le gros.</p>
+<ol><li><strong>Sur monotone, deux modes</strong> : soit tu checkes (souvent), soit tu mises gros. Pas de demi-mesure.</li></ol>
+<p>   Et côté BB, le <strong>donk redevient jouable</strong> (le seul spot où il survit deep).</p>
+<hr>
+<p><em>Généré à partir de la campagne 50bb complète (1755 boards, config <code>srp_btnbb_50bb_33-66</code>). Scripts : <code>temp/synth_25_50_lenses.py</code> (lentilles) + <code>temp/compare_family_25_50.py --family Fx</code> (détail par famille). Cf. mémoire <code>project_flop_deep_50bb</code>.</em></p>
+<div class="foot">Phi Atlas · synthèse profondeur · régénérée depuis Docs/synthese_flop_25_50bb.md</div>
+</div>
+</body>
+</html>
