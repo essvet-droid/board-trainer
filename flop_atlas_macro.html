@@ -263,6 +263,7 @@ footer{color:var(--muted);font-size:11.5px;margin-top:26px;border-top:1px solid 
 .sigtab th:first-child{text-align:left}
 .sigtab td{padding:5px 6px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap;color:var(--ink)}
 .sigtab td:first-child{text-align:left;font:600 13px var(--mono);color:var(--ink)}
+.csvgpair{display:inline-flex;gap:2px;align-items:center;vertical-align:middle;margin-right:4px}
 .sigtab tr.sigd td{background:rgba(76,122,63,.10)}
 .sigtab tr.sigd td:first-child{box-shadow:2px 0 0 var(--good) inset}
 .sign{color:var(--muted);font-size:11px}
@@ -744,15 +745,18 @@ const SUIT={s:["♠","suit-b"],c:["♣","suit-b"],h:["♥","suit-r"],d:["♦","s
 function cardHtml(b){let o="";for(let i=0;i<6;i+=2){const[g,cl]=SUIT[b[i+1]];o+=`${b[i]}<span class="${cl}">${g}</span> `;}return o;}
 // cartes SVG (style partagé des autres outils : 4-color deck, rang blanc + symbole translucide)
 const CARD_COL={h:"#C0392B",d:"#1A6FA8",c:"#1E8449",s:"#1a1a1a"},CARD_SYM={h:"♥",d:"♦",c:"♣",s:"♠"};
-function cardSvg(code){
+function cardSvg(code,w){
+  const W=w||60,H=Math.round(W*1.4),rb=(W*7/60).toFixed(1);
   const rank=code[0]==="T"?"10":code[0],col=CARD_COL[code[1]]||"#333",sym=CARD_SYM[code[1]]||"?";
-  return `<svg width="60" height="84" viewBox="0 0 60 84" style="display:inline-block;vertical-align:middle;border-radius:7px" xmlns="http://www.w3.org/2000/svg">
+  return `<svg width="${W}" height="${H}" viewBox="0 0 60 84" style="display:inline-block;vertical-align:middle;border-radius:${rb}px" xmlns="http://www.w3.org/2000/svg">
     <rect width="60" height="84" rx="7" fill="${col}"/>
     <text x="30" y="26" text-anchor="middle" dominant-baseline="middle" style="font-family:var(--font);font-weight:800;font-size:32px;fill:#fff">${rank}</text>
     <text x="30" y="76" text-anchor="middle" style="font-family:Arial,sans-serif;font-weight:700;font-size:48px;fill:rgba(255,255,255,.30)">${sym}</text>
   </svg>`;
 }
 function flopSvg(b){let o="";for(let i=0;i+2<=b.length;i+=2)o+=cardSvg(b.slice(i,i+2));return o;}
+// mini-cartes SVG d'un combo (2 cartes) pour la colonne « Combos » du détail par signature
+function comboSvg(c,w){let o='<span class="csvgpair">';for(let i=0;i+2<=c.length;i+=2)o+=cardSvg(c.slice(i,i+2),w||24);return o+"</span>";}
 function tagTxt(r){return AX.cx.lab[r[6]];}
 function renderList(){
   const sub=filtered().slice();
@@ -1255,7 +1259,7 @@ function sigTable(b,cls,dealt,noHdr){
     const rep=(r.isD&&dealt)?dealt:r.combos[0],cnt=r.combos.length>1?` <span class="sign">×${r.combos.length}</span>`:"";
     const eqm=r.eq==null?"":(r.exactEq?"":`<span class="sigapx" title="≈ moyenne de classe (signature dans le même bucket)">≈</span>`);
     const bk=r.eq==null?["","transparent"]:eqBucket(r.eq),eqc=r.eq==null?"–":`${eqm}${r.eq}%`;
-    h+=`<tr class="${r.isD?"sigd":""}"><td>${r.isD?"★ ":""}${comboHtml(rep)}${cnt}</td>`
+    h+=`<tr class="${r.isD?"sigd":""}"><td>${r.isD?"★ ":""}${comboSvg(rep,24)}${cnt}</td>`
       +`<td>${chk.toFixed(0)}%</td><td>${r.petit.toFixed(0)}%</td><td>${r.gros.toFixed(0)}%</td>`
       +`<td><span class="eqpill" style="background:${bk[1]}">${eqc}</span></td></tr>`;}
   return h+`</tbody></table></div>`;
