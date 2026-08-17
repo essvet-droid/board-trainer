@@ -118,7 +118,9 @@ table.hm th.row{text-align:right;white-space:nowrap;color:var(--ink);font-weight
 .brow.head{background:var(--surface);position:sticky;top:0;font:600 10.5px/1 var(--font);
   letter-spacing:.06em;text-transform:uppercase;color:var(--muted);z-index:1}
 .brow.head b{cursor:pointer}
-.brow .cards{font:700 15px/1 var(--mono);letter-spacing:1px}
+.brow .cards{font:700 15px/1 var(--mono);letter-spacing:1px;display:flex;align-items:center;flex-wrap:wrap;gap:5px}
+.bcards{display:inline-flex;gap:2px;align-items:center}
+.listcap{padding:9px 12px;font:600 11.5px var(--font);color:var(--muted);text-align:center;border-top:1px dashed var(--line)}
 .brow .num{font:700 13px/1 var(--mono);text-align:right;font-variant-numeric:tabular-nums}
 .brow.hit{outline:2px solid var(--accent);border-radius:6px}
 .tag{display:inline-block;font:600 9.5px/1 var(--mono);color:var(--muted);margin-left:7px;
@@ -166,7 +168,7 @@ footer{color:var(--muted);font-size:11.5px;margin-top:26px;border-top:1px solid 
   box-shadow:0 18px 60px rgba(0,0,0,.4)}
 .mhead .mb{color:var(--ink)}
 .mhead{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
-.mhead .mb{font:800 20px/1 var(--mono);letter-spacing:1px}
+.mhead .mb{display:inline-flex;gap:3px;align-items:center}
 .mhead .ms{font:600 12px/1 var(--mono);color:var(--ink2)}
 .mclose{margin-left:auto;font:700 17px/1 var(--font);background:var(--surface2);
   border:1px solid var(--line);border-radius:8px;width:34px;height:34px;cursor:pointer;color:var(--ink2)}
@@ -279,7 +281,7 @@ footer{color:var(--muted);font-size:11.5px;margin-top:26px;border-top:1px solid 
 .sigmxmot{display:flex;align-items:center;gap:8px;width:100%;background:none;border:0;padding:2px 0 6px;cursor:pointer;text-align:left}
 .sigmxlab{font:800 12px var(--font);color:var(--ink)}
 .sigmxhere{font:700 10px var(--font);color:var(--good);margin-left:4px}
-.sigmxcards{margin-left:auto;font:600 13px var(--mono);color:var(--ink)}
+.sigmxcards{margin-left:auto;display:inline-flex;gap:2px;align-items:center}
 .sigmx .sigwrap{margin:0}
 #mgrid .mcell:not(.out){cursor:pointer}
 .dfam{margin-bottom:10px}
@@ -754,20 +756,24 @@ function cardSvg(code,w){
     <text x="30" y="76" text-anchor="middle" style="font-family:Arial,sans-serif;font-weight:700;font-size:48px;fill:rgba(255,255,255,.30)">${sym}</text>
   </svg>`;
 }
-function flopSvg(b){let o="";for(let i=0;i+2<=b.length;i+=2)o+=cardSvg(b.slice(i,i+2));return o;}
+function flopSvg(b,w){let o="";for(let i=0;i+2<=b.length;i+=2)o+=cardSvg(b.slice(i,i+2),w);return o;}
 // mini-cartes SVG d'un combo (2 cartes) pour la colonne « Combos » du détail par signature
 function comboSvg(c,w){let o='<span class="csvgpair">';for(let i=0;i+2<=c.length;i+=2)o+=cardSvg(c.slice(i,i+2),w||24);return o+"</span>";}
 function tagTxt(r){return AX.cx.lab[r[6]];}
 function renderList(){
   const sub=filtered().slice();
   sub.sort((a,b)=> sortKey==="board"?a[0].localeCompare(b[0]):(sortKey==="donk"?b[2]-a[2]:sortKey==="gros"?b[9]-a[9]:b[1]-a[1]));
-  document.getElementById("listcnt").textContent=`${sub.length} flop${sub.length>1?"s":""} dans la sélection`;
+  const CAP=300,capped=sub.length>CAP;
+  document.getElementById("listcnt").textContent=`${sub.length} flop${sub.length>1?"s":""} dans la sélection${capped?" · "+CAP+" affichés":""}`;
   const box=document.getElementById("blist");
   if(!sub.length){box.innerHTML=`<div class="empty-note">Aucun flop ne correspond à ces filtres.</div>`;return;}
+  let shown=sub;   // cap perf (SVG) : on rend les CAP premiers (triés), en garantissant la ligne recherchée
+  if(capped){shown=sub.slice(0,CAP);if(hit&&!shown.some(r=>r[0]===hit)){const hr=sub.find(r=>r[0]===hit);if(hr)shown=[hr,...shown];}}
   let h=`<div class="brow head"><div>Board</div><div class="num">C-bet</div><div class="num">Gros</div><div class="num">Donk</div></div>`;
-  for(const r of sub){const hh=hit&&r[0]===hit?" hit":"";const fm=FAM_META[FAM[r[0]]];
-    h+=`<div class="brow${hh}" id="row-${r[0]}"><div class="cards">${cardHtml(r[0])}<span class="fampill" style="background:${fm.color}">${fm.emoji} F${FAM[r[0]]}</span><span class="ahmlpill" title="${AHML_TITLE}">${ahml(r[0])}</span><span class="tag">${tagTxt(r)}</span></div>
+  for(const r of shown){const hh=hit&&r[0]===hit?" hit":"";const fm=FAM_META[FAM[r[0]]];
+    h+=`<div class="brow${hh}" id="row-${r[0]}"><div class="cards"><span class="bcards">${flopSvg(r[0],24)}</span><span class="fampill" style="background:${fm.color}">${fm.emoji} F${FAM[r[0]]}</span><span class="ahmlpill" title="${AHML_TITLE}">${ahml(r[0])}</span><span class="tag">${tagTxt(r)}</span></div>
        <div class="num">${r[1].toFixed(0)}%</div><div class="num">${r[9].toFixed(0)}%</div><div class="num">${r[2].toFixed(0)}%</div></div>`;}
+  if(capped)h+=`<div class="listcap">Affine les filtres pour voir les ${sub.length-CAP} autres flops.</div>`;
   box.innerHTML=h;
   if(hit){const el=document.getElementById("row-"+hit);if(el)el.scrollIntoView({block:"center"});}
 }
@@ -944,7 +950,7 @@ function eqbBars(ip,oop){
 function openMicro(board,hl){
   if(!MICRO_IP[board])return;
   curBoard=board;microHl=hl||null;
-  document.getElementById("mboard").innerHTML=cardHtml(board);
+  document.getElementById("mboard").innerHTML=flopSvg(board,30);
   document.getElementById("mahml").textContent=ahml(board);
   const r=BROW[board];
   document.getElementById("msum").textContent=r?`c-bet ${r[1].toFixed(0)}% · gros ${r[9].toFixed(0)}% · donk ${r[2].toFixed(0)}%`:"";
@@ -1290,7 +1296,7 @@ function sigMatrix(curBoard,cls,dealt){
     h+=`<div class="sigmxrow${cur?" cur":""}">`
       +`<button type="button" class="sigmxmot" onclick="openMicro('${sb}','${cls}')" title="Ouvrir ce flop">`
       +`<span class="sigmxlab">${mi.label}${cur?' <span class="sigmxhere">● ouvert</span>':''}</span>`
-      +`<span class="sigmxcards">${cardHtml(sb)}</span></button>`
+      +`<span class="sigmxcards">${flopSvg(sb,22)}</span></button>`
       +(tbl||`<div class="msighint">Main injouable sur ce motif.</div>`)+`</div>`;
   }
   return h+`</div>`;
