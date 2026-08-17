@@ -270,6 +270,16 @@ footer{color:var(--muted);font-size:11.5px;margin-top:26px;border-top:1px solid 
 .sigapx{color:var(--muted);font-weight:700;cursor:help}
 .msigwrap{margin:12px 0 4px}
 .msighint{font:600 12px var(--font);color:var(--muted);padding:6px 0}
+.sigmx{margin:2px 0 12px}
+.sigmxhdr{font:700 11px var(--font);color:var(--muted);letter-spacing:.05em;text-transform:uppercase;margin:0 0 8px}
+.sigmxsub{font-weight:600;text-transform:none;letter-spacing:0;color:var(--muted);font-size:10.5px}
+.sigmxrow{margin:0 0 10px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface2)}
+.sigmxrow.cur{border-color:var(--good);box-shadow:0 0 0 1px var(--good) inset}
+.sigmxmot{display:flex;align-items:center;gap:8px;width:100%;background:none;border:0;padding:2px 0 6px;cursor:pointer;text-align:left}
+.sigmxlab{font:800 12px var(--font);color:var(--ink)}
+.sigmxhere{font:700 10px var(--font);color:var(--good);margin-left:4px}
+.sigmxcards{margin-left:auto;font:600 13px var(--mono);color:var(--ink)}
+.sigmx .sigwrap{margin:0}
 #mgrid .mcell:not(.out){cursor:pointer}
 .dfam{margin-bottom:10px}
 .dfamtag{display:inline-block;color:#fff;font:700 12.5px var(--font);padding:4px 11px;border-radius:20px}
@@ -951,7 +961,7 @@ function renderMicroSig(){
   const el=document.getElementById("msig");if(!el)return;
   if(!microHl){el.innerHTML=`<div class="msighint">Clique une case pour voir son détail par combo (couleurs).</div>`;return;}
   if(microNode!=="ip"){el.innerHTML=`<div class="msighint">Détail par combo dispo côté <b>C-bet IP</b> (signatures embarquées IP).</div>`;return;}
-  el.innerHTML=sigTable(curBoard,microHl,null);
+  el.innerHTML=sigMatrix(curBoard,microHl,null);
 }
 function closeMicro(){document.getElementById("mask").classList.remove("on");}
 document.getElementById("mclose").addEventListener("click",closeMicro);
@@ -1226,7 +1236,7 @@ function classCombos(b,cls){
 }
 // « Détail par combo (signature couleur) » : reconstruit sizing+équité par signature depuis
 // la moyenne de classe + les overrides sparses (MICRO_IP_SIG sizing, MICRO_IP_EQ équité). 0 re-solve.
-function sigTable(b,cls,dealt){
+function sigTable(b,cls,dealt,noHdr){
   const mean=(MICRO_IP[b]||{})[cls];if(!mean)return"";
   const dealtSig=dealt?sigKey(dealt,b):null,groups={};
   for(const co of classCombos(b,cls)){const k=sigKey(co,b);
@@ -1237,7 +1247,8 @@ function sigTable(b,cls,dealt){
     groups[k].combos.push(co);}
   const rows=Object.keys(groups).map(k=>({k,...groups[k],isD:k===dealtSig}));
   rows.sort((x,y)=>(y.eq==null?-1:y.eq)-(x.eq==null?-1:x.eq));   // équité ↓ (fort en haut)
-  let h=`<div class="sigwrap"><div class="sighdr">Détail par combo (signature couleur)${dealt?" — ★ ta main":""}</div>`
+  const hdr=noHdr?"":`<div class="sighdr">Détail par combo (signature couleur)${dealt?" — ★ ta main":""}</div>`;
+  let h=`<div class="sigwrap">${hdr}`
     +`<table class="sigtab"><thead><tr><th>Combos</th><th>Check</th><th>1/3</th><th>2/3</th><th>Équité</th></tr></thead><tbody>`;
   for(const r of rows){
     const chk=Math.max(0,100-r.petit-r.gros);
@@ -1248,6 +1259,37 @@ function sigTable(b,cls,dealt){
       +`<td>${chk.toFixed(0)}%</td><td>${r.petit.toFixed(0)}%</td><td>${r.gros.toFixed(0)}%</td>`
       +`<td><span class="eqpill" style="background:${bk[1]}">${eqc}</span></td></tr>`;}
   return h+`</tbody></table></div>`;
+}
+// ── déclinaison du détail par combo sur les MOTIFS DE COULEUR du même trio de rangs ──
+// Miroir « board » de la signature de main : à trio de rangs figé (ex. KJT), on descend
+// rainbow → two-tone(quelle paire assortie) → monotone et on voit le sizing bouger.
+// 0 re-solve : chaque motif est un board frère déjà dans les blobs, on ré-appelle sigTable.
+const RTRIP={};for(const _r of B){const _k=canonKey(_r[0]).split("|")[0];(RTRIP[_k]=RTRIP[_k]||[]).push(_r[0]);}
+function motifInfo(board){
+  const cs=[[board[0],board[1]],[board[2],board[3]],[board[4],board[5]]]
+    .sort((a,b)=>RANKS.indexOf(a[0])-RANKS.indexOf(b[0]));   // rang desc (haute→basse)
+  const su=cs.map(c=>c[1]),ns=new Set(su).size;
+  if(ns===3)return{label:"Rainbow",ord:0};
+  if(ns===1)return{label:"Monotone",ord:9};
+  const pr=[[0,1],[0,2],[1,2]];                              // paire de cartes assortie
+  for(let i=0;i<pr.length;i++){const[a,b]=pr[i];if(su[a]===su[b])return{label:"Two-tone "+cs[a][0]+cs[b][0],ord:1+i};}
+  return{label:"Two-tone",ord:5};
+}
+function sigMatrix(curBoard,cls,dealt){
+  const rk=canonKey(curBoard).split("|")[0];
+  const sibs=(RTRIP[rk]||[curBoard]).slice().sort((x,y)=>motifInfo(x).ord-motifInfo(y).ord);
+  if(sibs.length<=1)return sigTable(curBoard,cls,dealt);     // brelan / singleton : vue simple
+  let h=`<div class="sigmx"><div class="sigmxhdr"><b>${cls}</b> selon la couleur du flop`
+    +`<span class="sigmxsub"> — même trio ${rk.split("").join("·")}, seule la couleur change</span></div>`;
+  for(const sb of sibs){
+    const mi=motifInfo(sb),cur=sb===curBoard,tbl=sigTable(sb,cls,cur?dealt:null,true);
+    h+=`<div class="sigmxrow${cur?" cur":""}">`
+      +`<button type="button" class="sigmxmot" onclick="openMicro('${sb}','${cls}')" title="Ouvrir ce flop">`
+      +`<span class="sigmxlab">${mi.label}${cur?' <span class="sigmxhere">● ouvert</span>':''}</span>`
+      +`<span class="sigmxcards">${cardHtml(sb)}</span></button>`
+      +(tbl||`<div class="msighint">Main injouable sur ce motif.</div>`)+`</div>`;
+  }
+  return h+`</div>`;
 }
 function reveal(){
   const g=gtoAns(),fam=FAM[dBoard],M=FAM_META[fam],r=BROW[dBoard];
@@ -1273,7 +1315,7 @@ function reveal(){
   const famTag=`<div class="dfam"><span class="dfamtag" style="background:${M.color}">${M.emoji} ${M.name}</span><span class="dahmltag" title="${AHML_TITLE}">${ahml(dBoard)}</span></div>`;
   let ctx;
   if(dMode==="main"){
-    ctx=`<div class="dgto">Ta main <b>${dCls}</b> : ${brk}</div>${sigTable(dBoard,dCls,dCombo)}${famTag}
+    ctx=`<div class="dgto">Ta main <b>${dCls}</b> : ${brk}</div>${sigMatrix(dBoard,dCls,dCombo)}${famTag}
       <div class="mtoggle" id="dcolor" role="group" aria-label="Coloration de la grille" style="margin:8px 0 6px">
         <button data-v="size" aria-pressed="${matColor==='size'}">Sizing</button>
         <button data-v="eq" aria-pressed="${matColor==='eq'}">Équité</button></div>
