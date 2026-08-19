@@ -205,6 +205,10 @@ footer{color:var(--muted);font-size:11.5px;margin-top:26px;border-top:1px solid 
 .eqbrow .lb{width:26px;font:700 11px/1 var(--font);color:var(--ink2)}
 .eqbar{flex:1;display:flex;height:22px;border-radius:5px;overflow:hidden;border:1px solid var(--line2)}
 .eqbar>span{display:flex;align-items:center;justify-content:center;font:700 10px/1 var(--font);color:#14110c;overflow:hidden}
+/* barre de répartition du sizing (check/petit/gros) — pendant graphique du verdict */
+.verdict .vsize{flex:0 0 100%;margin-top:2px}
+.vsizelab{font:700 11px/1 var(--font);color:var(--ink2);margin-bottom:5px}
+.szbar .hint{color:var(--muted);font:600 11px/1.5 var(--font);margin-top:5px}
 /* légende dégradé d'équité (toggle Sizing/Équité de la vue Par main) */
 .eqleg{align-items:center;gap:8px}
 .eqrampbar{display:block;width:120px;height:12px;border-radius:3px;border:1px solid var(--line2);
@@ -563,6 +567,7 @@ footer{color:var(--muted);font-size:11.5px;margin-top:26px;border-top:1px solid 
       <span class="eqramplab"><b>0 %</b> faible</span><span class="eqramplab" style="margin-left:auto">forte <b>100 %</b></span>
     </div>
     <div class="mhint">Chaque case = une main, remplie de bas (check) en haut (gros) selon la fréquence GTO+, combo-pondérée. Grisé = hors range. <b>Clique une case</b> pour son détail par combo.</div>
+    <div id="msizebar" style="margin-top:12px" hidden></div>
     <div id="msig" class="msigwrap"></div>
     <div class="mdistwrap" style="margin-top:16px;border-top:1px solid var(--line);padding-top:12px">
       <div class="disthead" style="margin-bottom:4px">
@@ -707,7 +712,8 @@ function renderVerdict(){
    <div class="vv accent"><div class="k">C-bet moyen</div><div class="v">${m.cb.toFixed(1)}<small>%</small></div></div>
    <div class="vv"><div class="k">Part de gros (66 %)</div><div class="v">${m.bg.toFixed(0)}<small>% gros · ${(100-m.bg).toFixed(0)}% petit</small></div></div>
    <div class="vv"><div class="k">Donk BB moyen</div><div class="v">${m.dk.toFixed(1)}<small>%</small></div></div>
-   <div class="vv"><div class="k">Flops sélectionnés</div><div class="v">${m.n}<small> / ${META.n}</small></div></div>`;
+   <div class="vv"><div class="k">Flops sélectionnés</div><div class="v">${m.n}<small> / ${META.n}</small></div></div>`
+   +(matColor==="size"?`<div class="vsize"><div class="vsizelab">Répartition du c-bet — gros · petit · check</div>${sizeBar(m.cb,m.bg)}</div>`:"");
 }
 
 // ── heatmap (sur la sélection) ──
@@ -895,7 +901,7 @@ document.getElementById("eqbmin").addEventListener("input",e=>{
 document.querySelectorAll(".listhead .sort b").forEach(b=>b.addEventListener("click",()=>{sortKey=b.dataset.s;renderList();}));
 
 document.getElementById("foot").innerHTML=
-  `Source : <code>gto_flop_strategy.db</code> · config <b>${META.config}</b> · ${META.n} flops · solve GTO+ ${META.depth}, sizings 33 % + 66 % (« part de gros » = fraction des mises au 66 %). `
+  `Source : <code>gto_btnbb.db</code> · config <b>${META.config}</b> · ${META.n} flops · solve GTO+ ${META.depth}, sizings 33 % + 66 % (« part de gros » = fraction des mises au 66 %). `
   +`Connectivité = <b>parité exacte GTO+</b> sur les non-pairés (exports 3flush) ; approx. sur pairés/trips. Explorateur V2.`;
 
 // ── vue micro (grille 13×13 style solveur) ──
@@ -923,6 +929,10 @@ function drawMicro(){
   const eqMode=matColor==="eq";
   document.getElementById("mlegSize").hidden=eqMode;
   document.getElementById("mlegEq").hidden=!eqMode;
+  // barre de répartition du sizing — c-bet IP seulement (pas de part-de-gros pour le donk OOP)
+  const sb=document.getElementById("msizebar"),showBar=!eqMode&&microNode==="ip",r=BROW[curBoard];
+  sb.hidden=!showBar;
+  if(showBar)sb.innerHTML=`<div class="vsizelab">Répartition du c-bet — gros · petit · check</div>${r?sizeBar(r[1],r[9]):""}`;
 }
 // bascule PARTAGÉE Sizing/Équité : met à jour tous les toggles présents + re-rend les grilles visibles
 function setMatColor(v){
@@ -931,6 +941,7 @@ function setMatColor(v){
     if(g)[...g.children].forEach(b=>b.setAttribute("aria-pressed",b.dataset.v===v));});
   if(document.getElementById("mask").classList.contains("on"))drawMicro();
   if(!document.getElementById("mainResults").hidden)renderHandGrid();   // vue « Par main » (studyMode "hand") si visible
+  renderVerdict();   // la barre de répartition du sizing n'apparaît qu'en mode Sizing
   renderDcorrGrid();
 }
 function renderDcorrGrid(){
@@ -939,6 +950,14 @@ function renderDcorrGrid(){
   dg.innerHTML=renderGrid(dBoard,"ip",dCls);
   const eqMode=matColor==="eq",s=document.getElementById("dclegSize"),e=document.getElementById("dclegEq");
   if(s)s.hidden=eqMode;if(e)e.hidden=!eqMode;
+}
+// barre de répartition du sizing (gros→petit→check, « fort à gauche ») + les 3 %.
+// cb = c-bet % ; bg = part de gros (66 %) parmi les mises → composition sur le total.
+function sizeBar(cb,bg){
+  const gros=cb*bg/100,petit=Math.max(0,cb-gros),chk=Math.max(0,100-cb);
+  const seg=(w,c)=>`<span style="width:${w}%;background:${c}">${w>=9?Math.round(w):""}</span>`;
+  return `<div class="szbar"><div class="eqbar">${seg(gros,"var(--cbg)")}${seg(petit,"var(--csm)")}${seg(chk,"var(--cch)")}</div>`
+    +`<div class="hint">gros ${gros.toFixed(0)}% · petit ${petit.toFixed(0)}% · check ${chk.toFixed(0)}%</div></div>`;
 }
 // buckets d'équité (Acevedo Ch.12) : 2 barres empilées IP + BB, 4 buckets
 function eqbBars(ip,oop){

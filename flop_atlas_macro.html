@@ -901,7 +901,7 @@ document.getElementById("eqbmin").addEventListener("input",e=>{
 document.querySelectorAll(".listhead .sort b").forEach(b=>b.addEventListener("click",()=>{sortKey=b.dataset.s;renderList();}));
 
 document.getElementById("foot").innerHTML=
-  `Source : <code>gto_flop_strategy.db</code> · config <b>${META.config}</b> · ${META.n} flops · solve GTO+ ${META.depth}, sizings 33 % + 66 % (« part de gros » = fraction des mises au 66 %). `
+  `Source : <code>gto_btnbb.db</code> · config <b>${META.config}</b> · ${META.n} flops · solve GTO+ ${META.depth}, sizings 33 % + 66 % (« part de gros » = fraction des mises au 66 %). `
   +`Connectivité = <b>parité exacte GTO+</b> sur les non-pairés (exports 3flush) ; approx. sur pairés/trips. Explorateur V2.`;
 
 // ── vue micro (grille 13×13 style solveur) ──
