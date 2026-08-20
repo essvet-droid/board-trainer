@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Atlas du c-bet flop · Phi Atlas</title>
+<title>Atlas flop · Phi Atlas</title>
 <style>
 :root{
   --bg:#0a0e17; --surface:#111827; --surface2:#1a2235; --border:#2a3a55;
@@ -13,99 +13,120 @@
 body{background:radial-gradient(1200px 600px at 50% -10%, rgba(0,229,255,.06), transparent 60%), var(--bg);
   color:var(--text); font-family:'Rajdhani','Segoe UI',sans-serif; line-height:1.5;
   padding:26px 16px 70px; -webkit-tap-highlight-color:transparent;}
-.wrap{max-width:640px; margin:0 auto}
+.wrap{max-width:660px; margin:0 auto}
 .back{display:inline-block; font-size:.85rem; color:var(--dim); text-decoration:none; margin-bottom:16px}
 .back:hover{color:var(--accent)}
 h1{font-size:1.75rem; color:var(--gold); letter-spacing:.5px; line-height:1.15}
-.sub{font-family:'Share Tech Mono',monospace; font-size:.72rem; color:var(--dim); letter-spacing:1.5px; margin:6px 0 22px}
-.hint{font-size:.82rem; color:var(--dim); letter-spacing:1px; text-transform:uppercase; margin:0 0 10px}
+.sub{font-family:'Share Tech Mono',monospace; font-size:.72rem; color:var(--dim); letter-spacing:1.5px; margin:6px 0 26px}
 
-.choice{display:flex; flex-direction:column; gap:12px; margin-bottom:30px}
-.card{display:flex; align-items:center; gap:16px; text-decoration:none; color:inherit;
-  background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:18px;
-  transition:transform .12s, border-color .15s, background .15s}
+/* ── section par situation (BTN vs BB / UTG vs BTN) ── */
+.section{margin-bottom:26px}
+.sechead{display:flex; align-items:baseline; gap:10px; margin-bottom:12px}
+.sechead .st{font-size:1.18rem; font-weight:700; color:var(--text)}
+.sechead .sd{font-family:'Share Tech Mono',monospace; font-size:.66rem; color:var(--dim); letter-spacing:1px}
+.section.soon .sechead .st{color:var(--dim)}
+
+/* ── sous-groupe (c-bet / x-r) ── */
+.sub-g{margin-bottom:14px}
+.sglab{font-size:.82rem; color:var(--dim); letter-spacing:.5px; text-transform:uppercase; margin:0 0 8px}
+.sglab b{color:var(--text); font-weight:700; text-transform:none; letter-spacing:0; font-size:.95rem}
+.pair{display:flex; gap:10px}
+
+/* ── carte profondeur ── */
+.card{flex:1; display:flex; align-items:center; gap:12px; text-decoration:none; color:inherit;
+  background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:13px 14px;
+  transition:transform .12s, border-color .15s, background .15s; min-width:0}
 .card:hover{transform:translateY(-2px); background:var(--surface2)}
-.card .d{flex:0 0 auto; width:64px; text-align:center; font-family:'Share Tech Mono',monospace;
-  font-size:1.5rem; font-weight:700; letter-spacing:0}
+.card .d{flex:0 0 auto; font-family:'Share Tech Mono',monospace; font-size:1.15rem; font-weight:700}
 .card .b{flex:1; min-width:0}
-.card .n{font-size:1.3rem; font-weight:700}
-.card .x{font-size:.88rem; color:var(--dim); margin-top:3px; line-height:1.35}
-.card .a{color:var(--dim); font-size:1.4rem}
+.card .n{font-size:1rem; font-weight:700}
+.card .x{font-size:.76rem; color:var(--dim); margin-top:1px; line-height:1.3}
+.card .a{color:var(--dim); font-size:1.1rem}
 .c25{border-left:4px solid var(--accent)} .c25:hover{border-color:var(--accent)} .c25 .d{color:var(--accent)} .c25:hover .a{color:var(--accent)}
 .c50{border-left:4px solid var(--gold)} .c50:hover{border-color:var(--gold)} .c50 .d{color:var(--gold)} .c50:hover .a{color:var(--gold)}
+/* carte « à venir » (page pas encore générée) */
+.soonc{flex:1; display:flex; align-items:center; gap:12px; background:transparent;
+  border:1px dashed var(--border); border-radius:12px; padding:13px 14px; opacity:.5; min-width:0}
+.soonc .d{flex:0 0 auto; font-family:'Share Tech Mono',monospace; font-size:1.15rem; font-weight:700; color:var(--dim)}
+.soonc .n{font-size:1rem; font-weight:700; color:var(--dim)}
+.soonc .x{font-size:.72rem; color:var(--dim); margin-top:1px}
 
-.synth{background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:18px 18px 20px}
-.synth h2{font-size:1.12rem; color:var(--accent); margin-bottom:10px}
-.law{font-size:1rem; color:#fff; font-weight:700; line-height:1.4; margin-bottom:12px}
-.synth ul{margin:0 0 14px 1.1em} .synth li{margin:.4em 0; font-size:.92rem}
-.synth b{color:#fff} .synth .g{color:var(--gold)} .synth .c{color:var(--accent)}
-.cap{font-size:.78rem; color:var(--dim); margin:2px 0 8px; letter-spacing:.5px}
-.tw{overflow-x:auto}
-.mx{border-collapse:collapse; width:100%; font-family:'Share Tech Mono',monospace; font-size:.8rem}
-.mx th,.mx td{border:1px solid var(--border); padding:6px 4px; text-align:center; white-space:nowrap}
-.mx th{background:var(--surface2); color:var(--dim); font-weight:700}
-.mx td.h{background:var(--surface2); color:var(--text); font-weight:700}
-.q0{background:rgba(107,127,163,.16); color:var(--dim)}
-.q1{background:rgba(0,230,118,.14)} .q2{background:rgba(0,230,118,.28)}
-.q3{background:rgba(0,230,118,.46); color:#06210f; font-weight:700}
-.q4{background:rgba(255,215,64,.55); color:#241c00; font-weight:700}
-.more{display:inline-block; margin-top:14px; font-size:.92rem; color:var(--accent); text-decoration:none; font-weight:700}
-.more:hover{text-decoration:underline}
-.foot{margin-top:30px; font-family:'Share Tech Mono',monospace; font-size:.62rem; color:var(--dim); text-align:center; letter-spacing:1px}
+.synthlink{display:block; text-align:center; margin-top:8px; padding:14px;
+  background:var(--surface); border:1px solid var(--border); border-radius:12px;
+  color:var(--accent); text-decoration:none; font-weight:700; font-size:.95rem;
+  transition:border-color .15s, background .15s}
+.synthlink:hover{border-color:var(--accent); background:var(--surface2)}
+.synthlink small{display:block; color:var(--dim); font-weight:400; font-size:.76rem; margin-top:3px}
+.foot{margin-top:28px; font-family:'Share Tech Mono',monospace; font-size:.62rem; color:var(--dim); text-align:center; letter-spacing:1px}
 </style>
 </head>
 <body>
 <div class="wrap">
   <a class="back" href="index.html">← Phi Atlas</a>
-  <h1>Atlas du c-bet flop</h1>
-  <div class="sub">BTN vs BB · SRP · SIZINGS 33 % + 66 %</div>
+  <h1>Atlas flop</h1>
+  <div class="sub">SRP · SIZINGS 33 % + 66 % · C-BET & CHECK-RAISE · 25 / 50 BB</div>
 
-  <div class="hint">Choisis ta profondeur</div>
-  <div class="choice">
-    <a class="card c25" href="flop_atlas_macro.html">
-      <span class="d">25<small>bb</small></span>
-      <span class="b">
-        <span class="n">Atlas 25bb</span>
-        <span class="x">Short stack (Expresso / SNG). Le gros suit le <b>nut advantage</b>. Étude + Drill · 1755 flops.</span>
-      </span>
-      <span class="a">›</span>
-    </a>
-    <a class="card c50" href="flop_atlas_50bb.html">
-      <span class="d">50<small>bb</small></span>
-      <span class="b">
-        <span class="n">Atlas 50bb</span>
-        <span class="x">Profondeur (SPR ~10). Le <b>gros polarisé</b> domine (jusqu'à 99 %). Étude + Drill · 1755 flops.</span>
-      </span>
-      <span class="a">›</span>
-    </a>
-  </div>
+  <!-- ══ BTN vs BB ══ -->
+  <div class="section">
+    <div class="sechead"><span class="st">BTN vs BB</span><span class="sd">bouton ouvre · grosse blinde défend</span></div>
 
-  <div class="synth">
-    <h2>Ce qui change avec la profondeur</h2>
-    <div class="law">Plus profond, tu c-bet <span class="c">moins souvent</span> — mais bien <span class="g">plus gros</span>. Et l'ordre du sizing s'<b>inverse</b>.</div>
-    <ul>
-      <li><b>Fréquence</b> : 66 % → 56 % (<b>−10 pts</b>) partout, sauf les boards <b>pairés</b> (restent haute fréquence).</li>
-      <li><b>Part de gros</b> : 64 % → <span class="g">83 %</span> (+19). À 25bb le gros suit le <b>nut advantage</b> (boards hauts = gros) ; à 50bb il suit le <b>dynamisme</b> (bas / connecté / monotone = gros, jusqu'à 99 %).</li>
-      <li>L'<b>ancre</b> : <b>A-high rainbow sec</b> ne bouge pas (petit range-bet à toute profondeur). Dès qu'il y a du <b>jus</b> (board bas <b>ou</b> tirage couleur), passe au gros.</li>
-    </ul>
-
-    <div class="cap">Δ part de gros (50 − 25bb) — carte haute × couleur : les 2 drivers s'empilent</div>
-    <div class="tw">
-    <table class="mx">
-      <thead><tr><th></th><th>rainbow</th><th>two-tone</th><th>mono</th></tr></thead>
-      <tbody>
-        <tr><td class="h">A</td><td class="q0">−0,4</td><td class="q1">+6</td><td class="q2">+30</td></tr>
-        <tr><td class="h">H <small>KQJT</small></td><td class="q0">+4</td><td class="q1">+17</td><td class="q3">+39</td></tr>
-        <tr><td class="h">M <small>9876</small></td><td class="q2">+31</td><td class="q2">+33</td><td class="q3">+35</td></tr>
-        <tr><td class="h">L <small>5432</small></td><td class="q4">+51</td><td class="q3">+36</td><td class="q4">+66</td></tr>
-      </tbody>
-    </table>
+    <div class="sub-g">
+      <p class="sglab"><b>C-bet</b> — l'agresseur mise le flop</p>
+      <div class="pair">
+        <a class="card c25" href="flop_atlas_macro.html">
+          <span class="d">25<small>bb</small></span>
+          <span class="b"><span class="n">25bb</span><span class="x">nut advantage · Étude + Drill</span></span>
+          <span class="a">›</span>
+        </a>
+        <a class="card c50" href="flop_atlas_50bb.html">
+          <span class="d">50<small>bb</small></span>
+          <span class="b"><span class="n">50bb</span><span class="x">gros polarisé · Étude + Drill</span></span>
+          <span class="a">›</span>
+        </a>
+      </div>
     </div>
 
-    <a class="more" href="synthese_flop_25_50bb.html">Synthèse complète → 3 lentilles (familles · AHML · couleur) + croisement + intro pratique</a>
+    <div class="sub-g">
+      <p class="sglab"><b>Check-raise du BB (x/r)</b> — le défenseur relance le c-bet</p>
+      <div class="pair">
+        <a class="card c25" href="flop_xr_oop.html">
+          <span class="d">25<small>bb</small></span>
+          <span class="b"><span class="n">25bb</span><span class="x">Fold / Call / Raise · Étude + Drill</span></span>
+          <span class="a">›</span>
+        </a>
+        <div class="soonc">
+          <span class="d">50<small>bb</small></span>
+          <span class="b"><span class="n">50bb</span><span class="x">à venir</span></span>
+        </div>
+      </div>
+    </div>
   </div>
 
-  <div class="foot">Phi Atlas · profondeur pure (ranges identiques 25 = 50bb, seul le SPR change)</div>
+  <!-- ══ UTG vs BTN ══ -->
+  <div class="section soon">
+    <div class="sechead"><span class="st">UTG vs BTN</span><span class="sd">à venir</span></div>
+
+    <div class="sub-g">
+      <p class="sglab"><b>C-bet</b></p>
+      <div class="pair">
+        <div class="soonc"><span class="d">25<small>bb</small></span><span class="b"><span class="n">25bb</span><span class="x">à venir</span></span></div>
+        <div class="soonc"><span class="d">50<small>bb</small></span><span class="b"><span class="n">50bb</span><span class="x">à venir</span></span></div>
+      </div>
+    </div>
+
+    <div class="sub-g">
+      <p class="sglab"><b>Check-raise (x/r)</b></p>
+      <div class="pair">
+        <div class="soonc"><span class="d">25<small>bb</small></span><span class="b"><span class="n">25bb</span><span class="x">à venir</span></span></div>
+        <div class="soonc"><span class="d">50<small>bb</small></span><span class="b"><span class="n">50bb</span><span class="x">à venir</span></span></div>
+      </div>
+    </div>
+  </div>
+
+  <a class="synthlink" href="synthese_flop_25_50bb.html">Synthèse 25 ↔ 50 bb (profondeur pure)
+    <small>3 lentilles (familles · AHML · couleur) + croisement carte-haute × couleur + intro pratique</small></a>
+
+  <div class="foot">Phi Atlas · une page par situation × action × profondeur</div>
 </div>
 </body>
 </html>
