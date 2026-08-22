@@ -3,23 +3,26 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Synthèse flop 25 ↔ 50bb · Phi Atlas</title>
+<title>Synthèse flop · le cube 25↔50 · IP↔OOP · Phi Atlas</title>
 <style>
 :root{
   --bg:#0a0e17; --surface:#111827; --surface2:#1a2235; --border:#2a3a55;
-  --text:#e0e6f0; --dim:#6b7fa3; --accent:#00e5ff; --gold:#ffd740; --green:#00e676;
+  --text:#e0e6f0; --dim:#6b7fa3; --accent:#00e5ff; --gold:#ffd740; --green:#00e676; --rose:#ff7597;
 }
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:radial-gradient(1200px 600px at 50% -10%, rgba(0,229,255,.06), transparent 60%), var(--bg);
   color:var(--text); font-family:'Rajdhani','Segoe UI',sans-serif; line-height:1.55;
   padding:28px 16px 70px; -webkit-tap-highlight-color:transparent;}
-.wrap{max-width:820px; margin:0 auto}
+.wrap{max-width:860px; margin:0 auto}
 .back{display:inline-block; font-size:.85rem; color:var(--dim); text-decoration:none; margin-bottom:18px}
 .back:hover{color:var(--accent)}
 h1{font-size:1.7rem; color:var(--gold); letter-spacing:.5px; margin:.2em 0 .5em; line-height:1.2}
-h2{font-size:1.28rem; color:var(--accent); margin:1.5em 0 .5em; padding-top:.4em; border-top:1px solid var(--border)}
+h2{font-size:1.28rem; color:var(--accent); margin:1.6em 0 .5em; padding-top:.4em; border-top:1px solid var(--border)}
 h3{font-size:1.06rem; color:var(--text); margin:1.1em 0 .4em}
+h4{font-size:1.04rem; color:var(--gold); margin:0 0 .5em; letter-spacing:.3px}
 p{margin:.6em 0; color:var(--text)}
+a{color:var(--accent); text-decoration:none}
+a:hover{text-decoration:underline}
 em{color:var(--dim); font-style:normal}
 strong{color:#fff; font-weight:700}
 code{font-family:'Share Tech Mono',monospace; font-size:.85em; background:var(--surface2);
@@ -34,82 +37,106 @@ th,td{border:1px solid var(--border); padding:6px 10px; text-align:left; white-s
 th{background:var(--surface2); color:var(--accent); font-weight:700}
 tr:nth-child(even) td{background:rgba(255,255,255,.02)}
 td:first-child,th:first-child{white-space:normal}
+
+/* ── lanceur cube 2×2 ── */
+.cube{display:grid; grid-template-columns:1fr 1fr; gap:14px; margin:1.3em 0}
+.cell{background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:14px 16px}
+.cell .ct{display:block; font-weight:700; font-size:1rem; color:var(--gold); margin-bottom:2px}
+.cell .cs{display:block; font-size:.78rem; color:var(--dim); margin-bottom:10px}
+.cell .cl{display:flex; gap:8px; flex-wrap:wrap}
+.cell .cl a{flex:1 1 46%; text-align:center; background:var(--surface2); border:1px solid var(--border);
+  border-radius:8px; padding:8px 6px; font-weight:700; font-size:.9rem; color:var(--accent)}
+.cell .cl a:hover{border-color:var(--accent); text-decoration:none}
+.cell .cl a.xr{color:var(--rose)}
+.cell .cl a.xr:hover{border-color:var(--rose)}
+
+/* ── fiches « dans la peau » ── */
+.fiche{background:var(--surface); border:1px solid var(--border); border-left:4px solid var(--accent);
+  border-radius:0 14px 14px 0; padding:16px 18px; margin:1.15em 0}
+.fiche.xr{border-left-color:var(--rose)}
+.fiche h4::before{content:"C-BET"; font-size:.68rem; font-weight:700; letter-spacing:1px; color:#04222a;
+  background:var(--accent); border-radius:5px; padding:3px 7px; margin-right:9px; vertical-align:middle}
+.fiche.xr h4::before{content:"X / R"; color:#3a0d1a; background:var(--rose)}
+.fiche blockquote{background:var(--surface2); border-left-color:var(--dim); margin:.3em 0 .8em; font-size:.97rem}
+.fiche p{margin:.45em 0}
+a.drill{display:inline-block; margin-top:.7em; background:var(--accent); color:#04222a; font-weight:700;
+  letter-spacing:.4px; padding:9px 16px; border-radius:9px; text-decoration:none; font-size:.92rem}
+a.drill:hover{filter:brightness(1.12); text-decoration:none}
+.fiche.xr a.drill{background:var(--rose); color:#3a0d1a}
+.k{color:var(--green); font-weight:700}
+
 .foot{margin-top:36px; font-family:'Share Tech Mono',monospace; font-size:.65rem; color:var(--dim); letter-spacing:1px}
+@media(max-width:560px){ .cube{grid-template-columns:1fr} }
 </style>
 </head>
 <body>
 <div class="wrap">
-<a class="back" href="flop_atlas.html">← Atlas du c-bet flop</a>
-<h1>Synthèse flop 25bb ↔ 50bb — comment le SIZING du c-bet change avec la profondeur</h1>
-<blockquote><strong>Objet.</strong> Mettre en évidence, chiffres à l&#x27;appui, ce qui change dans le <strong>sizing</strong> du c-bet quand on passe de 25bb à 50bb, à <strong>ranges identiques</strong> (profondeur PURE : seul le SPR change, ~4,5 → ~10). Sert aussi d&#x27;<strong>introduction</strong> à la page d&#x27;étude/drill 50bb (pendant du 25bb). <strong>Cadre.</strong> BTN vs BB, SRP, sizings 33 %/66 %. 1755 flops canoniques, parité complète 25/50bb. Métriques combo-pondérées, moyenne non pondérée par board, filtre de collision (BUG #55). Source chiffrée : <code>temp/synth_25_50_lenses.py</code> + les 7 comparaisons <code>temp/compare_&lt;Fx&gt;_25_50.md</code>.</blockquote>
+<a class="back" href="flop_atlas.html">← Atlas flop</a>
+<h1>Le cube du flop — position × profondeur</h1>
+<p>Huit résolutions GTO+ décrivent maintenant tout le combat du flop en pot simple : <strong>2 positions</strong> de l&#x27;agresseur (en position / hors de position) × <strong>2 profondeurs</strong> (25bb court / 50bb deep) × <strong>2 décisions</strong> (le c-bet de l&#x27;agresseur / le raise qui lui répond). Cette page est ton <strong>vestiaire</strong> : tu choisis ton spot, tu lis la fiche pour te remettre dans la peau du joueur et te rappeler le plan global, puis tu vas driller.</p>
+<blockquote><strong>Comment t&#x27;en servir</strong> — repère ta case dans le cube ci-dessous, ouvre la fiche « dans la peau », imprègne-toi de la bataille de range et du plan, puis clique <strong>Driller ce spot</strong> pour ouvrir la page d&#x27;entraînement correspondante.</blockquote>
+<h2>Choisis ton spot</h2>
+<div class="cube">
+  <div class="cell">
+    <span class="ct">En position · 25bb</span>
+    <span class="cs">BTN vs BB — position + initiative, tapis courts</span>
+    <div class="cl"><a href="#ip25-cbet">C-bet</a><a class="xr" href="#ip25-xr">x/r</a></div>
+  </div>
+  <div class="cell">
+    <span class="ct">En position · 50bb</span>
+    <span class="cs">BTN vs BB — position, tapis profonds</span>
+    <div class="cl"><a href="#ip50-cbet">C-bet</a><a class="xr" href="#ip50-xr">x/r</a></div>
+  </div>
+  <div class="cell">
+    <span class="ct">Hors de position · 25bb</span>
+    <span class="cs">UTG vs BTN — la range tight écrase la position</span>
+    <div class="cl"><a href="#oop25-cbet">C-bet</a><a class="xr" href="#oop25-xr">x/r</a></div>
+  </div>
+  <div class="cell">
+    <span class="ct">Hors de position · 50bb</span>
+    <span class="cs">UTG vs BTN — deep, la position mord</span>
+    <div class="cl"><a href="#oop50-cbet">C-bet</a><a class="xr" href="#oop50-xr">x/r</a></div>
+  </div>
+</div>
+<h2>Le socle chiffré</h2>
+<p>Mesuré sur les 1755 flops de chaque config (pondéré par combos, combos bloqués filtrés).</p>
+<h3>① Le c-bet de l&#x27;agresseur</h3>
+<div class="tw"><table><thead><tr><th>Case</th><th>c-bet freq</th><th>dont gros (66 %)</th></tr></thead><tbody><tr><td><strong>IP 25bb</strong> — BTN</td><td>69,1 %</td><td>62,4 %</td></tr><tr><td><strong>IP 50bb</strong> — BTN</td><td>59,7 %</td><td><strong>80,5 %</strong></td></tr><tr><td><strong>OOP 25bb</strong> — UTG</td><td><strong>74,3 %</strong></td><td>53,5 %</td></tr><tr><td><strong>OOP 50bb</strong> — UTG</td><td>57,1 %</td><td><strong>33,5 %</strong></td></tr></tbody></table></div>
+<h3>② Le raise (x/r) et la résistance du répondeur</h3>
+<div class="tw"><table><thead><tr><th>Case (qui relance)</th><th>x/r vs petit</th><th>x/r vs gros</th><th>fold-to-cbet</th></tr></thead><tbody><tr><td><strong>IP 25bb</strong> — BB <em>défenseur</em></td><td>27,8 %</td><td>6,9 %</td><td>42,5 %</td></tr><tr><td><strong>IP 50bb</strong> — BB <em>défenseur</em></td><td>17,3 %</td><td>9,3 %</td><td>35,0 %</td></tr><tr><td><strong>OOP 25bb</strong> — UTG <em>agresseur</em></td><td>6,5 %</td><td>8,3 %</td><td>27,6 %</td></tr><tr><td><strong>OOP 50bb</strong> — UTG <em>agresseur</em></td><td>16,8 %</td><td><strong>20,8 %</strong></td><td>24,1 %</td></tr></tbody></table></div>
+<blockquote>Les deux x/r <strong>ne sont pas le même rôle</strong>. En position, c&#x27;est le <strong>défenseur</strong> (BB) qui check-raise l&#x27;agresseur. Hors de position, c&#x27;est <strong>l&#x27;agresseur</strong> (UTG) qui checke puis relance la stab du caller. Garde ça en tête en lisant les fiches — c&#x27;est le cœur de l&#x27;inversion de polarisation.</blockquote>
+<h2>Les trois lois qui relient les cases</h2>
+<ol><li><strong>L&#x27;éventail de profondeur.</strong> Le deep baisse la fréquence de c-bet (−10 à −17 pts) <em>et</em> déplace le sizing — mais dans deux directions opposées selon la position : en position tu pars <strong>plus gros</strong> (62 → 80 % de gros), hors de position tu pars <strong>plus petit</strong> (53 → 33 %). La profondeur trie : moins de mises, plus tranchées.</li></ol>
+<ol><li><strong>L&#x27;inversion de polarisation</strong> (Acevedo Ch.12). En position, l&#x27;agresseur <em>polarise</em> — il mise ses mains fortes et ses trash, gros. Hors de position, il <em>merge et protège</em> — il checke ses trash (pour ne pas se faire flotter/raise en parlant en premier au turn) et sa range de check devient son levier de x/r. En deep, la même profondeur donne un sizing <strong>miroir</strong> : IP 80 % gros, OOP 33 % gros.</li></ol>
+<ol><li><strong>La tension tight-range ↔ position.</strong> À 25bb, la range tight écrase la position : l&#x27;agresseur OOP c-bet <strong>plus</strong> que l&#x27;IP (74 % &gt; 69 %), parce que le caller en position a une range cappée qui plie. À 50bb, la position mord : les c-bet <strong>convergent</strong> (57 ≈ 60 %), la prime d&#x27;agression disparaît, et le x/r bascule — celui du <strong>défenseur refroidit</strong> (28 → 17 %) tandis que celui de l&#x27;<strong>agresseur triple</strong> (6-8 → 17-21 %).</li></ol>
 <hr>
-<h2>1. La loi phare — la profondeur INVERSE l&#x27;ordre du sizing</h2>
-<p>À <strong>25bb</strong>, le SPR est bas : tout est comprimé. Le gros suit le <strong>nut advantage</strong> — les boards <strong>hauts</strong> (A/K/broadway) misent le plus gros, les <strong>bas</strong> le moins. La part de gros tient dans une bande étroite (49-83 %).</p>
-<p>À <strong>50bb</strong>, le SPR grimpe : le sizing se <strong>déploie en éventail</strong> et le gros suit désormais le <strong>dynamisme</strong> — les boards <strong>bas / connectés / monotone</strong> montent à <strong>99 %</strong>, dépassant les hauts (A-high plafonne à 81 %). <strong>L&#x27;ordre s&#x27;inverse.</strong></p>
-<div class="tw"><table><thead><tr><th></th><th>25bb</th><th>50bb</th></tr></thead><tbody><tr><td><strong>Fréquence</strong> de c-bet</td><td>66,2 %</td><td>56,0 % (<strong>−10,2 pts</strong>)</td></tr><tr><td><strong>Part de gros</strong> parmi les mises</td><td>63,6 %</td><td>83,0 % (<strong>+19,4 pts</strong>)</td></tr></tbody></table></div>
-<p>Deux mouvements simultanés : <strong>on mise moins souvent, mais bien plus gros.</strong> Le petit sizing du 25bb était en grande partie un <strong>artefact de SPR bas</strong> (mise de commit / merge) ; en profondeur il cède la place au <strong>gros polarisé</strong> (charger les tirages, construire géométriquement pour les tapis).</p>
-<hr>
-<h2>2. Lentille FAMILLES (F1-F7) — la colonne vertébrale</h2>
-<p><em>(Le classement texture qu&#x27;utilise le drill. IP c-bet.)</em></p>
-<div class="tw"><table><thead><tr><th>famille</th><th>fréq 25→50 (Δ)</th><th><strong>gros 25→50 (Δ)</strong></th></tr></thead><tbody><tr><td><strong>F1 pairé</strong></td><td>73,8 → 69,2 (−4,5)</td><td>49,8 → 46,3 (<strong>−3,5</strong>)</td></tr><tr><td><strong>F2 A-high</strong></td><td>59,0 → 47,3 (−11,7)</td><td>74,7 → 81,3 (+6,6)</td></tr><tr><td><strong>F3 K/Q dry</strong></td><td>64,2 → 53,3 (−10,9)</td><td>69,7 → 87,9 (+18,2)</td></tr><tr><td><strong>F4 broadway conn</strong></td><td>66,6 → 55,3 (−11,4)</td><td>83,2 → 95,7 (+12,5)</td></tr><tr><td><strong>F5 mid</strong></td><td>70,9 → 59,0 (−11,9)</td><td>61,7 → 91,5 (+29,8)</td></tr><tr><td><strong>F6 low</strong></td><td>75,0 → 64,3 (−10,7)</td><td>55,8 → 99,1 (+43,2)</td></tr><tr><td><strong>F7 monotone</strong></td><td>57,7 → 45,0 (−12,6)</td><td>62,2 → 98,6 (+36,4)</td></tr></tbody></table></div>
-<p><strong>Lecture.</strong> Le gros MONTE partout <strong>sauf F1 pairé</strong> (qui reste plat), et il monte <strong>d&#x27;autant plus que le board est bas / dynamique</strong> : gradient net F4 +12 → F5 +30 → F6 +43. Attention : ce n&#x27;est PAS « les familles hautes érodent » — au niveau famille F2/F3 <strong>montent aussi</strong> (+7, +18). L&#x27;érosion qu&#x27;on observe parfois est locale à des sous-ensembles (le <em>wheel</em> de F2, le connecté rainbow de F3).</p>
-<p><strong>F1 pairé = l&#x27;exception sur les deux axes</strong> (fréquence ET taille plates) : le board « ennuyeux » que la profondeur ignore. Personne ne s&#x27;améliore → range-bet mixte petit/gros, à toute profondeur.</p>
-<hr>
-<h2>3. Lentille AHML — le driver « HAUTEUR des rangs »</h2>
-<p><em>(Code Acevedo p.528 : <strong>A</strong>=As · <strong>H</strong>=KQJT · <strong>M</strong>=9876 · <strong>L</strong>=5432. Isole la hauteur, indépendamment de la connectivité que mélange la taxonomie par famille.)</em></p>
-<h3>3a. Par carte haute — un gradient monotone et une inversion</h3>
-<div class="tw"><table><thead><tr><th>carte haute</th><th>gros 25</th><th>gros 50</th><th><strong>Δ gros</strong></th></tr></thead><tbody><tr><td><strong>A</strong> (As)</td><td>71,8 %</td><td>80,6 %</td><td><strong>+8,8</strong></td></tr><tr><td><strong>H</strong> (KQJT)</td><td>64,4 %</td><td>81,7 %</td><td><strong>+17,4</strong></td></tr><tr><td><strong>M</strong> (9876)</td><td>54,7 %</td><td>87,8 %</td><td><strong>+33,1</strong></td></tr><tr><td><strong>L</strong> (5432)</td><td>49,0 %</td><td>93,5 %</td><td><strong>+44,5</strong></td></tr></tbody></table></div>
-<p>C&#x27;est <strong>l&#x27;expression la plus pure de la loi phare</strong> : à 25bb l&#x27;ordre est <strong>A &gt; H &gt; M &gt; L</strong> (la hauteur = le gros, nut advantage) ; à 50bb il <strong>s&#x27;inverse</strong> (le bas rattrape et dépasse). Plus la carte haute est basse, plus le gros bondit en profondeur.</p>
-<h3>3b. Par nombre de cartes basses (L) — même signal, confirmé</h3>
-<div class="tw"><table><thead><tr><th>cartes L</th><th>Δ gros</th></tr></thead><tbody><tr><td>0</td><td>+13,6</td></tr><tr><td>1</td><td>+19,4</td></tr><tr><td>2</td><td>+25,6</td></tr><tr><td>3</td><td>+44,5</td></tr></tbody></table></div>
-<h3>3c. Présence d&#x27;un As — l&#x27;As FREINE le basculement</h3>
-<div class="tw"><table><thead><tr><th></th><th>Δ gros</th></tr></thead><tbody><tr><td><strong>avec As</strong></td><td>+8,8</td></tr><tr><td><strong>sans As</strong></td><td>+22,3</td></tr></tbody></table></div>
-<p>Un As au board = un verrou de nut advantage statique : même en profondeur, BTN garde un profil de <strong>petit range-bet</strong> (il n&#x27;a pas besoin de polariser, la BB ne peut pas grand-chose). L&#x27;As est le plus gros frein au basculement vers le gros.</p>
-<hr>
-<h2>4. Lentille COULEUR (abc) — le driver « FLUSH »</h2>
-<p><em>(rainbow / two-tone / mono. Orthogonal au rang : isole l&#x27;effet du tirage couleur.)</em></p>
-<div class="tw"><table><thead><tr><th>motif</th><th>gros 25</th><th>gros 50</th><th><strong>Δ gros</strong></th></tr></thead><tbody><tr><td><strong>rainbow</strong></td><td>59,0 %</td><td>70,3 %</td><td><strong>+11,2</strong></td></tr><tr><td><strong>two-tone</strong></td><td>66,1 %</td><td>84,3 %</td><td><strong>+18,3</strong></td></tr><tr><td><strong>monotone</strong></td><td>62,2 %</td><td>98,6 %</td><td><strong>+36,4</strong></td></tr></tbody></table></div>
-<p>Le flush <strong>pousse monotonement</strong> le gros en profondeur : rainbow &lt; two-tone &lt; mono, par paliers nets (~+14 pts à chaque cran à 50bb). Le tirage couleur soutient le gros polarisé — et le monotone, flush déjà « à moitié fait », le rend quasi obligatoire (98,6 %).</p>
-<hr>
-<h2>5. Le CROISEMENT — deux drivers indépendants qui s&#x27;empilent</h2>
-<p><strong>Δ part de gros (50−25), carte haute × couleur</strong> — la pièce maîtresse :</p>
-<div class="tw"><table><thead><tr><th>carte haute \ motif</th><th>rainbow</th><th>two-tone</th><th>monotone</th></tr></thead><tbody><tr><td><strong>A</strong> (As)</td><td><strong>−0,4</strong></td><td>+6,2</td><td>+30,3</td></tr><tr><td><strong>H</strong> (KQJT)</td><td>+4,2</td><td>+16,9</td><td>+38,5</td></tr><tr><td><strong>M</strong> (9876)</td><td>+31,2</td><td>+33,4</td><td>+35,3</td></tr><tr><td><strong>L</strong> (5432)</td><td>+50,7</td><td>+35,8</td><td>+65,7</td></tr></tbody></table></div>
-<p>Trois choses à retenir :</p>
-<ol><li><strong>A-high rainbow = l&#x27;ancre statique</strong> (−0,4) : le SEUL type de board où la profondeur ne change</li></ol>
-<p>   RIEN au sizing. Board le plus sec, le plus dominé — deep = comme à 25bb, petit range-bet.</p>
-<ol><li><strong>Deux chemins vers le gros, additifs</strong> : descendre en rang (colonne A→L) OU ajouter du flush</li></ol>
-<p>   (ligne rainbow→mono) pousse le gros. Ils <strong>s&#x27;empilent</strong> — au coin bas-droit (bas + mono) → <strong>+65</strong>.</p>
-<ol><li><strong>Substituables aux extrêmes</strong> : sur les boards <strong>hauts</strong>, c&#x27;est le <strong>flush</strong> qui déclenche le</li></ol>
-<p>   basculement (ligne A : −0,4 → +30 selon la couleur). Sur les boards <strong>bas</strong>, la <strong>hauteur</strong> suffit    (ligne M déjà +31 à +35 quelle que soit la couleur — le rang sature, le flush n&#x27;ajoute presque plus).</p>
-<blockquote><strong>Formulation compacte.</strong> Deep, le gros polarisé s&#x27;impose dès qu&#x27;il y a <strong>du jus</strong> — soit parce que le board est bas (ranges proches, BTN doit charger/protéger), soit parce qu&#x27;il y a un <strong>tirage couleur</strong>. Le seul board sans jus (A-high rainbow sec) reste au petit range-bet à toute profondeur.</blockquote>
-<hr>
-<h2>6. Nuances qualitatives (points d&#x27;étape par famille)</h2>
-<ul><li><strong>F5 mid</strong> : ce sont les <strong>T-high bas</strong> (T52, T54, T32) qui explosent — 54-60 % → <strong>94-100 %</strong> de</li></ul>
-<p>  gros deep (les plus dynamiques polarisent le plus dur).</p>
-<ul><li><strong>F4 broadway</strong> : monte moins (+12) car il partait déjà <strong>haut</strong> (83 % à 25bb, proche du plafond).</li><li><strong>F2 A-high</strong> : la famille monte (+7), mais son sous-ensemble <strong>wheel</strong> (A-5-x) est le seul qui</li></ul>
-<p>  érode — l&#x27;As bas donne à la BB des deux-paires/quintes qui contestent.</p>
-<ul><li><strong>F6 low</strong> : <strong>aucune</strong> érosion, même les boards « qui cèdent le moins » (987, 982) vont à <strong>100 %</strong>.</li><li><strong>F7 monotone</strong> : on c-bet <strong>moins souvent</strong> (45 %, la fréquence la plus basse — danger flush) mais</li></ul>
-<p>  <strong>gros à 98,6 %</strong> quand on mise. Et <strong>seule famille où le donk OOP SURVIT</strong> en profondeur :</p>
-<div class="tw"><table><thead><tr><th>motif</th><th>freq donk 25</th><th>freq donk 50</th></tr></thead><tbody><tr><td>rainbow</td><td>9,6 %</td><td>3,4 %</td></tr><tr><td>two-tone</td><td>12,4 %</td><td>4,1 %</td></tr><tr><td><strong>monotone</strong></td><td><strong>7,4 %</strong></td><td><strong>7,5 %</strong> (survit)</td></tr></tbody></table></div>
-<p>  Partout ailleurs le donk s&#x27;effondre deep ; sur monotone la BB garde des flushes/tirages qui veulent   donker → le donk tient.</p>
-<hr>
-<h2>7. Introduction pratique — lire le 50bb (vs le 25bb)</h2>
-<p><strong>Ce qui change quand tu joues plus profond (SPR ~10 au lieu de ~4,5) :</strong></p>
-<ol><li><strong>Tu c-bet MOINS souvent</strong> (~−10 pts). Tu checkes davantage tes mains moyennes/give-ups —</li></ol>
-<p>   surtout sur <strong>monotone</strong> (freq la plus basse). Le pairé est l&#x27;exception (reste haute freq).</p>
-<ol><li><strong>Quand tu mises, tu mises GROS</strong> — le petit range-bet du 25bb fond. Le gros polarisé sert à</li></ol>
-<p>   charger les tirages et construire pour les tapis.</p>
-<ol><li><strong>Le petit sizing ne survit que sans jus</strong> : boards <strong>hauts et secs</strong> (A/K-high rainbow), et</li></ol>
-<p>   <strong>pairés</strong>. C&#x27;est là que tu gardes le 1/3.</p>
-<ol><li><strong>Dès qu&#x27;il y a du jus, passe au gros</strong> : board <strong>bas</strong>, <strong>connecté</strong>, ou avec un **tirage</li></ol>
-<p>   couleur**. Plus le board est bas / plus il y a de flush, plus le gros est net (jusqu&#x27;à 99 %).</p>
-<ol><li><strong>Repère mental A→L</strong> : plus la carte haute descend, plus tu polarises gros en profondeur.</li></ol>
-<p>   L&#x27;<strong>As freine</strong> (garde un profil petit) ; le <strong>monotone force</strong> le gros.</p>
-<ol><li><strong>Sur monotone, deux modes</strong> : soit tu checkes (souvent), soit tu mises gros. Pas de demi-mesure.</li></ol>
-<p>   Et côté BB, le <strong>donk redevient jouable</strong> (le seul spot où il survit deep).</p>
-<hr>
-<p><em>Généré à partir de la campagne 50bb complète (1755 boards, config <code>srp_btnbb_50bb_33-66</code>). Scripts : <code>temp/synth_25_50_lenses.py</code> (lentilles) + <code>temp/compare_family_25_50.py --family Fx</code> (détail par famille). Cf. mémoire <code>project_flop_deep_50bb</code>.</em></p>
-<div class="foot">Phi Atlas · synthèse profondeur · régénérée depuis Docs/synthese_flop_25_50bb.md</div>
+<h2>En position — BTN vs BB</h2>
+<div class="fiche" id="ip25-cbet"><h4>Agresseur en position · 25bb</h4>
+<blockquote>Tu es le BTN. Tu as open, la BB a call et checké le flop. Tu as l&#x27;initiative <strong>et</strong> la position — la situation la plus confortable du cube.</blockquote>
+<p><strong>▸ La bataille de range</strong> — À 25bb ta range d&#x27;open BTN domine la défense cappée de la BB sur presque toutes les textures ; l&#x27;avantage de nuts est à toi sur les boards hauts et secs (A/K/Q-high). <strong>▸ Ton plan</strong> — C-bet souvent et <strong>polarisé</strong>. Gros sur les boards hauts secs (value + air), plus mesuré et checke une partie des mains moyennes. La taille suit le nut advantage. <strong>▸ Les chiffres</strong> — c-bet <strong>69 %</strong>, dont <strong>62 %</strong> au gros. La BB fold <strong>43 %</strong> face au petit : ta fold equity est réelle, elle sponsorise tes bluffs. <strong>▸ Ce qui bascule vs 50bb</strong> — En deep tu mises un peu <strong>moins</strong> souvent mais encore <strong>plus gros</strong> (80 %) : le sizing se polarise davantage. <a class="drill" href="flop_atlas_macro.html">Driller ce spot →</a></p></div>
+<div class="fiche xr" id="ip25-xr"><h4>Défenseur · check-raise · 25bb</h4>
+<blockquote>Change de siège : ici tu es la <strong>BB, défenseur</strong>. Tu as checké, le BTN a c-bet, tu décides de le relancer.</blockquote>
+<p><strong>▸ La bataille de range</strong> — Tu es OOP avec une range cappée, mais les tapis courts font qu&#x27;un x/r te met souvent commit. Tu relances pour la value (sets, top pair fort) et quelques semi-bluffs (draws) là où ton board touche ta range. <strong>▸ Ton plan</strong> — x/r <strong>souvent le petit c-bet</strong> : un petit sizing à 25bb sent le merge/la faiblesse, tu le punis. x/r <strong>rarement le gros</strong> : un gros c-bet est polarisé/fort, tu call ou tu fold. <strong>▸ Les chiffres</strong> — x/r vs petit <strong>28 %</strong>, vs gros <strong>7 %</strong>. <strong>▸ Ce qui bascule vs 50bb</strong> — En deep tu x/r <strong>moins</strong> (17 %) : plus de profondeur = plus de reverse implied odds, tu préfères call et jouer les rues. <a class="drill" href="flop_xr_oop.html">Driller ce spot →</a></p></div>
+<div class="fiche" id="ip50-cbet"><h4>Agresseur en position · 50bb</h4>
+<blockquote>BTN, position et initiative, mais <strong>tapis profonds</strong> derrière : la menace de barrels turn/river pèse plus lourd.</blockquote>
+<p><strong>▸ La bataille de range</strong> — La profondeur amplifie ton avantage de nuts (tu peux te faire payer sur plusieurs rues), mais la BB défend un peu mieux (fold 35 %). <strong>▸ Ton plan</strong> — C-bet un peu moins fréquent, et quand tu mises, <strong>gros et polarisé</strong> — tu déploies l&#x27;éventail vers le haut. Tes mains moyennes checkent davantage (pot control, SPR plus grand). <strong>▸ Les chiffres</strong> — c-bet <strong>60 %</strong>, dont <strong>80 %</strong> au gros (le sommet du cube), fold-to-cbet <strong>35 %</strong>. <strong>▸ Ce qui bascule vs 25bb</strong> — Fréquence −9 pts, part de gros +18 pts : la profondeur trie, moins de mises mais plus tranchées. <a class="drill" href="flop_atlas_50bb.html">Driller ce spot →</a></p></div>
+<div class="fiche xr" id="ip50-xr"><h4>Défenseur · check-raise · 50bb</h4>
+<blockquote>BB défenseur, <strong>deep</strong>. Tu checkes, le BTN c-bet (souvent gros), tu choisis de relancer ou pas.</blockquote>
+<p><strong>▸ La bataille de range</strong> — Le x/r deep est cher et t&#x27;expose au float / au re-raise : tu resserres. Tu le gardes pour la value claire et les bons semi-bluffs à forte équité. <strong>▸ Ton plan</strong> — x/r du petit qui <strong>tombe à 17 %</strong> (contre 28 % court) : tu <strong>call davantage</strong> pour réaliser ton équité sur plusieurs rues au lieu de tout risquer d&#x27;un coup. x/r du gros stable (~9 %). <strong>▸ Les chiffres</strong> — x/r vs petit <strong>17 %</strong>, vs gros <strong>9 %</strong>, fold-to-cbet <strong>35 %</strong>. <strong>▸ Ce qui bascule vs 25bb</strong> — Le x/r du défenseur <strong>refroidit</strong> avec la profondeur. C&#x27;est le miroir exact de l&#x27;agresseur OOP, dont le x/r se réveille. <a class="drill" href="flop_xr_oop_50bb.html">Driller ce spot →</a></p></div>
+<h2>Hors de position — UTG vs BTN</h2>
+<div class="fiche" id="oop25-cbet"><h4>Agresseur hors de position · 25bb</h4>
+<blockquote>Tu es UTG. Tu as open, le BTN a call <strong>en position</strong>, les blindes ont fold. Tu parles en <strong>premier</strong> au flop, sans la position — agresseur, mais aveugle.</blockquote>
+<p><strong>▸ La bataille de range</strong> — À 25bb ta range d&#x27;open UTG est si forte, et celle du caller BTN si tight/cappée, que tu gardes l&#x27;avantage de range <strong>malgré</strong> la position adverse. Le paradoxe du cube : la range tight écrase la position. <strong>▸ Ton plan</strong> — C-bet énormément — encore <strong>plus</strong> que l&#x27;IP. Mais l&#x27;inversion commence : tu ne polarises pas autant, tu merges, sizing ~50/50 petit-gros. <strong>▸ Les chiffres</strong> — c-bet <strong>74 %</strong> (le plus haut du cube), dont <strong>53 %</strong> au gros. Le BTN ne fold que <strong>28 %</strong> : collant (position), mais ta range domine assez pour blaster. <strong>▸ Ce qui bascule vs 50bb</strong> — Tout change : en deep la position se met à mordre et cette agression s&#x27;effondre. <a class="drill" href="flop_atlas_utgbtn.html">Driller ce spot →</a></p></div>
+<div class="fiche xr" id="oop25-xr"><h4>Agresseur · delayed check-raise · 25bb</h4>
+<blockquote>Encore un autre rôle : tu es UTG (agresseur OOP) mais tu as <strong>checké</strong>. Le BTN, en position, a <strong>stab</strong> (misé sur ton check). Tu le check-raises. C&#x27;est le x/r de l&#x27;<em>agresseur</em>, pas du défenseur.</blockquote>
+<p><strong>▸ La bataille de range</strong> — À 25bb tu c-bet 74 %, donc tu checkes peu : ta range de check est fine, surtout des mains à showdown value. Peu d&#x27;occasions et peu d&#x27;intérêt à x/r. <strong>▸ Ton plan</strong> — x/r <strong>très rare</strong> : tu protèges ta range de check en call, et tu réserves le check-raise aux monstres pris en embuscade. <strong>▸ Les chiffres</strong> — x/r vs stab <strong>6-8 %</strong> (le plancher du cube). <strong>▸ Ce qui bascule vs 50bb</strong> — En deep ce x/r <strong>triple</strong> — c&#x27;est là qu&#x27;il devient une vraie arme. <a class="drill" href="flop_xr_oop_utgbtn.html">Driller ce spot →</a></p></div>
+<div class="fiche" id="oop50-cbet"><h4>Agresseur hors de position · 50bb</h4>
+<blockquote>UTG, hors de position, mais <strong>deep</strong>. Ici, ne pas avoir la position coûte cher à chaque rue.</blockquote>
+<p><strong>▸ La bataille de range</strong> — La profondeur rend la position <strong>précieuse</strong> : le BTN peut te flotter, te raise, réaliser son équité en te laissant parler en premier. Ton avantage de range fond, le nut advantage bascule vers le caller sur les boards dynamiques. <strong>▸ Ton plan</strong> — Tu <strong>freines</strong>. C-bet 57 % (≈ comme l&#x27;IP maintenant — la prime d&#x27;agression a disparu) et surtout tu <strong>merges petit</strong> (33 % de gros seulement — l&#x27;inverse exact de l&#x27;IP deep à 80 %). Tu checkes beaucoup, tes trash <strong>et</strong> tes mains fortes cachées, pour te protéger et <strong>armer le x/r</strong>. <strong>▸ Les chiffres</strong> — c-bet <strong>57 %</strong>, dont seulement <strong>33 %</strong> au gros. Le BTN fold <strong>24 %</strong> (le plus collant du cube). <strong>▸ Ce qui bascule vs IP 50bb</strong> — Même profondeur, sizing <strong>miroir</strong> : l&#x27;IP part à 80 % gros, toi à 33 %. L&#x27;inversion de polarisation, en chiffres. <a class="drill" href="flop_atlas_utgbtn_50bb.html">Driller ce spot →</a></p></div>
+<div class="fiche xr" id="oop50-xr"><h4>Agresseur · delayed check-raise · 50bb</h4>
+<blockquote>Tu es UTG, agresseur OOP, <strong>deep</strong>, et tu as checké ton flop. Le BTN a stab ta faiblesse apparente. Tu check-raises — c&#x27;est ton arme de contre-attaque, et elle est ici à son maximum.</blockquote>
+<p><strong>▸ La bataille de range</strong> — En deep tu checkes beaucoup plus (c-bet tombé à 57 %) : ta range de check est <strong>large et construite</strong> — mains fortes cachées (sets, two pair sandbaggés), trash, et mains de protection. Quand le BTN mise sur ton check, tu le punis ; la profondeur donne aux semi-bluffs l&#x27;implied odds pour se faire payer s&#x27;ils touchent. <strong>▸ Ton plan</strong> — x/r <strong>nettement plus souvent</strong> — un vrai levier, plus une exception. Value cachée + semi-bluffs (draws). Fait notable : c&#x27;est le <strong>seul spot du cube où le x/r vs gros dépasse le x/r vs petit</strong> — un BTN qui gros-stab ta range checkée large se fait relancer. <strong>▸ Les chiffres</strong> — x/r vs petit <strong>17 %</strong>, vs gros <strong>21 %</strong>. <strong>▸ Ce qui bascule</strong> — vs OOP 25bb : ×3 (la profondeur réveille le x/r de l&#x27;agresseur). vs IP 50bb (défenseur) : sens <strong>opposé</strong> — le défenseur refroidit, l&#x27;agresseur se réveille. <a class="drill" href="flop_xr_oop_utgbtn_50bb.html">Driller ce spot →</a></p></div>
+<div class="foot">Phi Atlas · synthèse du cube flop (position × profondeur) · régénérée depuis Docs/synthese_flop_25_50bb.md</div>
 </div>
 </body>
 </html>
