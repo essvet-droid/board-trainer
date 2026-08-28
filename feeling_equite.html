@@ -125,6 +125,16 @@ details { margin: 6px 0; } summary { cursor: pointer; color: #00d4ff; font-weigh
     <div class="stat-item"><div class="stat-label">Correctes</div><div class="stat-value" id="s-correct">0</div></div>
     <div class="stat-item"><div class="stat-label">Précision</div><div class="stat-value" id="s-acc">—</div></div>
   </div>
+  <div class="ctrl-row" style="margin-top:10px">
+    <div class="ctrl-group">
+      <span class="lbl">Tirage</span>
+      <div class="seg" id="mode-seg">
+        <button data-mode="free" class="active">Libre</button>
+        <button data-mode="adaptive">🎯 Cibler mes faiblesses</button>
+      </div>
+    </div>
+    <span class="lbl" id="mode-hint" style="color:#666;font-size:0.76em"></span>
+  </div>
 </div>
 
 <div class="panel">
@@ -169,6 +179,14 @@ details { margin: 6px 0; } summary { cursor: pointer; color: #00d4ff; font-weigh
     <span><span class="dot" style="background:#e74c3c"></span>Trash &lt;33%</span>
   </div>
   <div class="source-tag">Équité en direct (Monte-Carlo flop, exact turn/river) — moteur JS validé contre treys (0 écart / 20 000 showdowns). Paliers PPT de 6,25%.</div>
+</div>
+
+<div class="panel">
+  <details id="bias-details">
+    <summary>🎯 Mes faiblesses — AHML × texture</summary>
+    <div id="bias-body" class="help-section"></div>
+    <button class="ghost" id="btn-reset-weak" style="margin-top:10px">Réinitialiser mes stats de faiblesse</button>
+  </details>
 </div>
 
 <div class="panel">
@@ -291,6 +309,90 @@ const stats={total:0,correct:0};
 function boardFor(st){ return st==='flop'?fullBoard.slice(0,3):st==='turn'?fullBoard.slice(0,4):fullBoard.slice(0,5); }
 function el(id){ return document.getElementById(id); }
 
+// ═══════════════ Ciblage des faiblesses (AHML × texture × street) ═══════════════
+// AHML = bande de rang Acevedo de la CARTE HAUTE du flop (A=As · H=KQJT · M=9876 · L=5432).
+const AHML_T={A:"A",K:"H",Q:"H",J:"H",T:"H","9":"M","8":"M","7":"M","6":"M","5":"L","4":"L","3":"L","2":"L"};
+const BANDS=['A','H','M','L'], BAND_LBL={A:'As',H:'KQJT',M:'9876',L:'5432'};
+const TEXS=['mono','twotone','rainbow'], TEX_LBL={mono:'monotone',twotone:'two-tone',rainbow:'rainbow'};
+const STREETS=['flop','turn','river'];
+const BKI={trash:0,weak:1,good:2,strong:3};
+function flopCat(board5){
+  const f=board5.slice(0,3);
+  let topR=0, band='L';
+  for(const c of f){ const r=EV_RANK[c[0]]; if(r>topR){ topR=r; band=AHML_T[c[0]]; } }
+  const suits=new Set(f.map(c=>c[1]));
+  const tex = suits.size===1?'mono':suits.size===2?'twotone':'rainbow';
+  return {band, tex};
+}
+const WEAK_KEY='fe_weak_v1', MODE_KEY='fe_mode_v1';
+function loadWeak(){ try{ return JSON.parse(localStorage.getItem(WEAK_KEY))||{}; }catch(e){ return {}; } }
+function saveWeak(){ try{ localStorage.setItem(WEAK_KEY, JSON.stringify(weak)); }catch(e){} }
+let weak = loadWeak();
+let adaptiveMode = false;
+try{ adaptiveMode = localStorage.getItem(MODE_KEY)==='adaptive'; }catch(e){}
+
+function recordResult(pick, correctBk, ok){
+  const {band,tex}=flopCat(fullBoard);
+  const k=`${street}|${band}|${tex}`;
+  const w = weak[k] || (weak[k]={seen:0,miss:0,bias:0});
+  w.seen++; if(!ok) w.miss++;
+  w.bias += (BKI[pick]-BKI[correctBk]);   // <0 = tu sous-estimes ; >0 = tu surestimes
+  saveWeak();
+}
+// agrège les 3 streets pour un couple (bande,texture) → taux de raté lissé (self-correcteur)
+function cellWeakness(band,tex){
+  let seen=0,miss=0;
+  for(const st of STREETS){ const w=weak[`${st}|${band}|${tex}`]; if(w){ seen+=w.seen; miss+=w.miss; } }
+  return (miss+1)/(seen+2);
+}
+function pickTargetCell(){
+  const cells=[]; let tot=0;
+  for(const b of BANDS)for(const t of TEXS){ const wgt=cellWeakness(b,t); cells.push({b,t,wgt}); tot+=wgt; }
+  let r=Math.random()*tot;
+  for(const c of cells){ r-=c.wgt; if(r<=0) return c; }
+  return cells[cells.length-1];
+}
+function dealBoard(target){
+  const deck=evDeck().filter(c=>!hero.includes(c));
+  const shuffle=()=>{ for(let i=deck.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [deck[i],deck[j]]=[deck[j],deck[i]]; } };
+  if(target){ // échantillonnage par rejet vers la case ciblée (flop = 3 premières cartes)
+    for(let t=0;t<400;t++){ shuffle(); const b=deck.slice(0,5); const c=flopCat(b); if(c.band===target.b&&c.tex===target.t) return b; }
+  }
+  shuffle(); return deck.slice(0,5);   // libre, ou fallback si la case est trop rare
+}
+
+function renderBias(){
+  const host=el('bias-body'); if(!host) return;
+  let totalSeen=0; for(const k in weak) totalSeen+=weak[k].seen;
+  if(!totalSeen){ host.innerHTML='<p>Réponds à quelques mains : ici s\'affichera où tu te trompes le plus (par carte haute × texture × street), et le tirage « ciblé » te resservira des flops de tes catégories faibles.</p>'; return; }
+  // grille bande (lignes) × texture (colonnes) : taux de raté agrégé sur les streets
+  let rows='';
+  for(const b of BANDS){
+    let tds='';
+    for(const t of TEXS){
+      let seen=0,miss=0; for(const st of STREETS){ const w=weak[`${st}|${b}|${t}`]; if(w){ seen+=w.seen; miss+=w.miss; } }
+      if(!seen){ tds+='<td style="padding:5px 7px;text-align:center;color:#555;border:1px solid #223">·</td>'; continue; }
+      const rate=Math.round(100*miss/seen), a=Math.min(0.8, miss/seen);
+      tds+=`<td style="padding:5px 7px;text-align:center;border:1px solid #223;background:rgba(231,76,60,${a})"><b>${rate}%</b><br><span style="color:#9aa;font-size:.8em">${miss}/${seen}</span></td>`;
+    }
+    rows+=`<tr><th style="padding:5px 8px;text-align:right;color:#00d4ff;white-space:nowrap">${b} <span style="color:#666;font-weight:normal">${BAND_LBL[b]}</span></th>${tds}</tr>`;
+  }
+  let head='<th></th>'+TEXS.map(t=>`<th style="padding:5px 7px;color:#aaa;font-size:.82em">${TEX_LBL[t]}</th>`).join('');
+  // biais signé par street
+  let bias='';
+  for(const st of STREETS){
+    let seen=0,bsum=0; for(const b of BANDS)for(const t of TEXS){ const w=weak[`${st}|${b}|${t}`]; if(w){ seen+=w.seen; bsum+=w.bias; } }
+    if(!seen) continue;
+    const avg=bsum/seen, dir=avg<-0.05?'sous-estime ⬇':avg>0.05?'surestime ⬆':'juste';
+    const col=avg<-0.05?'#e67e22':avg>0.05?'#00d4ff':'#2ecc71';
+    bias+=`<span class="chip" style="border-left:3px solid ${col}">${st} : <b>${dir}</b> (${avg>0?'+':''}${avg.toFixed(2)} bucket)</span> `;
+  }
+  host.innerHTML =
+    `<p style="margin-bottom:6px">Taux de <b>raté</b> par carte haute (bande AHML) × texture — rouge = tes trous :</p>`+
+    `<table style="border-collapse:collapse;font-family:Consolas,monospace;font-size:.9em"><tr>${head}</tr>${rows}</table>`+
+    `<p style="margin-top:10px">Ton <b>biais</b> par street (bucket choisi vs correct) :</p><div>${bias||'—'}</div>`;
+}
+
 function buildSeg(container, values, current, fmt, onPick){
   container.innerHTML='';
   values.forEach(v=>{
@@ -308,9 +410,9 @@ function villDesc(){ return `top ${villWidth}% ${SHAPE_LABEL[villShape]}`; }
 function deal(){
   const hr=heroRangeCombos(heroWidth);
   hero=hr[(Math.random()*hr.length)|0].slice();
-  const deck=evDeck().filter(c=>!hero.includes(c));
-  for(let i=deck.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[deck[i],deck[j]]=[deck[j],deck[i]];}
-  fullBoard=deck.slice(0,5);
+  // mode ciblé : 65% des tirages pondérés vers tes catégories faibles, 35% libres (douceur)
+  const target = (adaptiveMode && Math.random()<0.65) ? pickTargetCell() : null;
+  fullBoard = dealBoard(target);
   street='flop'; perTierCache={};
   goStreet('flop');
 }
@@ -352,6 +454,7 @@ function answer(pick){
     stats.total++; if(ok)stats.correct++;
     el('s-total').textContent=stats.total; el('s-correct').textContent=stats.correct;
     el('s-acc').textContent=Math.round(stats.correct/stats.total*100)+'%';
+    recordResult(pick, correctBk, ok); renderBias();
 
     [...el('buckets').children].forEach(b=>{b.disabled=true;
       if(b.dataset.bk===correctBk)b.classList.add('reveal-correct');
@@ -395,6 +498,22 @@ el('btn-deal2').addEventListener('click', deal);
 el('btn-turn').addEventListener('click',()=>{ if(!el('btn-turn').disabled) goStreet('turn'); });
 el('btn-river').addEventListener('click',()=>{ if(!el('btn-river').disabled) goStreet('river'); });
 
+// mode de tirage (Libre / Cibler mes faiblesses)
+function syncMode(){
+  [...el('mode-seg').children].forEach(b=>b.classList.toggle('active', (b.dataset.mode==='adaptive')===adaptiveMode));
+  el('mode-hint').textContent = adaptiveMode ? 'te resserre des flops de tes catégories faibles' : '';
+}
+el('mode-seg').addEventListener('click', e=>{
+  const b=e.target.closest('button'); if(!b) return;
+  adaptiveMode = b.dataset.mode==='adaptive';
+  try{ localStorage.setItem(MODE_KEY, adaptiveMode?'adaptive':'free'); }catch(err){}
+  syncMode(); deal();
+});
+el('btn-reset-weak').addEventListener('click', ()=>{
+  if(!confirm('Effacer tes stats de faiblesse (par catégorie) ?')) return;
+  weak={}; saveWeak(); renderBias();
+});
+syncMode(); renderBias();
 deal();
 </script>
 </body>
