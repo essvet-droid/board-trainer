@@ -1,0 +1,272 @@
+<!doctype html><html lang="fr"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Maths poker</title>
+<style>
+:root{--bg:#14171c;--pan:#1e232b;--pan2:#262d37;--ln:#333c48;--tx:#e8ecf1;--mut:#93a0b0;
+ --acc:#e0b23a;--good:#2f9e57;--bad:#c94b4b;--blue:#3d84c6;--font:"Segoe UI",system-ui,sans-serif;
+ --mono:"Consolas",ui-monospace,monospace}
+*{box-sizing:border-box}
+body{margin:0 auto;max-width:940px;background:var(--bg);color:var(--tx);font-family:var(--font);padding:14px;line-height:1.4}
+h1{font-size:18px;margin:0 0 3px}.sub{color:var(--mut);font-size:12.5px;margin:0 0 12px}
+h2{font-size:15px;margin:24px 0 8px;padding-bottom:5px;border-bottom:1px solid var(--ln);color:var(--acc);scroll-margin-top:10px}
+.nav{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 4px}
+.nav a{font-size:11.5px;color:var(--tx);background:var(--pan2);border:1px solid var(--ln);border-radius:6px;padding:4px 9px;text-decoration:none}
+.nav a:hover{border-color:var(--acc)}
+.card{background:var(--pan);border:1px solid var(--ln);border-radius:10px;padding:13px 14px;margin:8px 0}
+label{font-size:12px;color:var(--mut);display:block;margin-bottom:2px}
+input[type=number],input[type=text]{background:var(--pan2);border:1px solid var(--ln);border-radius:7px;color:var(--tx);font-size:15px;padding:7px 9px;width:100%;font-family:var(--mono)}
+select{background:var(--pan2);border:1px solid var(--ln);border-radius:7px;color:var(--tx);font-size:14px;padding:7px 9px;width:100%}
+.row{display:flex;gap:10px;flex-wrap:wrap}.row>div{flex:1;min-width:95px}
+.presets{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 4px}
+.pz{padding:5px 10px;border-radius:7px;border:1px solid var(--ln);background:var(--pan2);color:var(--tx);cursor:pointer;font-size:12px}.pz:hover{border-color:var(--acc)}
+.opt{display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin:2px 0 8px;font-size:13px}
+.opt label{display:inline;color:var(--tx);margin:0}
+.out{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+.outbox{flex:1;min-width:140px;background:var(--pan2);border:1px solid var(--ln);border-radius:8px;padding:11px 13px;text-align:center}
+.outbox .k{font-size:11.5px;color:var(--mut)}.outbox .v{font-size:24px;font-weight:800;margin-top:2px}
+.outbox.hl .v{color:var(--acc)}
+.formula{font-family:var(--mono);font-size:11.5px;color:var(--mut);background:var(--pan2);border:1px solid var(--ln);border-radius:7px;padding:7px 10px;margin-top:10px;overflow-x:auto}
+.msg{font-size:11.5px;color:var(--bad);margin-top:7px}
+table{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:4px}
+th,td{border:1px solid var(--ln);padding:6px 8px;text-align:left;vertical-align:top}
+th{color:var(--mut);font-weight:600;background:var(--pan2)}
+td.eq{text-align:center;font-family:var(--mono);font-weight:700;white-space:nowrap}
+td.no{font-family:var(--mono);color:var(--blue);text-align:center;white-space:nowrap}
+.mono{font-family:var(--mono)}.small{color:var(--mut);font-size:11.5px}.note{color:var(--mut);font-size:11px}
+button.go{background:var(--acc);color:#1a1a1a;border:0;border-radius:7px;font-weight:700;font-size:14px;padding:8px 18px;cursor:pointer}
+.res{margin-top:12px;font-size:14px}.res b{font-size:22px}.fam{color:var(--acc);font-weight:700}
+.pos{color:var(--good)}.neg{color:var(--bad)}
+</style></head><body>
+<h1>Maths poker</h1>
+<p class="sub">Calculateurs façon Equilab (formules exactes affichées) + matchups génériques (équités énumérées) + duel main vs main.</p>
+<div class="nav">
+ <a href="#s1">Odds & outs</a><a href="#s2">Fold frequency</a><a href="#s3">Overcards</a>
+ <a href="#s4">Facing openraise</a><a href="#s5">Facing 3bet</a><a href="#s6">Committing stack</a>
+ <a href="#s7">Matchups</a><a href="#s8">Duel main vs main</a>
+</div>
+
+<h2 id="s1">1 · Odds, outs & tirages (hypergéométrique)</h2>
+<div class="card">
+ <p class="small" style="margin:0 0 9px">Tirage <b>sans remise</b>. Presets outs×rue, ou remplis N/K/n/k. Sortie : P(exactement k), P(au moins k) et la <b>cote</b>.</p>
+ <div class="presets" id="hpre"></div>
+ <div class="row">
+  <div><label>N — cartes inconnues</label><input type="number" id="hN" value="47"></div>
+  <div><label>K — outs dans le deck</label><input type="number" id="hK" value="9"></div>
+  <div><label>n — cartes à tirer</label><input type="number" id="hn" value="2"></div>
+  <div><label>k — outs voulus</label><input type="number" id="hk" value="1"></div>
+ </div>
+ <div class="out">
+  <div class="outbox"><div class="k">P(exactement k)</div><div class="v" id="hExact">–</div></div>
+  <div class="outbox hl"><div class="k">P(au moins k) « je complète »</div><div class="v" id="hAtLeast">–</div></div>
+  <div class="outbox"><div class="k">Cote (contre, au moins k)</div><div class="v" id="hOdds">–</div></div>
+ </div>
+ <div class="formula" id="hForm"></div>
+ <p class="msg" id="hmsg"></p>
+</div>
+
+<h2 id="s2">2 · Fold frequency (multiway)</h2>
+<div class="card">
+ <p class="small" style="margin:0 0 9px">Combien <b>chaque</b> villain doit fold pour que ton bluff soit break-even (tous doivent fold).</p>
+ <div class="row">
+  <div><label>Villains derrière</label><input type="number" id="ff_v" value="2"></div>
+  <div><label>Tu risques (bb)</label><input type="number" id="ff_r" value="2.5" step="0.5"></div>
+  <div><label>Pour un pot de (bb)</label><input type="number" id="ff_w" value="1.5" step="0.5"></div>
+ </div>
+ <div class="out">
+  <div class="outbox hl"><div class="k">Fold freq. moyenne / villain</div><div class="v" id="ff_out">–</div></div>
+  <div class="outbox"><div class="k">Fold equity globale (α)</div><div class="v" id="ff_glob">–</div></div>
+ </div>
+ <div class="formula">FF/villain = (Risk / (Risk + Reward)) ^ (1 / villains) · α = Risk/(Risk+Reward)</div>
+</div>
+
+<h2 id="s3">3 · Overcards</h2>
+<div class="card">
+ <p class="small" style="margin:0 0 9px">Probabilité qu'<b>au moins une overcard</b> à ta main tombe (utile pour tes paires).</p>
+ <div class="row">
+  <div><label>Ta main (2 rangs, ex TJ ou 88)</label><input type="text" id="oc_h" value="TJ" maxlength="3"></div>
+  <div><label>De la préflop à…</label><select id="oc_street"><option value="5">River (5 cartes)</option><option value="4">Turn (4)</option><option value="3">Flop (3)</option></select></div>
+ </div>
+ <div class="out">
+  <div class="outbox hl"><div class="k">P(au moins 1 overcard)</div><div class="v" id="oc_out">–</div></div>
+  <div class="outbox"><div class="k">Overcards vivantes (n)</div><div class="v" id="oc_n">–</div></div>
+ </div>
+ <div class="formula">P = 1 − ∏(50−n−i)/(50−i) pour i = 0..(cartes−1) · n = cartes du deck plus hautes que ta meilleure carte</div>
+ <p class="msg" id="oc_msg"></p>
+</div>
+
+<h2 id="s4">4 · Facing openraise (3bet / squeeze)</h2>
+<div class="card">
+ <div class="opt">
+  <label><input type="radio" name="fomode" id="fo_fixed" checked> Fold equity fixe</label>
+  <label><input type="radio" name="fomode" id="fo_ranges"> Depuis les ranges</label>
+  <label style="margin-left:auto"><input type="checkbox" id="fo_rake" checked> soustraire rake (5 %)</label>
+ </div>
+ <div class="row">
+  <div><label>Fold equity %</label><input type="number" id="fo_fe" value="66.7" step="0.1"></div>
+  <div><label>Open %  <span class="note">(mode ranges)</span></label><input type="number" id="fo_open" value="15" disabled></div>
+  <div><label>Call 3bet %  <span class="note">(ranges)</span></label><input type="number" id="fo_call" value="5" disabled></div>
+ </div>
+ <div class="row" style="margin-top:8px">
+  <div><label>Ta raise (bb)</label><input type="number" id="fo_raise" value="20" step="0.5"></div>
+  <div><label>Ton équité % (si call)</label><input type="number" id="fo_eq" value="45" step="0.5"></div>
+  <div><label>Pot total (bb)</label><input type="number" id="fo_pot" value="41.5" step="0.5"></div>
+  <div><label>Dead money (bb)</label><input type="number" id="fo_dm" value="5.5" step="0.5"></div>
+ </div>
+ <div class="out">
+  <div class="outbox hl"><div class="k">Expected value (bb)</div><div class="v" id="fo_ev">–</div></div>
+  <div class="outbox"><div class="k">Break-even equity</div><div class="v" id="fo_be">–</div></div>
+  <div class="outbox"><div class="k">Fold equity utilisée</div><div class="v" id="fo_feu">–</div></div>
+ </div>
+ <div class="formula">EV = FE·DeadMoney + (1−FE)·(Éq·Pot·r − Raise) · BE = ((1−FE)·Raise − FE·DeadMoney) / ((1−FE)·Pot·r) · r = 0,95 si rake · FE(ranges) = (Open − Call)/Open</div>
+</div>
+
+<h2 id="s5">5 · Facing 3bet (call / jam)</h2>
+<div class="card">
+ <p class="small" style="margin:0 0 9px">Équité minimale pour payer un 3bet à tapis.</p>
+ <div class="opt"><label style="margin-left:auto"><input type="checkbox" id="f3_rake" checked> soustraire rake</label></div>
+ <div class="row">
+  <div><label>Stack effectif restant (bb)</label><input type="number" id="f3_s" value="10" step="0.5"></div>
+  <div><label>Pot total (bb)</label><input type="number" id="f3_p" value="57" step="0.5"></div>
+ </div>
+ <div class="out"><div class="outbox hl"><div class="k">Break-even equity</div><div class="v" id="f3_out">–</div></div></div>
+ <div class="formula">BE = Stack / (Pot · r) · r = 0,95 si rake</div>
+</div>
+
+<h2 id="s6">6 · Committing stack</h2>
+<div class="card">
+ <p class="small" style="margin:0 0 9px">Taille de mise qui t'engage (SPR ≈ 1 sur la rue suivante).</p>
+ <div class="row">
+  <div><label>Stack effectif restant (bb)</label><input type="number" id="cs_s" value="84" step="1"></div>
+  <div><label>Pot avant la mise (bb)</label><input type="number" id="cs_p" value="30" step="1"></div>
+ </div>
+ <div class="out"><div class="outbox hl"><div class="k">Committing betsize</div><div class="v" id="cs_out">–</div></div></div>
+ <div class="formula">Betsize = (Stack − Pot) / 3</div>
+</div>
+
+<h2 id="s7">7 · Matchups génériques préflop</h2>
+<p class="small">Équités <b>exactes</b> (énumération des 1 712 304 boards, treys). Rangs A&gt;B&gt;C&gt;D. « suited » = chaque main assortie. La 1re main est la favorite.</p>
+<div class="card" style="overflow-x:auto">
+<table><tr><th>Famille</th><th>Notation</th><th>Exemple</th><th>éq off</th><th>éq suited</th></tr>
+<tr><td>Paire vs paire<div class="note">Overpair vs underpair — l'underdog ne gagne que set-over-set ou runout. Suited ~sans effet.</div></td><td class="no">AA vs BB</td><td class="mono">K♥K♦ vs Q♣Q♠</td><td class="eq">81.2 %</td><td class="eq"><span class="small">≈ +2-4</span></td></tr>
+<tr><td>Paire vs 2 cartes plus basses<div class="note">Overpair vs 2 unders. Espacé (Q vs 8-3) monte à ~87.0 % (moins de quintes adverses).</div></td><td class="no">AA vs CD</td><td class="mono">Q♥Q♦ vs J♣T♠</td><td class="eq">85.0 %</td><td class="eq"><span class="small">≈ +2-4</span></td></tr>
+<tr><td>Paire vs 2 overcards (le flip)<div class="note">La course. Paire légèrement favorite ; overs assorties (A♦K♦) grignotent.</div></td><td class="no">BB vs AC</td><td class="mono">8♥8♦ vs A♣K♠</td><td class="eq">55.6 %</td><td class="eq">52.3 %</td></tr>
+<tr><td>Paire vs 1 over / 1 under<div class="note">L'under bloque une partie du jeu adverse ; paire nette favorite.</div></td><td class="no">X&gt;PP&gt;Y</td><td class="mono">8♥8♦ vs A♣7♠</td><td class="eq">70.7 %</td><td class="eq"><span class="small">≈ +2-4</span></td></tr>
+<tr><td>Paire vs 2 undercards<div class="note">Domination de paire. Connecteurs assortis réduisent un peu l'écart.</div></td><td class="no">PP&gt;X,Y</td><td class="mono">8♥8♦ vs 6♣5♠</td><td class="eq">83.3 %</td><td class="eq"><span class="small">≈ +2-4</span></td></tr>
+<tr><td>2 hautes vs 2 basses<div class="note">Connecté (QJ) ici ; espacé (AK vs 72) monte à ~67.0 %. La connectivité du perdant compte.</div></td><td class="no">AB vs CD</td><td class="mono">A♥K♦ vs Q♣J♠</td><td class="eq">64.3 %</td><td class="eq">62.7 %</td></tr>
+<tr><td>Top + 3e vs 2e + 4e<div class="note">Une carte de chaque côté se domine ; favori modéré.</div></td><td class="no">AC vs BD</td><td class="mono">A♥Q♦ vs K♣J♠</td><td class="eq">62.6 %</td><td class="eq">61.0 %</td></tr>
+<tr><td>Top + bas vs 2 du milieu<div class="note">L'As domine, mais K-Q connectés se défendent (quintes).</div></td><td class="no">AD vs BC</td><td class="mono">A♥J♦ vs K♣Q♠</td><td class="eq">59.7 %</td><td class="eq">58.3 %</td></tr>
+<tr><td>Kicker dominé (carte haute partagée)<div class="note">Domination classique : même carte haute, kicker inférieur (~3 outs kicker + tirages).</div></td><td class="no">AB vs AC</td><td class="mono">A♥K♦ vs A♣Q♠</td><td class="eq">74.0 %</td><td class="eq">69.7 %</td></tr>
+<tr><td>Kicker commun bas (1 overcard propre)<div class="note">Même kicker bas partagé ; la carte haute (A) fait la différence.</div></td><td class="no">AC vs BC</td><td class="mono">A♥J♦ vs K♣J♠</td><td class="eq">74.0 %</td><td class="eq"><span class="small">≈ +2-4</span></td></tr>
+
+</table>
+<p class="note" style="margin-top:8px">Rappel : <b>+2 à +4 %</b> pour la main assortie (davantage si connectée). Fourchettes de connectivité en note.</p>
+</div>
+
+<h2 id="s8">8 · Duel exact (main vs main)</h2>
+<div class="card">
+ <p class="small" style="margin:0 0 9px">Ex <span class="mono">AsKh</span> vs <span class="mono">QdJc</span> → équité + famille. Monte-Carlo (moteur validé treys).</p>
+ <div class="row">
+  <div><label>Ta main</label><input type="text" id="mh" value="AsKh" maxlength="4"></div>
+  <div><label>Villain</label><input type="text" id="mv" value="QdJc" maxlength="4"></div>
+  <div style="flex:0 0 auto;display:flex;align-items:flex-end"><button class="go" id="mgo">Calculer</button></div>
+ </div>
+ <div class="res" id="mres"></div>
+</div>
+
+<p class="note" style="text-align:center;margin-top:22px">Maths poker · outil d'étude</p>
+
+<script>
+const G=id=>document.getElementById(id);
+function nCr(n,r){if(r<0||r>n)return 0;r=Math.min(r,n-r);let x=1;for(let i=0;i<r;i++)x=x*(n-i)/(i+1);return x;}
+function hyper(N,K,n,k){return nCr(K,k)*nCr(N-K,n-k)/nCr(N,n);}
+
+// ═══ 1. odds/outs ═══
+const HPRE=[["Flush draw · flop→river",47,9,2,1],["Flush draw · turn→river",46,9,1,1],
+ ["OESD · flop→river",47,8,2,1],["Gutshot · flop→river",47,4,2,1],
+ ["Set (paire) · au flop",50,2,3,1],["Overcard · turn→river",46,6,1,1]];
+HPRE.forEach(([l,N,K,n,k])=>{const b=document.createElement('button');b.className='pz';b.textContent=l;
+ b.onclick=()=>{hN.value=N;hK.value=K;hn.value=n;hk.value=k;calcH();};G('hpre').appendChild(b);});
+const hN=G('hN'),hK=G('hK'),hn=G('hn'),hk=G('hk');
+function calcH(){const N=+hN.value,K=+hK.value,n=+hn.value,k=+hk.value;
+ if(N<1||K<0||n<0||k<0||K>N||n>N||k>n||k>K){hExact.textContent=hAtLeast.textContent=hOdds.textContent='–';G('hForm').textContent='';G('hmsg').textContent='Il faut 0 ≤ k ≤ n ≤ N et k ≤ K ≤ N.';return;}
+ G('hmsg').textContent='';
+ const ex=hyper(N,K,n,k);let atl=0;for(let j=k;j<=Math.min(K,n);j++)atl+=hyper(N,K,n,j);
+ hExact.textContent=(100*ex).toFixed(2)+' %';hAtLeast.textContent=(100*atl).toFixed(2)+' %';
+ hOdds.textContent=atl>0?((1-atl)/atl).toFixed(1)+' : 1':'∞';
+ G('hForm').textContent=`P(=k)=C(${K},${k})·C(${N-K},${n-k})/C(${N},${n}) · P(≥k)=Σ P(j≥k) · cote=(1−P)/P`;}
+[hN,hK,hn,hk].forEach(e=>e.addEventListener('input',calcH));
+
+// ═══ 2. fold frequency ═══
+function calcFF(){const V=+ff_v.value,R=+ff_r.value,W=+ff_w.value;
+ if(V<1||R<=0||W<0){ff_out.textContent='–';ff_glob.textContent='';return;}
+ const a=R/(R+W);ff_out.textContent=(100*Math.pow(a,1/V)).toFixed(1)+' %';ff_glob.textContent=(100*a).toFixed(1)+' %';}
+['ff_v','ff_r','ff_w'].forEach(id=>G(id).addEventListener('input',calcFF));
+
+// ═══ 3. overcards ═══
+const RK={'2':2,'3':3,'4':4,'5':5,'6':6,'7':7,'8':8,'9':9,'T':10,'J':11,'Q':12,'K':13,'A':14};
+function calcOC(){const s=oc_h.value.trim().toUpperCase();const rs=[...s].filter(c=>c in RK);
+ if(rs.length<2){oc_out.textContent='–';oc_n.textContent='–';G('oc_msg').textContent='Entre 2 rangs (ex TJ, 88, AK).';return;}
+ G('oc_msg').textContent='';const hi=Math.max(RK[rs[0]],RK[rs[1]]);const n=(14-hi)*4;const draw=+oc_street.value;
+ let p=1;for(let i=0;i<draw;i++)p*=(50-n-i)/(50-i);oc_out.textContent=(100*(1-p)).toFixed(2)+' %';oc_n.textContent=n;}
+oc_h.addEventListener('input',calcOC);oc_street.addEventListener('change',calcOC);
+
+// ═══ 4. facing openraise ═══
+function foMode(){const rg=fo_ranges.checked;fo_open.disabled=!rg;fo_call.disabled=!rg;fo_fe.disabled=rg;calcFO();}
+function calcFO(){let FE;if(fo_ranges.checked){const o=+fo_open.value,c=+fo_call.value;FE=o>0?(o-c)/o:0;}else FE=+fo_fe.value/100;
+ FE=Math.max(0,Math.min(1,FE));const DM=+fo_dm.value,eq=+fo_eq.value/100,ra=+fo_raise.value,pot=+fo_pot.value,r=fo_rake.checked?0.95:1;
+ const ev=FE*DM+(1-FE)*(eq*pot*r-ra);const be=(1-FE)>0?((1-FE)*ra-FE*DM)/((1-FE)*pot*r):0;
+ fo_ev.textContent=ev.toFixed(3);fo_ev.className='v '+(ev>=0?'pos':'neg');
+ fo_be.textContent=(100*be).toFixed(2)+' %';fo_feu.textContent=(100*FE).toFixed(1)+' %';}
+['fo_fe','fo_open','fo_call','fo_raise','fo_eq','fo_pot','fo_dm'].forEach(id=>G(id).addEventListener('input',calcFO));
+fo_rake.addEventListener('change',calcFO);fo_fixed.addEventListener('change',foMode);fo_ranges.addEventListener('change',foMode);
+
+// ═══ 5. facing 3bet ═══
+function calc3(){const s=+f3_s.value,p=+f3_p.value,r=f3_rake.checked?0.95:1;f3_out.textContent=p>0?(100*s/(p*r)).toFixed(2)+' %':'–';}
+['f3_s','f3_p'].forEach(id=>G(id).addEventListener('input',calc3));f3_rake.addEventListener('change',calc3);
+
+// ═══ 6. committing stack ═══
+function calcCS(){const s=+cs_s.value,p=+cs_p.value;cs_out.textContent=((s-p)/3).toFixed(1)+' BB';}
+['cs_s','cs_p'].forEach(id=>G(id).addEventListener('input',calcCS));
+
+// ═══ 8. duel main vs main (moteur eval7 repris de feeling_equite, validé treys) ═══
+const EV_RANK={'2':2,'3':3,'4':4,'5':5,'6':6,'7':7,'8':8,'9':9,'T':10,'J':11,'Q':12,'K':13,'A':14},EV_SUIT={s:0,h:1,d:2,c:3};
+function evParse(s){return{r:EV_RANK[s[0]],s:EV_SUIT[s[1]]};}
+function evScore(c,t){let v=c;for(let i=0;i<5;i++)v=v*15+(t[i]||0);return v;}
+function evStraightHigh(p){for(let h=14;h>=6;h--){let ok=1;for(let k=0;k<5;k++)if(!p[h-k]){ok=0;break;}if(ok)return h;}if(p[14]&&p[5]&&p[4]&&p[3]&&p[2])return 5;return 0;}
+function eval7(cards){const rc=new Array(15).fill(0),sc=[0,0,0,0];for(const c of cards){rc[c.r]++;sc[c.s]++;}
+ let fs=-1;for(let s=0;s<4;s++)if(sc[s]>=5)fs=s;const pr=new Array(15).fill(false);for(let r=2;r<=14;r++)if(rc[r]>0)pr[r]=true;
+ if(fs>=0){const fp=new Array(15).fill(false);for(const c of cards)if(c.s===fs)fp[c.r]=true;const h=evStraightHigh(fp);if(h>0)return evScore(8,[h]);}
+ const tr=[],pa=[];let q=0;for(let r=14;r>=2;r--){if(rc[r]===4)q=r;else if(rc[r]===3)tr.push(r);else if(rc[r]===2)pa.push(r);}
+ if(q){let k=0;for(let r=14;r>=2;r--)if(rc[r]>0&&r!==q){k=r;break;}return evScore(7,[q,k]);}
+ if(tr.length>=1&&(pa.length>=1||tr.length>=2)){const t=tr[0],p=tr.length>=2?Math.max(tr[1],pa.length?pa[0]:0):pa[0];return evScore(6,[t,p]);}
+ if(fs>=0){const fr=cards.filter(c=>c.s===fs).map(c=>c.r).sort((a,b)=>b-a).slice(0,5);return evScore(5,fr);}
+ const sh=evStraightHigh(pr);if(sh>0)return evScore(4,[sh]);
+ if(tr.length>=1){const t=tr[0],k=[];for(let r=14;r>=2;r--)if(rc[r]>0&&r!==t){k.push(r);if(k.length===2)break;}return evScore(3,[t,...k]);}
+ if(pa.length>=2){const h=pa[0],l=pa[1];let k=0;for(let r=14;r>=2;r--)if(rc[r]>0&&r!==h&&r!==l){k=r;break;}return evScore(2,[h,l,k]);}
+ if(pa.length===1){const p=pa[0],k=[];for(let r=14;r>=2;r--)if(rc[r]>0&&r!==p){k.push(r);if(k.length===3)break;}return evScore(1,[p,...k]);}
+ const hc=[];for(let r=14;r>=2;r--)if(rc[r]>0){hc.push(r);if(hc.length===5)break;}return evScore(0,hc);}
+function evDeck(){const d=[];for(const r of '23456789TJQKA')for(const s of 'shdc')d.push(r+s);return d;}
+function parseHand(str){str=str.trim();if(str.length!==4)return null;const a=str.slice(0,2),b=str.slice(2,4);
+ if(!(a[0]in EV_RANK)||!(a[1]in EV_SUIT)||!(b[0]in EV_RANK)||!(b[1]in EV_SUIT)||a===b)return null;return[a,b];}
+function mcEquity(h,v,N){const used=new Set([...h,...v]);const hC=h.map(evParse),vC=v.map(evParse);const dk=evDeck().filter(c=>!used.has(c)),L=dk.length;let w=0,t=0;
+ for(let i=0;i<N;i++){const ix=new Set();while(ix.size<5)ix.add((Math.random()*L)|0);const bo=[...ix].map(j=>evParse(dk[j]));
+  const hs=eval7([...hC,...bo]),vs=eval7([...vC,...bo]);if(hs>vs)w++;else if(hs===vs)t++;}return 100*(w+0.5*t)/N;}
+function famLabel(h,v){const r=x=>EV_RANK[x[0]];const H=[r(h[0]),r(h[1])].sort((a,b)=>b-a),V=[r(v[0]),r(v[1])].sort((a,b)=>b-a);
+ const ph=H[0]===H[1],pv=V[0]===V[1];
+ if(ph&&pv)return H[0]>V[0]?'Paire vs paire (overpair)':'Paire vs paire (underpair)';
+ if(ph||pv){const pr=ph?H[0]:V[0],cs=ph?V:H,ov=cs.filter(x=>x>pr).length,eq=cs.filter(x=>x===pr).length;
+  if(eq)return'Paire vs main partageant son rang';if(ov===2)return'Paire vs 2 overcards (le flip)';if(ov===1)return'Paire vs 1 over / 1 under';return'Paire vs 2 undercards';}
+ const all=[...H,...V];if(new Set(all).size<4)return'Kicker partagé (domination)';
+ const so=[...all].sort((a,b)=>b-a),rank=x=>so.indexOf(x);const hp=[rank(H[0]),rank(H[1])].sort((a,b)=>a-b).join('');
+ if(hp==='01'||hp==='23')return'2 hautes vs 2 basses (AB vs CD)';if(hp==='02'||hp==='13')return'Top+3e vs 2e+4e (AC vs BD)';return'Top+bas vs 2 milieu (AD vs BC)';}
+mgo.onclick=()=>{const h=parseHand(mh.value),v=parseHand(mv.value),res=mres;
+ if(!h||!v){res.innerHTML='<span class="neg">Format invalide. Ex : AsKh vs QdJc.</span>';return;}
+ if(new Set([...h,...v]).size<4){res.innerHTML='<span class="neg">Une carte apparaît deux fois.</span>';return;}
+ res.innerHTML='<span class="small">calcul…</span>';
+ setTimeout(()=>{const eq=mcEquity(h,v,150000),f=famLabel(h,v);
+  res.innerHTML=`<b>${eq.toFixed(1)} %</b> pour ${h.join('')} · ${(100-eq).toFixed(1)} % pour ${v.join('')}`
+   +`<div class="small" style="margin-top:4px">Famille : <span class="fam">${f}</span> · ≈ Monte-Carlo 150k (±0,2 pt)</div>`;},30);};
+
+// init
+calcH();calcFF();calcOC();calcFO();calc3();calcCS();
+</script></body></html>
