@@ -96,21 +96,22 @@ button.go{background:var(--acc);color:#1a1a1a;border:0;border-radius:7px;font-we
 
 <h2 id="s4">4 · Facing openraise (3bet / squeeze)</h2>
 <div class="card">
+ <p class="small" style="margin:0 0 9px">Un adversaire a <b>open-raisé</b> ; <b>toi tu réponds par un 3bet</b> (ou un squeeze). EV de ton 3bet : tu rafles le <i>dead money</i> s'il fold, tu réalises ton équité s'il call. En mode « ranges », donne les <b>largeurs de range</b> (% de mains), <b>pas les tailles de mise</b>.</p>
  <div class="opt">
   <label><input type="radio" name="fomode" id="fo_fixed" checked> Fold equity fixe</label>
   <label><input type="radio" name="fomode" id="fo_ranges"> Depuis les ranges</label>
   <label style="margin-left:auto"><input type="checkbox" id="fo_rake" checked> soustraire rake (5 %)</label>
  </div>
  <div class="row">
-  <div><label>Fold equity %</label><input type="number" id="fo_fe" value="66.7" step="0.1"></div>
-  <div><label>Open %  <span class="note">(mode ranges)</span></label><input type="number" id="fo_open" value="15" disabled></div>
-  <div><label>Call 3bet %  <span class="note">(ranges)</span></label><input type="number" id="fo_call" value="5" disabled></div>
+  <div><label>Fold equity %  <span class="note">(mode fixe)</span></label><input type="number" id="fo_fe" value="66.7" step="0.1"></div>
+  <div><label>Range d'open %  <span class="note">largeur, pas la taille</span></label><input type="number" id="fo_open" value="15" disabled></div>
+  <div><label>Range call 3bet %  <span class="note">largeur</span></label><input type="number" id="fo_call" value="5" disabled></div>
  </div>
  <div class="row" style="margin-top:8px">
-  <div><label>Ta raise (bb)</label><input type="number" id="fo_raise" value="20" step="0.5"></div>
+  <div><label>Ton 3bet (bb)</label><input type="number" id="fo_raise" value="20" step="0.5"></div>
   <div><label>Ton équité % (si call)</label><input type="number" id="fo_eq" value="45" step="0.5"></div>
-  <div><label>Pot total (bb)</label><input type="number" id="fo_pot" value="41.5" step="0.5"></div>
-  <div><label>Dead money (bb)</label><input type="number" id="fo_dm" value="5.5" step="0.5"></div>
+  <div><label>Pot total si call (bb)</label><input type="number" id="fo_pot" value="41.5" step="0.5"></div>
+  <div><label>Dead money (bb)  <span class="note">blinds + open villain</span></label><input type="number" id="fo_dm" value="5.5" step="0.5"></div>
  </div>
  <div class="out">
   <div class="outbox hl"><div class="k">Expected value (bb)</div><div class="v" id="fo_ev">–</div></div>
@@ -122,7 +123,7 @@ button.go{background:var(--acc);color:#1a1a1a;border:0;border-radius:7px;font-we
 
 <h2 id="s5">5 · Facing 3bet (call / jam)</h2>
 <div class="card">
- <p class="small" style="margin:0 0 9px">Équité minimale pour payer un 3bet à tapis.</p>
+ <p class="small" style="margin:0 0 9px">Situation <b>inverse</b> du module 4 : <b>tu as open</b>, l'adversaire te <b>3bet</b> (souvent à tapis) → équité minimale pour <b>payer</b>.</p>
  <div class="opt"><label style="margin-left:auto"><input type="checkbox" id="f3_rake" checked> soustraire rake</label></div>
  <div class="row">
   <div><label>Stack effectif restant (bb)</label><input type="number" id="f3_s" value="10" step="0.5"></div>
